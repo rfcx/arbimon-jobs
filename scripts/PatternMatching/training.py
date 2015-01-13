@@ -86,7 +86,7 @@ if not row:
     use_in_validation_notpresent,
     name
 ) = row
-
+modelName = name
 tempFolders = tempfile.gettempdir()
 
 # select the model_type by its id

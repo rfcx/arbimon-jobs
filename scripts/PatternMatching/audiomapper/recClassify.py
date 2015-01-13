@@ -53,9 +53,9 @@ start_time = time.time()
 
 conn = S3Connection(awsKeyId, awsKeySecret)
 try:
-    bucket = conn.get_bucket(bucket)
+    bucket = conn.get_bucket(bucketName )
 except Exception, ex:
-    log.write('fatal error cannot connect to bucket '+ex.error_message)
+    log.write('fatal error cannot connect to bucket ')
     with closing(db.cursor()) as cursor:
         cursor.execute("""
             UPDATE `jobs` set `remarks` = %s
