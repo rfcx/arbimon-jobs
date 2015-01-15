@@ -15,6 +15,7 @@ from joblib import Parallel, delayed
 from datetime import datetime
 from contextlib import closing
 from soundscape import soundscape
+from indices import indices
 from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 from a2audio.rec import Rec
@@ -22,13 +23,6 @@ from a2pyutils import palette
 from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
 
-# to do
-# job progrss in jobs table
-#
-#
-#
-##
-# will change this to a external configuration file
 num_cores = multiprocessing.cpu_count()
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
@@ -172,6 +166,11 @@ try:
         'init playlist with aggregation: '+str(aggregation) +
         " bin size:" + str(bin_size) + " bins:" + str(max_bins))
     scp = soundscape.Soundscape(aggregation, bin_size, max_bins)
+    
+    peaknumbers  = indices.Indices(aggregation)
+    
+    hIndex = indices.Indices(aggregation)
+    
     log.write("start parallel... ")
 
     def processRec(rec, config):
@@ -230,7 +229,7 @@ try:
                 str(frequency)
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
-            if stderr and 'LC_TIME' not in stderr:
+            if stderr and 'LC_TIME' not in stderr and 'OpenBLAS' not in stderr:
                 logofthread.write(
                     'worker id' + str(id) + ' log: fpeaks.R err:' +
                     str(time.time()-start_time_rec) + " stdout: " + stdout +
@@ -254,7 +253,7 @@ try:
                     str(time.time()-start_time_rec) + " stdout: " + stdout +
                     " stderr: " + stderr
                 )
-                os.remove(localFile)
+                
                 if 'err' in stdout:
                     logofthread.write('err in stdout')
                     logofthread.write(
@@ -262,12 +261,24 @@ try:
                         str(id) + ')------------------')
                     return None
                 freqs = stdout.strip(',')
+                proc = subprocess.Popen([
+                   '/usr/bin/Rscript', currDir+'/h.R',
+                   localFile
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = proc.communicate()
+                
+                hvalue = None
+                if stdout and 'err' not in stdout:
+                    hvalue = float(stdout)
+                
+                os.remove(localFile)
                 fresqSplit = freqs.split(',')
                 if len(fresqSplit) < 1:
                     logofthread.write('no peaks found')
-                    return None
-                freqs = [float(i) for i in fresqSplit]
-                results = {"date": date, "id": id, "freqs": freqs}
+                    freqs = None
+                else:
+                    freqs = [float(i) for i in fresqSplit]
+                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue}
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
@@ -300,14 +311,24 @@ try:
         start_time_all = time.time()
         for result in resultsParallel:
             if result is not None:
-                if len(result['freqs']) > 0:
-                    scp.insert_peaks(
-                        result['date'], result['freqs'], result['id'])
+                if result['freqs'] is not None:
+                    if len(result['freqs']) > 0:
+                        scp.insert_peaks(result['date'], result['freqs'], result['id'])
+                    peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
+                if result['h'] is not None:
+                    hIndex.insert_value(result['date'] ,result['h'],result['id'])
+                    
         log.write("inserting peaks:" + str(time.time() - start_time_all))
         start_time_all = time.time()
         scp.write_index(workingFolder+scidxout)
-        log.write("writing index:" + str(time.time() - start_time_all))
-
+        log.write("writing indices:" + str(time.time() - start_time_all))
+        
+        peaknFile = workingFolder+'peaknumbers'
+        peaknumbers.write_index_aggregation_json(peaknFile+'.json')
+        
+        hFile = workingFolder+'h'
+        hIndex.write_index_aggregation_json(hFile+'.json')
+        
         if aggregation['range'] == 'auto':
             statsMin = scp.stats['min_idx']
             statsMax = scp.stats['max_idx']
@@ -353,6 +374,9 @@ try:
         uriBase = 'project_'+str(pid)+'/soundscapes/'+str(soundscapeId)
         imageUri = uriBase + '/image.png'
         indexUri = uriBase + '/index.scidx'
+        peaknumbersUri = uriBase + '/peaknumbers.json'
+        hUri = uriBase + '/h.json'
+        
         log.write('tring connection to bucket')
         start_time = time.time()
         bucket = None
@@ -383,6 +407,15 @@ try:
             cursor.execute("update `soundscapes` set `uri` = '"+imageUri+"' \
                 where  `soundscape_id` = "+str(soundscapeId))
             db.commit()
+            
+        k = bucket.new_key(peaknumbersUri)
+        k.set_contents_from_filename(peaknFile+'.json')
+        k.set_acl('public-read')
+
+        k = bucket.new_key(hUri)
+        k.set_contents_from_filename(hFile+'.json')
+        k.set_acl('public-read')
+        
     else:
         print 'no results from playlist id:'+playlist_id
         with closing(db.cursor()) as cursor:

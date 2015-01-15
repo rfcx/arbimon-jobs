@@ -24,7 +24,7 @@ if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
         ,
         error = function(e)
         {
-            cat ('err')
+            cat ('err1')
             quit()
         }
     );
@@ -36,14 +36,14 @@ if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
         ,
         error = function(e)
         {
-            cat ('err')
+            cat ('err2')
             quit()
         }
     );
     
     if( is.na(picos) || length(picos) < 1)
     {
-       cat('err')
+       cat('err3')
     }
     else
     {
@@ -59,8 +59,8 @@ if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
                                    cat(',')
                                }
                            )
-       }else cat ('err')
+       }else cat ('err4')
     }      
 
-}else cat ('err')
+}else cat ('err5')
 
