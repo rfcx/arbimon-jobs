@@ -170,6 +170,8 @@ try:
     peaknumbers  = indices.Indices(aggregation)
     
     hIndex = indices.Indices(aggregation)
+
+    aciIndex = indices.Indices(aggregation)
     
     log.write("start parallel... ")
 
@@ -270,7 +272,17 @@ try:
                 hvalue = None
                 if stdout and 'err' not in stdout:
                     hvalue = float(stdout)
+                    
+                proc = subprocess.Popen([
+                   '/usr/bin/Rscript', currDir+'/aci.R',
+                   localFile
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = proc.communicate()
                 
+                acivalue = None
+                if stdout and 'err' not in stdout:
+                    acivalue = float(stdout)
+                                
                 os.remove(localFile)
                 fresqSplit = freqs.split(',')
                 if len(fresqSplit) < 1:
@@ -278,7 +290,7 @@ try:
                     freqs = None
                 else:
                     freqs = [float(i) for i in fresqSplit]
-                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue}
+                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue}
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
@@ -317,6 +329,8 @@ try:
                     peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
                 if result['h'] is not None:
                     hIndex.insert_value(result['date'] ,result['h'],result['id'])
+                if result['aci'] is not None:
+                    aciIndex.insert_value(result['date'] ,result['aci'],result['id'])
                     
         log.write("inserting peaks:" + str(time.time() - start_time_all))
         start_time_all = time.time()
@@ -328,6 +342,9 @@ try:
         
         hFile = workingFolder+'h'
         hIndex.write_index_aggregation_json(hFile+'.json')
+        
+        aciFile = workingFolder+'aci'
+        aciIndex.write_index_aggregation_json(aciFile+'.json')
         
         if aggregation['range'] == 'auto':
             statsMin = scp.stats['min_idx']
@@ -376,6 +393,7 @@ try:
         indexUri = uriBase + '/index.scidx'
         peaknumbersUri = uriBase + '/peaknumbers.json'
         hUri = uriBase + '/h.json'
+        aciUri = uriBase + '/aci.json'
         
         log.write('tring connection to bucket')
         start_time = time.time()
@@ -414,6 +432,10 @@ try:
 
         k = bucket.new_key(hUri)
         k.set_contents_from_filename(hFile+'.json')
+        k.set_acl('public-read')
+ 
+        k = bucket.new_key(aciUri)
+        k.set_contents_from_filename(aciFile+'.json')
         k.set_acl('public-read')
         
     else:
