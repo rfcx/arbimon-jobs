@@ -32,9 +32,9 @@ for line in sys.stdin:
     line = line.strip(' ')
     line = line.strip('\n')
     test = line.split(';')
-    if len(test) >= 14:
-        meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,classid,present,spectrogram,columns ,low , high , jId ,sRate ,recUri= line.split(';')
-        
+    if len(test) >= 16:
+        meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skewv,kurt,moment1,moment2,moment3,moment4,moment5,moment6,moment7,moment8,moment9,moment10,cf1,cf2,cf3,cf4,cf5,cf6,hi1,hi2,hi3,hi4,hi5,hi6,fs1,fs2,fs3,fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,classid,present,spectrogram,columns ,low , high , jId ,sRate ,recUri= line.split(';')
+
         lowf = low
         highf = high
         cols =columns
@@ -51,10 +51,12 @@ for line in sys.stdin:
             spec = numpy.vstack((spec,row))
         
         if classid in classes:
-            classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),recUri)
+            classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),float(skewv),float(kurt),float(moment1),float(moment2),float(moment3),float(moment4),float(moment5),float(moment6),float(moment7),float(moment8),float(moment9),float(moment10),float(cf1),float(cf2),float(cf3),float(cf4),float(cf5),float(cf6),float(hi1),float(hi2),float(hi3),float(hi4),float(hi5),float(hi6),float(fs1),float(fs2),float(fs3),float(fs4),float(fs5),float(fs6),float(fs7),float(fs8),float(fs9),float(fs10),float(fs11),recUri)
         else:
             classes[classid] = Model(classid,spec,jobId)
-            classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),recUri)
+            classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),float(skewv),float(kurt),float(moment1),float(moment2),float(moment3),float(moment4),float(moment5),float(moment6),float(moment7),float(moment8),float(moment9),float(moment10),float(cf1),float(cf2),float(cf3),float(cf4),float(cf5),float(cf6),float(hi1),float(hi2),float(hi3),float(hi4),float(hi5),float(hi6),float(fs1),float(fs2),float(fs3),float(fs4),float(fs5),float(fs6),float(fs7),float(fs8),float(fs9),float(fs10),float(fs11),recUri)
+
+quit()
 
 modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
 

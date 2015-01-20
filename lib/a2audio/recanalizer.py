@@ -10,6 +10,8 @@ from scipy.stats import kendalltau as ktau
 from  scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
+from scipy.stats import *
+from  scipy.signal import *
 
 class Recanalizer:
     
@@ -51,9 +53,19 @@ class Recanalizer:
         return self.distances
     
     def features(self):
+        fs = periodogram(self.distances,nfft=20)[1]
+        hist = histogram(self.distances,6)[0]
+        cfs =  cumfreq(self.distances,6)[0]
         return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
                 max(self.distances), min(self.distances)
-                , numpy.std(self.distances) , numpy.median(self.distances)]
+                , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
+                kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
+                ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
+                ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
+                ,moment(self.distances,9),moment(self.distances,10)
+                ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
+                ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
+                ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         
     def featureVector(self):
         if self.logs:
