@@ -56,8 +56,6 @@ for line in sys.stdin:
             classes[classid] = Model(classid,spec,jobId)
             classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),float(skewv),float(kurt),float(moment1),float(moment2),float(moment3),float(moment4),float(moment5),float(moment6),float(moment7),float(moment8),float(moment9),float(moment10),float(cf1),float(cf2),float(cf3),float(cf4),float(cf5),float(cf6),float(hi1),float(hi2),float(hi3),float(hi4),float(hi5),float(hi6),float(fs1),float(fs2),float(fs3),float(fs4),float(fs5),float(fs6),float(fs7),float(fs8),float(fs9),float(fs10),float(fs11),recUri)
 
-quit()
-
 modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
 
 with closing(db.cursor()) as cursor:
