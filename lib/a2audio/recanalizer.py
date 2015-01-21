@@ -1,4 +1,5 @@
 from a2audio.rec import Rec
+from a2audio.thresholder import Thresholder
 from pylab import *
 import numpy
 import time
@@ -79,7 +80,7 @@ class Recanalizer:
         step = 16
         if self.logs:
            self.logs.write("featureVector in here")     
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])
+        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:]).astype('int')
         if self.logs:
            self.logs.write("featureVector write start")
            
@@ -92,7 +93,7 @@ class Recanalizer:
         spec = self.spec;
         for j in range(0,currColumns - self.columns,step): 
             #self.distances.append(self.matrixDistance(numpy.copy(spec[: , j:(j+self.columns)])) )
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
+            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]).astype('int') , self.matrixSurfacComp  , dynamic_range=1)
             if val < 0:
                val = 0
             self.distances.append(  val   )
@@ -175,7 +176,9 @@ class Recanalizer:
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
-        self.spec = Z
+            
+        threshold = Thresholder()
+        self.spec = threshold.apply(Z)
     
     def showVectAndSpec(self):
         ax1 = subplot(211)

@@ -23,7 +23,7 @@ for line in sys.stdin:
     columns = int(columns.strip('\n'))
     jId = int(jobId.strip('\n'))
 
-    spec = numpy.zeros(shape=(0,int(columns)))
+    spec = numpy.zeros(shape=(0,int(columns))).astype('int')
     for s in spectro:
         row = s.split(',')
         row = map(float,row)

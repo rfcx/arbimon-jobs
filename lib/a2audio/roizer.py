@@ -1,4 +1,5 @@
 from rec import Rec
+from a2audio.thresholder import Thresholder
 from pylab import *
 from matplotlib import *
 import numpy
@@ -64,5 +65,6 @@ class Roizer:
             i = i + 1
 
         Z = np.flipud(Pxx)
-        self.spec = Z
+        threshold = Thresholder()
+        self.spec = threshold.apply(Z)
         
