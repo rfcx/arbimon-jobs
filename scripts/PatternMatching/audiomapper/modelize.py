@@ -112,7 +112,7 @@ for i in classes:
     spec = modelStats[4]
     spec[spec == -10000] = float('nan')
     for j in range(0,rowsInSpec):
-        if abs(sum(spec[j,:])) > 0.0:
+        if abs(sum(spec[j,:])) > 0.0 and sum(numpy.isnan(spec[j,:])) == 0 :
             specToShow = numpy.vstack((specToShow,spec[j,:]))
             
     specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
