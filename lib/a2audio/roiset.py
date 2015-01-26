@@ -114,7 +114,8 @@ class Roiset:
                 compareArea = roi.spec[high_index:low_index,:]
                 for jj in range((self.maxColumns*2) -currColumns ): 
                     subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
-                    distances.append(ssim(subMatrix ,compareArea  , dynamic_range=dm ) )
+                    #distances.append(ssim(subMatrix ,compareArea  , dynamic_range=dm ) )
+                    distances.append(ssim(subMatrix ,compareArea   ) )
                 j = distances.index(max(distances))
                 #saveob.append(numpy.copy(distances))
                 del distances

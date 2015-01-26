@@ -1,15 +1,19 @@
 from skimage.filter import threshold_otsu, threshold_adaptive, threshold_isodata, threshold_yen
 import numpy
 from sklearn.cluster import k_means
-#from a2audio.thresholder import Thresholder
-#threshold = Thresholder()
+
+#with results:
+#   global kmeans
+
+
+
 
 funcs = {'global':{'otsu','median','kmeans','isodata','yen'} ,
          'adaptive':{ 'gaussian', 'mean', 'median'}}
 
 class Thresholder:
         
-    def __init__(self , func = 'global' , method = 'kmeans'):
+    def __init__(self , func = 'global' , method = 'yen'):
         
         if func in funcs:
             self.func = func
@@ -45,5 +49,5 @@ class Thresholder:
         if  self.func ==  'adaptive':
             binary = threshold_adaptive(matrix, 15, self.method)
             
-        return binary.astype('int')
+        return matrix#binary.astype('int')
 

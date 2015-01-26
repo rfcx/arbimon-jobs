@@ -48,7 +48,7 @@ def processLine(line,config,tempFolders,currDir ):
     spectrogram  = spectrogram.strip(' ')
     spectrogram  = spectrogram.strip('\n')
     spectrogram  = spectrogram.split('*')
-    spec = numpy.zeros(shape=(0,int(columns))).astype('int')
+    spec = numpy.zeros(shape=(0,int(columns)))#.astype('int')
     for s in spectrogram :
         row = s.split(',')
         row = map(float,row)

@@ -34,7 +34,6 @@ for line in sys.stdin:
     test = line.split(';')
     if len(test) >= 16:
         meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skewv,kurt,moment1,moment2,moment3,moment4,moment5,moment6,moment7,moment8,moment9,moment10,cf1,cf2,cf3,cf4,cf5,cf6,hi1,hi2,hi3,hi4,hi5,hi6,fs1,fs2,fs3,fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,classid,present,spectrogram,columns ,low , high , jId ,sRate ,recUri= line.split(';')
-
         lowf = low
         highf = high
         cols =columns

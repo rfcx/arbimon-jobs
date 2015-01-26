@@ -54,7 +54,17 @@ class Recanalizer:
         return self.distances
     
     def features(self):
-        fs = periodogram(self.distances,nfft=20)[1]
+        
+        N = len(self.distances)
+        fvi = np.fft.fft(self.distances, n=2*N)
+        acf = np.real( np.fft.ifft( fvi * np.conjugate(fvi) )[:N] )
+        acf = acf/(N - numpy.arange(N))
+        
+        xf = abs(numpy.fft.fft(self.distances))
+        fs = [ numpy.mean(xf), (max(xf)-min(xf)),
+                max(xf), min(xf)
+                , numpy.std(xf) , numpy.median(xf),skew(xf),
+                kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
         hist = histogram(self.distances,6)[0]
         cfs =  cumfreq(self.distances,6)[0]
         return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
@@ -77,10 +87,12 @@ class Recanalizer:
         filename = '/home/rafa/debugs_pickels/'+pieces[len(pieces)-1]+".pickle"
         self.distances = []
         currColumns = self.spec.shape[1]
-        step = int(self.spec.shape[1]*.05) # 10 percent of the pattern size
+        step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
         if self.logs:
            self.logs.write("featureVector in here")     
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:]).astype('int')
+        #self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:]).astype('int')
+        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])
+
         if self.logs:
            self.logs.write("featureVector write start")
            
@@ -93,7 +105,10 @@ class Recanalizer:
         spec = self.spec;
         for j in range(0,currColumns - self.columns,step): 
             #self.distances.append(self.matrixDistance(numpy.copy(spec[: , j:(j+self.columns)])) )
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]).astype('int') , self.matrixSurfacComp  , dynamic_range=1)
+            #val =  numpy.linalg.norm( numpy.multiply(numpy.copy(spec[: , j:(j+self.columns)]).astype('int') , self.matrixSurfacComp ) )
+            #val = ssim( numpy.copy(spec[: , j:(j+self.columns)]).astype('int') , self.matrixSurfacComp  , dynamic_range=1)
+            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp )
+
             if val < 0:
                val = 0
             self.distances.append(  val   )

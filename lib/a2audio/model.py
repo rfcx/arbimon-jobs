@@ -13,7 +13,7 @@ class Model:
     def __init__(self,classid,speciesSpec,jobid):
         self.classid = classid
         self.speciesSpec = speciesSpec
-        self.data  = numpy.zeros(shape=(0,41))
+        self.data  = numpy.zeros(shape=(0,41),dtype=numpy.dtype('float64'))
         self.classes = []
         self.uris = []
         self.minv = 9999999
@@ -27,6 +27,7 @@ class Model:
             self.minv = minfeat
         if self.maxv < maxfeat:
             self.maxv = maxfeat
+        #row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skew,kurt]
         row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skew,kurt,moment1,moment2,moment3,moment4,moment5,moment6,moment7,moment8,moment9,moment10,cf1,cf2,cf3,cf4,cf5,cf6,hi1,hi2,hi3,hi4,hi5,hi6,fs1,fs2,fs3,fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11]
         self.data = numpy.vstack((self.data,row))
     

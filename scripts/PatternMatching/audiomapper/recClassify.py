@@ -91,14 +91,15 @@ log.write(
     str(time.time()-start_time_all))
 # for line in sys.stdin:
 
-
+#print 'recclassify started'
 def processLine(line, bucket, mod, config, logWorkers):
+    #print 'recieved',line
     global jobId
     start_time_all = time.time()
     log = Logger(jobId, 'recClassify.py', 'worker-thread', logWorkers)
 
     log.write('worker-thread started')
-
+    #print 'try db'
     try:
         db = MySQLdb.connect(
             host=config[0], user=config[1], passwd=config[2], db=config[3])
@@ -108,6 +109,7 @@ def processLine(line, bucket, mod, config, logWorkers):
     # remove white space
     line = line.strip(' ')
     line = line.strip('\n')
+    #print 'db ok'
     # split the line into variables
     recUri, modelUri, recId, jobId, species, songtype = line.split(',')
     recId = int(recId.strip())
@@ -118,6 +120,7 @@ def processLine(line, bucket, mod, config, logWorkers):
     # get rec from URI and compute feature vector using the spec vocalization
     start_time = time.time()
     log.write(str(type(bucket)))
+    #print 'try analyze'
     recAnalized = Recanalizer(
         recUri, mod[1], mod[2], mod[3], mod[4], tempFolder, log, bucket)
     log.time_delta("recAnalized", start_time)
@@ -128,8 +131,9 @@ def processLine(line, bucket, mod, config, logWorkers):
             WHERE `job_id` = %s
         """, [jobId])
         db.commit()
-
+    #print 'it was analized'
     if recAnalized.status == 'Processed':
+        #print 'was processed'
         log.write('rec processed')
         featvector = recAnalized.getVector()
         recName = recUri.split('/')
@@ -142,6 +146,7 @@ def processLine(line, bucket, mod, config, logWorkers):
         myfileWrite.close()
         log.time_delta("wrote vector file", start_time)
         if not os.path.isfile(vectorLocal):
+            #print 'no vector local'
             log.write('error writing: '+vectorLocal)
             with closing(db.cursor()) as cursor:
                 cursor.execute("""
@@ -156,6 +161,7 @@ def processLine(line, bucket, mod, config, logWorkers):
             vectorUri = '{}/classification_{}_{}.vector'.format(
                 modelUri.replace('.mod', ''), jobId, recName
             )
+            #print 'vector file exists'
             log.write(str(type(bucket)))
             k = bucket.new_key(vectorUri)
             k.set_contents_from_filename(vectorLocal)
@@ -165,7 +171,9 @@ def processLine(line, bucket, mod, config, logWorkers):
             noErrorFlag = True
             log.time_delta("uploaded vector file", start_time)
             start_time = time.time()
+            #print 'try predict'
             try:
+                #print fets
                 res = clf.predict(fets)
             except:
                 log.write('error predicting on recording: '+recUri)
@@ -177,19 +185,23 @@ def processLine(line, bucket, mod, config, logWorkers):
                     """, [recId, jobId])
                     db.commit()
                 noErrorFlag = False
+            #print 'prediction done'
             log.time_delta("prediction", start_time)
             if noErrorFlag:
+                #print 'noerrorflag'
                 print recId, ";", res[0], ";", jobId, ";", species, ";",
                 print songtype, ";", min(featvector), ";", max(featvector)
                 sys.stdout.flush()
                 log.time_delta("function exec", start_time_all)
                 return 1
             else:
+                #print 'error'
                 log.write('error return 0')
                 insert_rec_error(db, recId, jobId)
                 log.time_delta("function exec", start_time_all)
                 return 0
     else:
+        #print 'cannot process recording',recAnalized.status
         log.write('error processing recording: '+recUri)
         log.time_delta("function exec", start_time_all)
         insert_rec_error(db, recId, jobId)
@@ -204,7 +216,10 @@ def insert_rec_error(db, recId, jobId):
         """, [recId, jobId])
         db.commit()
 
-
+#for line in sys.stdin:
+#    print 'sent',line
+#    processLine(line, bucket, mod, config, logWorkers)    
+    
 resultsParallel = Parallel(n_jobs=num_cores)(
     delayed(processLine)(line, bucket, mod, config, logWorkers)
     for line in sys.stdin
