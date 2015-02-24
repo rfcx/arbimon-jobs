@@ -135,7 +135,7 @@ class Rec:
         if self.logs :
             self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localFiles+self.filename+self.seed)
         try:
-            f = urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri)
+            f = urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri.replace(" ","%20"))
             if self.logs :
                 self.logs.write('urlopen success')
             # Open our local file for writing
