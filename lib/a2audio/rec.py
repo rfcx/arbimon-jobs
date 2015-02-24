@@ -6,6 +6,7 @@ import time
 import sys
 from boto.s3.connection import S3Connection
 import warnings
+from urllib import quote
 from urllib2 import urlopen, URLError, HTTPError
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -135,7 +136,7 @@ class Rec:
         if self.logs :
             self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localFiles+self.filename+self.seed)
         try:
-            f = urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri.replace(" ","%20"))
+            f = urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :
                 self.logs.write('urlopen success')
             # Open our local file for writing
