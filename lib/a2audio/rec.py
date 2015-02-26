@@ -138,7 +138,7 @@ class Rec:
         
         return True
 
-    def parseBps(self,enc_key):
+    def parseEncoding(self,enc_key):
         enc = 16
         if enc_key in encodings:
             enc = encodings[enc_key]
@@ -149,7 +149,7 @@ class Rec:
             with closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
                     self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
-                self.bps = self.parseBps(f.encoding)
+                self.bps = self.parseEncoding(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
                 self.sample_rate = f.samplerate       
