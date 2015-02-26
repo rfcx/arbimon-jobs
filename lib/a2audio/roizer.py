@@ -8,7 +8,7 @@ class Roizer:
 
     def __init__(self, uri ,tempFolder,config ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,order = 6, bucket=None):
 
-        slicedrec = Rec(uri,tempFolder,config,bucket)
+        slicedrec = Rec(uri,tempFolder,config[4])
 
         if  'HasAudioData' in slicedrec.status:
             self.original = slicedrec.original

@@ -203,7 +203,7 @@ try:
         logofthread.write('worker id'+str(id)+' log: rec uri:'+uri)
         start_time_rec = time.time()
         recobject = Rec(
-            uri, workingFolder, config, config[4], logofthread, False)
+            uri, workingFolder, config[4], logofthread, False)
         logofthread.write(
             'worker id' + str(id) + ' log: rec from uri' +
             str(time.time()-start_time_rec)
@@ -311,7 +311,7 @@ try:
 
     start_time_all = time.time()
     resultsParallel = Parallel(n_jobs=num_cores)(
-        delayed(processRec)(rec, config) for rec in recsToProcess
+        delayed(processRec)(recordingi, config) for recordingi in recsToProcess
     )
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
     if len(resultsParallel) > 0:
@@ -400,12 +400,13 @@ try:
         bucket = None
         conn = S3Connection(awsKeyId, awsKeySecret)
         try:
+            log.write('connecting to '+bucketName)
             bucket = conn.get_bucket(bucketName)
         except Exception, ex:
             log.write('fatal error cannot connect to bucket '+ex.error_message)
             with closing(db.cursor()) as cursor:
                 cursor.execute('UPDATE `jobs` \
-                SET `complete` = -1, `state`="error", \
+                SET `completed` = -1, `state`="error", \
                 `remarks` = \'Error: connecting to bucket.\' \
                 WHERE `job_id` = '+str(job_id))
                 db.commit()
