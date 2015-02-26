@@ -13,6 +13,30 @@ with warnings.catch_warnings():
 from contextlib import closing
 import numpy as np
 
+encodings = {
+    "pcms8":8,
+    "pcm16":16,
+    "pcm24":32,
+    "pcm32":32,
+    "pcmu8":8,
+    "float32":32,
+    "float64":64,
+    "ulaw":16,
+    "alaw":16,
+    "ima_adpcm":16,
+    "gsm610":16,
+    "dww12":16,
+    "dww16":16,
+    "dww24":32,
+    "g721_32":32,
+    "g723_24":32,
+    "vorbis":16,
+    "vox_adpcm":16,
+    "ms_adpcm":16,
+    "dpcm16":16,
+    "dpcm8":8
+}
+
 class Rec:
 
     filename = ''
@@ -114,12 +138,18 @@ class Rec:
         
         return True
 
+    def parseBps(self,enc_key):
+        enc = 16
+        if enc_key in encodings:
+            enc = encodings[enc_key]
+        return enc
+    
     def readAudioFromFile(self):
         try:
             with closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
                     self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
-                self.bps = 16
+                self.bps = self.parseBps(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
                 self.sample_rate = f.samplerate       
