@@ -1,0 +1,15 @@
+[
+    "numpy",
+    "scikits",
+    "skimage",
+    "virtualenv",
+    "argparse",
+    "png",
+    "wsgiref",
+    "boto",
+    "MySQLdb",
+    "scipy",
+    "joblib",
+    "matplotlib",
+    "sklearn"
+]
