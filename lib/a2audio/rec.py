@@ -33,11 +33,11 @@ class Rec:
         self.filename = tempfilename[len(tempfilename)-1]
         self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
         self.localfilename = self.localFiles+self.filename+self.seed
-        self.localfilename = quote(self.localfilename)
         while os.path.isfile(self.localfilename):
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
             self.localfilename = self.localFiles+self.filename+self.seed
- 
+        self.localfilename = self.localfilename.replace(" ","_")
+        
         if self.logs :
             self.logs.write("init completed:" + str(time.time() - start_time))
             
@@ -147,7 +147,8 @@ class Rec:
                     return False
             
         if self.removeFile:
-            os.remove(self.localfilename)
+            if os.path.isfile(self.localfilename):
+                os.remove(self.localfilename)
             if self.logs :
                 self.logs.write("remove temporary file:" + str(time.time() - start_time))
         
