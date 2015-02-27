@@ -12,6 +12,7 @@ with warnings.catch_warnings():
     from scikits.audiolab import Sndfile, Format
 from contextlib import closing
 import numpy as np
+from a2pyutils.logger import Logger
 
 encodings = {
     "pcms8":8,
@@ -46,6 +47,24 @@ class Rec:
     status = 'NotProcessed'
     
     def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False):
+        
+        if type(uri) is not str:
+            raise ValueError("uri must be a string")
+        if type(tempFolder) is not str:
+            raise ValueError("invalid tempFolder")
+        if not os.path.exists(tempFolder):
+            raise ValueError("invalid tempFolder")
+        elif not os.access(tempFolder, os.W_OK):
+            raise ValueError("invalid tempFolder")
+        if type(bucketName) is not str:
+            raise ValueError("bucketName must be a string")
+        if logs is not None and not isinstance(logs,Logger):
+            raise ValueError("logs must be a Logger object")
+        if type(removeFile) is not bool:
+            raise ValueError("removeFile must be a boolean")
+        if type(test) is not bool:
+            raise ValueError("test must be a boolean")
+        
         start_time = time.time()
         self.logs = logs
         self.localFiles = tempFolder
@@ -56,11 +75,10 @@ class Rec:
         tempfilename = uri.split('/')
         self.filename = tempfilename[len(tempfilename)-1]
         self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
-        self.localfilename = self.localFiles+self.filename+self.seed
+        self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
         while os.path.isfile(self.localfilename):
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
-            self.localfilename = self.localFiles+self.filename+self.seed
-        self.localfilename = self.localfilename.replace(" ","_")
+            self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
         
         if self.logs :
             self.logs.write("init completed:" + str(time.time() - start_time))
@@ -136,6 +154,8 @@ class Rec:
             self.logs.write('f.read success')
             self.logs.write("retrieve recording:" + str(time.time() - start_time))
         
+        status = 'Downloaded'
+        
         return True
 
     def parseEncoding(self,enc_key):
@@ -149,11 +169,12 @@ class Rec:
             with closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
                     self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
-                self.bps = self.parseEncoding(f.encoding)
+                self.bps = 16 #self.parseEncoding(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
-                self.sample_rate = f.samplerate       
+                self.sample_rate = f.samplerate
                 self.original = f.read_frames(f.nframes,dtype=np.dtype('int'+str(self.bps)))
+            self.status = 'AudioInBuffer'
             return True
         except:
             if self.logs :
@@ -184,11 +205,14 @@ class Rec:
         
         return True
 
-    def getAudioFrames(self): #function that reads audio from pcm buffer 
+    def getAudioFrames(self):
         return self.original   
     
-    def getLocalFileLocation(self):
-        if os.path.isfile(self.localfilename):
+    def getLocalFileLocation(self,ignore_not_exist = False):
+        if ignore_not_exist:
             return self.localfilename;
         else:
-            return None;
+            if os.path.isfile(self.localfilename):
+                return self.localfilename;
+            else:
+                return None;
