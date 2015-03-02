@@ -44,7 +44,7 @@ class Test_rec(unittest.TestCase):
         """Test Rec.getLocalFileLocation function"""
         from a2audio.rec import Rec
         rec_test = Rec("test/test.wav","/tmp/","arbimon2",None,True,True)
-        rec_test.localfilename = 'test_python/data/test.wav'
+        rec_test.setLocalFileLocation('test_python/data/test.wav')
         self.assertEqual('test_python/data/test.wav',rec_test.getLocalFileLocation(),msg="Rec.getLocalFileLocation returned invalid location")
 
     def test_getAudioFrames(self):
@@ -52,7 +52,7 @@ class Test_rec(unittest.TestCase):
         from a2audio.rec import Rec
         rec_test = Rec("test/test.wav","/tmp/","arbimon2",None,True,True)
         for i in range(1000):
-            rec_test.original.append(i)
+            rec_test.appendToOriginal(i)
         data_test = rec_test.getAudioFrames()
         for i in range(1000):
             self.assertEqual(i,data_test[i],msg="Rec.getAudioFrames returned invalid data")

@@ -205,9 +205,15 @@ class Rec:
         
         return True
 
+    def appendToOriginal(self,i):
+        self.original.append(i)
+        
     def getAudioFrames(self):
         return self.original   
     
+    def setLocalFileLocation(self,loc):
+        self.localfilename = loc
+        
     def getLocalFileLocation(self,ignore_not_exist = False):
         if ignore_not_exist:
             return self.localfilename;

@@ -11,6 +11,13 @@ import csv
 class Model:
 
     def __init__(self,classid,speciesSpec,jobid):
+        if type(classid) is not str and type(classid) is not int:
+            raise ValueError("classid must be a string or int. Input was a "+str(type(classid)))
+        if type(speciesSpec) is not numpy.ndarray:
+            raise ValueError("speciesSpec must be a numpy.ndarray. Input was a "+str(type(speciesSpec)))
+        if type(jobid) is not int:
+            raise ValueError("jobid must be a int. Input was a "+str(type(jobid)))
+        
         self.classid = classid
         self.speciesSpec = speciesSpec
         self.data  = numpy.zeros(shape=(0,6))
@@ -30,6 +37,9 @@ class Model:
         row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat]
         self.data = numpy.vstack((self.data,row))
     
+    def getDataIndices(self):
+        return {"train":self.trainDataIndices ,"validation": self.validationDataIndices}
+    
     def splitData(self,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent):
         self.splitParams = [useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent]
 
@@ -45,13 +55,18 @@ class Model:
         random.shuffle(notPresentIndices)
         
         self.trainDataIndices = presentIndeces[:useTrainingPresent] + notPresentIndices[:useTrainingNotPresent]
-        self.validationDataIndices = presentIndeces[useTrainingPresent:] + notPresentIndices[useTrainingNotPresent:]
+        self.validationDataIndices = presentIndeces[useTrainingPresent:(useTrainingPresent+useValidationPresent)] + notPresentIndices[useTrainingNotPresent:(useTrainingNotPresent+useValidationNotPresent)]
         
         return True
-        
+    
+    def getModel(self):
+        return self.clf
+    
+    def getOobScore(self):
+        return self.obbScore
+    
     def train(self):
-        self.clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1,oob_score=True) #min_samples_leaf
-        
+        self.clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1,oob_score=True)
         classSubset = [self.classes[i] for i in self.trainDataIndices]
         self.clf.fit(self.data[self.trainDataIndices], classSubset)
         self.obbScore = self.clf.oob_score_
@@ -110,9 +125,6 @@ class Model:
             self.specificity_score  = self.tn/(self.tn+self.fp)
         
     def modelStats(self):
-        #smin = min([min((self.speciesSpec[i])) for i in range(self.speciesSpec.shape[0])])
-        #smax = max([max((self.speciesSpec[i])) for i in range(self.speciesSpec.shape[0])])
-        #x = 255*((self.speciesSpec - smin)/(smax-smin))
         return [self.accuracy_score,self.precision_score,self.sensitivity_score,self.obbScore,self.speciesSpec,self.specificity_score ,self.tp,self.fp,self.tn,self.fn,self.minv,self.maxv]
     
     def save(self,filename,l,h,c):
@@ -120,6 +132,15 @@ class Model:
             pickler = pickle.Pickler(output, -1)
             pickle.dump([self.clf,self.speciesSpec,l,h,c], output, -1)
             
+    def getSpec(self):
+        return self.speciesSpec
+   
+    def getClasses(self):
+        return self.classes
+    
+    def getData(self):
+        return self.data
+    
     def saveValidations(self,filename):
         with open(filename, 'wb') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',')
