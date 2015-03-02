@@ -46,6 +46,9 @@ class Test_roizer(unittest.TestCase):
         self.assertEqual(len(auSamples),len(correctStreamTest),msg="Roizer.init streams have different lenghts")
         for i in range(len(auSamples)):
             self.assertEqual(auSamples[i],correctStreamTest[i],msg="Roizer.init streams have different data")
-            
+   
+    def test_spectrogram(self):
+        """Test Roizer.spectrogram function"""
+        
 if __name__ == '__main__':
     unittest.main()
