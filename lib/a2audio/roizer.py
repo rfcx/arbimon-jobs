@@ -6,15 +6,38 @@ import math
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,config ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,order = 6, bucket=None):
+    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000):
+        
+        if type(uri) is not str:
+            raise ValueError("uri must be a string")
+        if type(tempFolder) is not str:
+            raise ValueError("invalid tempFolder")
+        if not os.path.exists(tempFolder):
+            raise ValueError("invalid tempFolder")
+        elif not os.access(tempFolder, os.W_OK):
+            raise ValueError("invalid tempFolder")
+        if type(bucketName) is not str:
+            raise ValueError("bucketName must be a string")
+        if type(iniSecs) is not int and  type(iniSecs) is not float:
+            raise ValueError("iniSecs must be a number")
+        if type(endiSecs) is not int and  type(endiSecs) is not float:
+            raise ValueError("endiSecs must be a number")
+        if type(lowFreq) is not int and  type(lowFreq) is not float:
+            raise ValueError("lowFreq must be a number")
+        if type(highFreq) is not int and  type(highFreq) is not float:
+            raise ValueError("highFreq must be a number")
+        if iniSecs>=endiSecs:
+            raise ValueError("iniSecs must be less than endiSecs")
+        if lowFreq>=highFreq :
+            raise ValueError("lowFreq must be less than highFreq")
+        self.spec = None
+        recording = Rec(uri,tempFolder,bucketName)
 
-        slicedrec = Rec(uri,tempFolder,config[4])
-
-        if  'HasAudioData' in slicedrec.status:
-            self.original = slicedrec.original
-            self.sample_rate = slicedrec.sample_rate
-            self.channs = slicedrec.channs
-            self.samples = slicedrec.samples
+        if  'HasAudioData' in recording.status:
+            self.original = recording.original
+            self.sample_rate = recording.sample_rate
+            self.channs = recording.channs
+            self.samples = recording.samples
             self.status = 'HasAudioData'
             self.iniT = iniSecs
             self.endT = endiSecs
@@ -24,9 +47,21 @@ class Roizer:
         else:
             self.status = "NoAudio"
             return None
+        dur = self.samples/self.sample_rate
+        if dur < endiSecs:
+            raise ValueError("endiSecs greater than recording duration")
         
-        self.spectrogram()
+        if  'HasAudioData' in self.status:
+            self.spectrogram()
 
+    def getAudioSamples(self):
+        return self.original
+    
+    def getSpectrogram(self):
+        if not self.spec:
+             self.spectrogram()
+        return self.spec
+    
     def spectrogram(self):
         
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
@@ -34,11 +69,6 @@ class Roizer:
            endSample = len(self.original) - 1
 
         data = self.original[0:endSample]
-        
-        """
-        if self.sample_rate != 44100:
-            'resample?'
-        """
         
         Pxx, freqs, bins = mlab.specgram(data, NFFT=512, Fs=self.sample_rate, noverlap=256)
         dims =  Pxx.shape

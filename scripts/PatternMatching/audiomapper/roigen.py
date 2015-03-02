@@ -46,7 +46,7 @@ def processLine(line,config,tempFolders,currDir ):
     recuri = lineArgs[7]
     jobId = int(lineArgs[8])
     tempFolder = tempFolders+"/training_"+str(jobId)+"/"
-    roi = Roizer(recuri,tempFolder,config,initTime,endingTime,lowFreq,highFreq)
+    roi = Roizer(recuri,tempFolder,config[4],initTime,endingTime,lowFreq,highFreq)
     
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))

@@ -102,7 +102,8 @@ class Test_rec(unittest.TestCase):
         self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
         for i in range(len(audioStreamTest)):
             self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-        os.remove(rec_test.getLocalFileLocation())
+        if rec_test.getLocalFileLocation():
+            os.remove(rec_test.getLocalFileLocation())
         
     def test_removeFiles(self):
         """Test Rec.removeFiles function"""
