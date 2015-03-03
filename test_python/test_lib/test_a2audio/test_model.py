@@ -266,7 +266,6 @@ class Test_model(unittest.TestCase):
         from a2audio.model import Model
         import numpy
         from sklearn.ensemble import RandomForestClassifier
-        import cPickle as pickle
         import os
         import csv
         spec = numpy.random.rand(100,100)

@@ -6,6 +6,10 @@ import math
 class Roiset:   
 
     def __init__(self, classId,setSRate):
+        if type(classId) is not str and type(classId) is not int:
+            raise ValueError("classId must be a string or int. Input was a "+str(type(classId)))
+        if type(setSRate) is not int and  type(setSRate) is not float:
+            raise ValueError("setSRate must be a number")
         self.classId = classId
         self.roiCount = 0
         self.roi = [] 
@@ -65,7 +69,10 @@ class Roiset:
             self.rows = rows
             self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec)) 
             self.roiCount = self.roiCount + 1
-            
+    
+    def getData(self):
+        return [self.roi,self.rows,self.roiCount,self.biggestRoi,self.lowestFreq,self.highestFreq,self.maxColumns]
+    
     def alignSamples(self):
         surface = numpy.zeros(shape=(self.rows,self.maxColumns))
         weights = numpy.zeros(shape=(self.rows,self.maxColumns))
@@ -142,31 +149,6 @@ class Roiset:
         self.meanSurface = numpy.sum(self.maxrois,axis=0)
         self.meanSurface = numpy.divide(self.meanSurface,weights)
         self.stdSurface = numpy.std([self.maxrois[j] for j in range(self.roiCount)],axis=0)
-        #self.meanSurface[self.meanSurface[:,:]==0] = numpy.min(numpy.min(self.meanSurface))
-        #
-        #for i in reversed(range(0,self.maxColumns)):
-        #    if weights[0,i] < self.roiCount:
-        #        weights = scipy.delete(weights, i, 1)
-        #        self.meanSurface = scipy.delete(self.meanSurface, i, 1)
-        #        self.stdSurface = scipy.delete(self.stdSurface, i, 1)
-        #        self.surface = scipy.delete(self.surface, i, 1)
-        #        
-        #self.maxColumns = self.surface.shape[1]
-        #freqs = [self.setSampleRate/2/(self.surface.shape[0]-1)*i for i in reversed(range(0,self.surface.shape[0]))]
-        #
-        #i =0
-        #while freqs[i] >= self.lowesthighestFreq:
-        #    self.meanSurface[i,:] = 0
-        #    self.stdSurface[i,:] = 0
-        #    self.surface[i,:] = 0
-        #    i = i + 1
-        #while freqs[i] >=  self.highestlowestFreq:
-        #    i = i + 1
-        #while i <  self.rows:
-        #    self.meanSurface[i,:] = 0
-        #    self.stdSurface[i,:] = 0
-        #    self.surface[i,:] = 0
-        #    i = i + 1
             
     def showSurface(self):
         ax1 = subplot(111)
@@ -192,11 +174,24 @@ class Roiset:
 class Roi:
 
     def __init__(self,lowFreq,highFreq,sample_rate,spec):
+        if type(lowFreq) is not int and  type(lowFreq) is not float:
+            raise ValueError("lowFreq must be a number")
+        if type(highFreq) is not int and  type(highFreq) is not float:
+            raise ValueError("highFreq must be a number")
+        if lowFreq>=highFreq :
+            raise ValueError("lowFreq must be less than highFreq")
+        if type(sample_rate) is not int and  type(sample_rate) is not float:
+            raise ValueError("sample_rate must be a number")
+        if type(spec) is not numpy.ndarray:
+            raise ValueError("spec must be a numpy.ndarray. Input was a "+str(type(spec)))
         self.lowFreq = lowFreq
         self.highFreq = highFreq
         self.sample_rate = sample_rate
         self.spec = spec
-
+    
+    def getData(self):
+        return [self.lowFreq,self.highFreq,self.sample_rate,self.spec]
+    
     def showRoi(self):
         ax1 = subplot(111)
         im = ax1.imshow(self.spec, None)
