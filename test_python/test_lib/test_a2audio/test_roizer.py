@@ -49,6 +49,18 @@ class Test_roizer(unittest.TestCase):
    
     def test_spectrogram(self):
         """Test Roizer.spectrogram function"""
+        from a2audio.roizer import Roizer
+        import cPickle as pickle
+        import numpy
+        currentRoizer = Roizer("test/short.wav","/tmp/","arbimon2",0,1,1000,2000)
+        spectrogram = currentRoizer.getSpectrogram()
+        self.assertIsInstance(spectrogram,numpy.ndarray,msg="Roizer.spectrogram invalid spectrogram")
+        compSpec=None
+        with open("test_python/data/short.test.spectrogram", 'rb') as specFile:
+            compSpec=pickle.load(specFile)
+        for i in range(spectrogram.shape[0]):
+            for j in range(spectrogram.shape[1]):
+                self.assertEqual(spectrogram[i,j],compSpec[i,j],msg="Roizer.spectrogram saved wrong spec")       
         
 if __name__ == '__main__':
     unittest.main()

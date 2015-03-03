@@ -58,7 +58,7 @@ class Roizer:
         return self.original
     
     def getSpectrogram(self):
-        if not self.spec:
+        if self.spec is not None:
              self.spectrogram()
         return self.spec
     
