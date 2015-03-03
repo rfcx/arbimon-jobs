@@ -61,12 +61,17 @@ class Test_rec(unittest.TestCase):
         """Test Rec.getAudioFromUri function"""
         from a2audio.rec import Rec
         import filecmp
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,True,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        self.assertTrue(os.path.isfile(rec_test.getLocalFileLocation()),msg="Rec.getAudioFromUri failed to get audio file")
-        self.assertTrue(filecmp.cmp(rec_test.getLocalFileLocation(),'test_python/data/short.wav'),msg="Rec.getAudioFromUri donwloaded file is corrupt")
-        os.remove(rec_test.getLocalFileLocation());
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:
+            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
+            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+            rec_test.getAudioFromUri()
+            self.assertTrue(os.path.isfile(rec_test.getLocalFileLocation()),msg="Rec.getAudioFromUri failed to get audio file")
+            self.assertTrue(filecmp.cmp(rec_test.getLocalFileLocation(),str(rec['local'])),msg="Rec.getAudioFromUri donwloaded file is corrupt")
+            os.remove(rec_test.getLocalFileLocation());
+            del rec_test
         
     def test_parseEncoding(self):
         """Test Rec.parseEncoding function"""
@@ -84,26 +89,33 @@ class Test_rec(unittest.TestCase):
     def test_readAudioFromFile(self):
         """Test Rec.readAudioFromFile function"""
         from a2audio.rec import Rec
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,True,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        rec_test.readAudioFromFile()
-        audioStreamTest = rec_test.getAudioFrames()
         import warnings
         import numpy as np
         from contextlib import closing
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             from scikits.audiolab import Sndfile, Format
-        correctStreamTest = None
-        with closing(Sndfile('test_python/data/short.wav')) as f:     
-            correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-        self.assertEqual(rec_test.status,'AudioInBuffer',msg="Rec.readAudioFromFile unexpected status")
-        self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-        for i in range(len(audioStreamTest)):
-            self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-        if rec_test.getLocalFileLocation():
-            os.remove(rec_test.getLocalFileLocation())
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:    
+            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
+            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+            rec_test.getAudioFromUri()
+            rec_test.readAudioFromFile()
+            audioStreamTest = rec_test.getAudioFrames()
+            correctStreamTest = None
+            with closing(Sndfile(str(rec['local']))) as f:     
+                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
+            self.assertEqual(rec_test.status,'AudioInBuffer',msg="Rec.readAudioFromFile unexpected status")
+            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
+            for i in range(len(audioStreamTest)):
+                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
+            if rec_test.getLocalFileLocation():
+                os.remove(rec_test.getLocalFileLocation())
+            del rec_test
+            del audioStreamTest
+            del correctStreamTest
         
     def test_removeFiles(self):
         """Test Rec.removeFiles function"""
@@ -165,63 +177,79 @@ class Test_rec(unittest.TestCase):
     def test_process(self):
         """Test Rec.process function"""
         from a2audio.rec import Rec
-        
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,True,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        localFile = rec_test.getLocalFileLocation(True)
-        rec_test.process()
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
- 
-        audioStreamTest = rec_test.getAudioFrames()
         import warnings
         import numpy as np
         from contextlib import closing
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             from scikits.audiolab import Sndfile, Format
-        correctStreamTest = None
-        with closing(Sndfile('test_python/data/short.wav')) as f:     
-            correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-        self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
-        self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-        for i in range(len(audioStreamTest)):
-            self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-        filePath = rec_test.getLocalFileLocation()
-        if filePath is not None:
-            if(os.path.isfile(filePath)):
-                os.remove(filePath)
-        if(os.path.isfile(localFile)):
-            os.remove(localFile)
+ 
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:
+            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
+            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+            localFile = rec_test.getLocalFileLocation(True)
+            rec_test.process()
+            self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
+            audioStreamTest = rec_test.getAudioFrames()
+            correctStreamTest = None
+            with closing(Sndfile(str(rec['local']))) as f:     
+                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
+            self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
+            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
+            for i in range(len(audioStreamTest)):
+                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
+            filePath = rec_test.getLocalFileLocation()
+            if filePath is not None:
+                if(os.path.isfile(filePath)):
+                    os.remove(filePath)
+            if(os.path.isfile(localFile)):
+                os.remove(localFile)
+            del rec_test
+            del audioStreamTest
+            del correctStreamTest
+            del filePath
+            del localFile
      
     def test_usage(self):
         """Test Rec intended usage"""
         from a2audio.rec import Rec
-        
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2")
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        localFile = rec_test.getLocalFileLocation(True)
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
- 
-        audioStreamTest = rec_test.getAudioFrames()
         import warnings
         import numpy as np
         from contextlib import closing
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             from scikits.audiolab import Sndfile, Format
-        correctStreamTest = None
-        with closing(Sndfile('test_python/data/short.wav')) as f:     
-            correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-        self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
-        self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-        for i in range(len(audioStreamTest)):
-            self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-        filePath = rec_test.getLocalFileLocation()
-        if filePath is not None:
-            if(os.path.isfile(filePath)):
-                os.remove(filePath)
-        if(os.path.isfile(localFile)):
-            os.remove(localFile)
+            
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:            
+            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2")
+            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+            localFile = rec_test.getLocalFileLocation(True)
+            self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
+            audioStreamTest = rec_test.getAudioFrames()
+            correctStreamTest = None
+            with closing(Sndfile(str(rec['local']))) as f:     
+                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
+            self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
+            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
+            for i in range(len(audioStreamTest)):
+                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
+            filePath = rec_test.getLocalFileLocation()
+            if filePath is not None:
+                if(os.path.isfile(filePath)):
+                    os.remove(filePath)
+            if(os.path.isfile(localFile)):
+                os.remove(localFile)
+            del rec_test
+            del audioStreamTest
+            del correctStreamTest
+            del filePath
+            del localFile
             
 if __name__ == '__main__':
     unittest.main()

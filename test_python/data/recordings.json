@@ -1,0 +1,12 @@
+[   
+    {   "a2Uri":"test/short.wav",
+        "local":"test_python/data/short.wav",
+        "filteredSpec":"test_python/data/short.filtered.spectrogram",
+        "roizerParams":[0,1,1000,2000]
+    },
+    {   "a2Uri":"test/short.flac",
+        "local":"test_python/data/short.flac",
+        "filteredSpec":"test_python/data/short.filtered.spectrogram",
+        "roizerParams":[0,1,1000,2000]
+    }
+]

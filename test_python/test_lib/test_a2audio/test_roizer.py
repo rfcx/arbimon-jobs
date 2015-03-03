@@ -33,34 +33,50 @@ class Test_roizer(unittest.TestCase):
         from a2audio.roizer import Roizer
         import warnings
         import numpy as np
+        import json
         from contextlib import closing
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             from scikits.audiolab import Sndfile, Format
-        currentRoizer = Roizer("test/short.wav","/tmp/","arbimon2",0,1,1000,2000)
-        self.assertIsInstance(currentRoizer,Roizer)
-        auSamples = currentRoizer.getAudioSamples()
-        correctStreamTest = None
-        with closing(Sndfile('test_python/data/short.wav')) as f:     
-            correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-        self.assertEqual(len(auSamples),len(correctStreamTest),msg="Roizer.init streams have different lenghts")
-        for i in range(len(auSamples)):
-            self.assertEqual(auSamples[i],correctStreamTest[i],msg="Roizer.init streams have different data")
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:
+            currentRoizer = Roizer(str(rec['a2Uri']),"/tmp/","arbimon2",rec['roizerParams'][0],rec['roizerParams'][1],rec['roizerParams'][2],rec['roizerParams'][3])
+            self.assertIsInstance(currentRoizer,Roizer)
+            auSamples = currentRoizer.getAudioSamples()
+            correctStreamTest = None
+            with closing(Sndfile(str(rec['local']))) as f:     
+                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
+            self.assertEqual(len(auSamples),len(correctStreamTest),msg="Roizer.init streams have different lenghts")
+            for i in range(len(auSamples)):
+                self.assertEqual(auSamples[i],correctStreamTest[i],msg="Roizer.init streams have different data")
+            del currentRoizer
+            del correctStreamTest
+            del auSamples
    
     def test_spectrogram(self):
         """Test Roizer.spectrogram function"""
         from a2audio.roizer import Roizer
         import cPickle as pickle
         import numpy
-        currentRoizer = Roizer("test/short.wav","/tmp/","arbimon2",0,1,1000,2000)
-        spectrogram = currentRoizer.getSpectrogram()
-        self.assertIsInstance(spectrogram,numpy.ndarray,msg="Roizer.spectrogram invalid spectrogram")
-        compSpec=None
-        with open("test_python/data/short.test.spectrogram", 'rb') as specFile:
-            compSpec=pickle.load(specFile)
-        for i in range(spectrogram.shape[0]):
-            for j in range(spectrogram.shape[1]):
-                self.assertEqual(spectrogram[i,j],compSpec[i,j],msg="Roizer.spectrogram saved wrong spec")       
+        import json
+        recordingsTest = None
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
+        for rec in recordingsTest:
+            currentRoizer = Roizer(str(rec['a2Uri']),"/tmp/","arbimon2",rec['roizerParams'][0],rec['roizerParams'][1],rec['roizerParams'][2],rec['roizerParams'][3])
+            spectrogram = currentRoizer.getSpectrogram()
+            self.assertIsInstance(spectrogram,numpy.ndarray,msg="Roizer.spectrogram invalid spectrogram")
+            compSpec=None
+            with open(str(rec['filteredSpec']), 'rb') as specFile:
+                compSpec=pickle.load(specFile)
+            for i in range(spectrogram.shape[0]):
+                for j in range(spectrogram.shape[1]):
+                    self.assertEqual(spectrogram[i,j],compSpec[i,j],msg="Roizer.spectrogram saved wrong spec")
+            del currentRoizer
+            del spectrogram
+            del compSpec
         
 if __name__ == '__main__':
     unittest.main()

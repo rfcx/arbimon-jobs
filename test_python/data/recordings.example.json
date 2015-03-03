@@ -1,0 +1,12 @@
+[   
+    {   "a2Uri":"arbimon2 bucket recording uri",
+        "local":"test_python/data/ recording in local data folder",
+        "filteredSpec":"test_python/data/ filtered spectrogram with the parameters specified in roizerParams",
+        "roizerParams":["number: init seconds","number: end seconds","number: low frequency Hz","number: high frequency Hz"]
+    },
+    {   "a2Uri":"test/short.flac",
+        "local":"test_python/data/short.flac",
+        "filteredSpec":"test_python/data/short.filtered.spectrogram",
+        "roizerParams":[0,1,1000,2000]
+    }
+]
