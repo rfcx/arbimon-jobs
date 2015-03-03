@@ -1,5 +1,20 @@
 import unittest
+from random import randint
+import numpy
 
+def gen_random_matrix(rows,cols):
+    chunckLength = 20
+    randomStart = randint(0,min(100,cols))
+    chucnkJump = 3
+    chunckLessLength = chunckLength*chucnkJump
+    chunks = int((float(cols-randomStart))/(float(chunckLessLength+chunckLength)))
+    mm = numpy.zeros(shape=(rows,cols))
+    jump = 0
+    for i in range(randomStart,chunckLength,cols):
+        if jump == 0:
+            mm[:,i:(i+chunckLength)] = numpy.ones(shape=(rows,chunckLength))
+        jump = (jump+1)%chucnkJump
+    
 class Test_roiset(unittest.TestCase):
     
     def test_import_roi(self):
@@ -95,6 +110,10 @@ class Test_roiset(unittest.TestCase):
                 for j in range(roi[3].shape[1]):
                     self.assertEqual(specs[jj][ii,j],roi[3][ii,j],msg="Roiset.addRoi saved wron spec")           
                
+    def test_alignSamples(self):
+        """Test Roiset.alignSamples function"""
+        mm = gen_random_matrix(256,500)
+        
 if __name__ == '__main__':
     unittest.main()
 
