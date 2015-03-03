@@ -61,6 +61,8 @@ class Test_roizer(unittest.TestCase):
         import cPickle as pickle
         import numpy
         import json
+        import sys
+        is_64bits = sys.maxsize > 2**32
         recordingsTest = None
         with open('test_python/data/recordings.json') as fd:
             recordingsTest= json.load(fd)
@@ -69,11 +71,15 @@ class Test_roizer(unittest.TestCase):
             spectrogram = currentRoizer.getSpectrogram()
             self.assertIsInstance(spectrogram,numpy.ndarray,msg="Roizer.spectrogram invalid spectrogram")
             compSpec=None
-            with open(str(rec['filteredSpec']), 'rb') as specFile:
-                compSpec=pickle.load(specFile)
+            if is_64bits:
+                with open(str(rec['filteredSpec']), 'rb') as specFile:
+                    compSpec=pickle.load(specFile)
+            else:
+                with open(str(rec['filteredSpec'])+".32", 'rb') as specFile:
+                    compSpec=pickle.load(specFile)
             for i in range(spectrogram.shape[0]):
                 for j in range(spectrogram.shape[1]):
-                    self.assertEqual(spectrogram[i,j],compSpec[i,j],msg="Roizer.spectrogram saved wrong spec")
+                    self.assertEqual(spectrogram[i,j],compSpec[i,j],msg="Roizer.spectrogram saved wrong spec: "+str(rec['a2Uri']))
             del currentRoizer
             del spectrogram
             del compSpec
