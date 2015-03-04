@@ -4,17 +4,50 @@ import numpy
 
 def gen_random_matrix(rows,cols):
     chunckLength = 20
-    randomStart = randint(0,min(100,cols))
+    randomStart = randint(chunckLength,min(100,cols))
     chucnkJump = 3
     chunckLessLength = chunckLength*chucnkJump
     chunks = int((float(cols-randomStart))/(float(chunckLessLength+chunckLength)))
     mm = numpy.zeros(shape=(rows,cols))
     jump = 0
-    for i in range(randomStart,chunckLength,cols):
+    for i in range(randomStart,cols-chunckLength,chunckLength):
         if jump == 0:
             mm[:,i:(i+chunckLength)] = numpy.ones(shape=(rows,chunckLength))
         jump = (jump+1)%chucnkJump
+    return mm
+
+def gen_random_roiset(outputFile):
+    from a2audio.roiset import Roiset
+    import cPickle as pickle
+    from random import randint
+    import numpy
+    lowFreqs = []
+    highFreqs = []
+    sample_rate = 44100
+    specs = []
+    rows = 256
+    columns = []
+    roiCount = 10 
+    roisetTest = Roiset("class",sample_rate)
+    for i in range(roiCount):
+        lowFreqs.append(randint(1000,2000))
+        highFreqs.append(randint(3000,4000))
+        columns.append(randint(600,700))
+        specs.append(gen_random_matrix(rows,columns[i]))
+        roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rate,specs[i],rows,columns[i])
+     
+    i=roiCount    
+    lowFreqs.append(randint(1000,2000))
+    highFreqs.append(randint(3000,4000))
+    columns.append(randint(701,800))
+    specs.append(gen_random_matrix(rows,columns[i]))
+    roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rate,specs[i],rows,columns[i])
     
+    roisetTest.alignSamples()
+    with open(outputFile, 'wb') as output:
+        pickler = pickle.Pickler(output, -1)
+        pickle.dump([lowFreqs,highFreqs,sample_rate,specs,rows,columns,roisetTest.getSurface()], output, -1)
+        
 class Test_roiset(unittest.TestCase):
     
     def test_import_roi(self):
@@ -112,8 +145,35 @@ class Test_roiset(unittest.TestCase):
                
     def test_alignSamples(self):
         """Test Roiset.alignSamples function"""
-        mm = gen_random_matrix(256,500)
-        
+        from a2audio.roiset import Roiset
+        import cPickle as pickle
+        from random import randint
+        import numpy
+        import sys
+        is_64bits = sys.maxsize > 2**32
+        datainput = None
+        if is_64bits:
+            with open("test_python/data/alignSamples.test.data", 'rb') as datain:
+                datainput = pickle.load(datain)
+        else:
+            with open("test_python/data/alignSamples.test.data.32", 'rb') as datain:
+                datainput = pickle.load(datain)
+        lowFreqs = datainput[0]
+        highFreqs = datainput[1]
+        sample_rate = datainput[2]
+        specs = datainput[3]
+        rows = datainput[4]
+        columns = datainput[5]
+        compareSurface = datainput[6]
+        roisetTest = Roiset("class",sample_rate)
+        for i in range(len(specs)):
+            roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rate,specs[i],rows,columns[i])       
+        roisetTest.alignSamples()
+        testSurface = roisetTest.getSurface()
+        for ii in range(compareSurface.shape[0]):
+           for j in range(compareSurface.shape[1]):
+               self.assertEqual(compareSurface[ii,j],testSurface[ii,j],msg="Roiset.alignSamples did not aligned exactly")        
+            
 if __name__ == '__main__':
     unittest.main()
 

@@ -1,5 +1,6 @@
 from pylab import *
 import numpy
+numpy.seterr(all='ignore')
 import cPickle as pickle
 import scipy
 import math
@@ -72,6 +73,9 @@ class Roiset:
     
     def getData(self):
         return [self.roi,self.rows,self.roiCount,self.biggestRoi,self.lowestFreq,self.highestFreq,self.maxColumns]
+  
+    def getSurface(self):
+        return self.meanSurface
     
     def alignSamples(self):
         surface = numpy.zeros(shape=(self.rows,self.maxColumns))
@@ -87,6 +91,7 @@ class Roiset:
                 low_index  = low_index  + 1
             distances = []
             currColumns = roi.spec.shape[1]
+            
             for jj in range(self.maxColumns -currColumns ): 
                 subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
                 distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
@@ -140,12 +145,7 @@ class Roiset:
                 
             weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
             
-        #filename = '/home/rafa/debug_weights.data'    
-        #with open(filename, 'wb') as output:
-        #    pickler = pickle.Pickler(output, -1)
-        #    pickle.dump([self.maxrois,weights], output, -1)
-            
-        #self.meanSurface = numpy.mean([self.maxrois[j] for j in range(self.roiCount)],axis=0)
+
         self.meanSurface = numpy.sum(self.maxrois,axis=0)
         self.meanSurface = numpy.divide(self.meanSurface,weights)
         self.stdSurface = numpy.std([self.maxrois[j] for j in range(self.roiCount)],axis=0)
