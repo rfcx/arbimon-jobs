@@ -35,8 +35,8 @@ class Test_rec(unittest.TestCase):
         self.assertRaises(ValueError,Rec,"/tmp","/tmp","dummyBucket",logs,False,1)
         
         """Test valid arguments"""
-        self.assertIsInstance( Rec("/tmp","/tmp","dummyBucket",logs,False,True) ,Rec)
-        self.assertIsInstance( Rec("/tmp","/tmp","dummyBucket",None,True,True) ,Rec)
+        self.assertIsInstance( Rec("/tmp/","/tmp/","dummyBucket",logs,False,True) ,Rec)
+        self.assertIsInstance( Rec("/tmp/","/tmp/","dummyBucket",None,True,True) ,Rec)
         
         shutil.rmtree('/tmp/logs/')
         
@@ -76,7 +76,7 @@ class Test_rec(unittest.TestCase):
     def test_parseEncoding(self):
         """Test Rec.parseEncoding function"""
         from a2audio.rec import Rec
-        rec_testing = Rec("/tmp","/tmp","dummyBucket",None,True,True)
+        rec_testing = Rec("/tmp/","/tmp/","dummyBucket",None,True,True)
         self.assertIsInstance( rec_testing ,Rec,msg="Cannot create Rec object")
         encodings = None
         with open('test_python/data/encodings.json') as fd:

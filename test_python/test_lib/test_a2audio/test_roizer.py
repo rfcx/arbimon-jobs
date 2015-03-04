@@ -26,7 +26,7 @@ class Test_roizer(unittest.TestCase):
         self.assertRaises(ValueError,Roizer,"/tmp","/tmp","dummyBucket",1,10,10000,2000)
         
         #test valid combinations of arguments
-        self.assertIsInstance(Roizer("/tmp","/tmp","dummyBucket",0,1,1000,2000),Roizer)
+        self.assertIsInstance(Roizer("/tmp/","/tmp/","dummyBucket",0,1,1000,2000),Roizer)
  
     def test_recording(self):
         """Test Roizer rec(cording) instance"""

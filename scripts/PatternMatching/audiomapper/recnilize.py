@@ -66,7 +66,7 @@ def processLine(line,config,tempFolders,currDir ):
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jId)+'/'
     
     #get rec from URI and compute feature vector using the spec vocalization
-    recAnalized = Recanalizer(recUri.strip('\n') , spec ,low , high ,columns ,tempFolder,None, bucket)
+    recAnalized = Recanalizer(recUri.strip('\n') , spec ,low , high ,tempFolder,bucketName,None)
     if recAnalized.status == 'Processed':
         recName = recUri.strip('\n').split('/')
         recName = recName[len(recName)-1]

@@ -8,7 +8,7 @@ class Roizer:
 
     def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000):
         
-        if type(uri) is not str:
+        if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(tempFolder) is not str:
             raise ValueError("invalid tempFolder")

@@ -48,7 +48,7 @@ class Rec:
     
     def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False):
         
-        if type(uri) is not str:
+        if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(tempFolder) is not str:
             raise ValueError("invalid tempFolder")
@@ -59,7 +59,7 @@ class Rec:
         if type(bucketName) is not str:
             raise ValueError("bucketName must be a string")
         if logs is not None and not isinstance(logs,Logger):
-            raise ValueError("logs must be a Logger object")
+            raise ValueError("logs must be a a2pyutils.Logger object")
         if type(removeFile) is not bool:
             raise ValueError("removeFile must be a boolean")
         if type(test) is not bool:
@@ -79,7 +79,6 @@ class Rec:
         while os.path.isfile(self.localfilename):
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
             self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
-        
         if self.logs :
             self.logs.write("init completed:" + str(time.time() - start_time))
             
@@ -88,7 +87,7 @@ class Rec:
             self.process()
             if self.logs :
                 self.logs.write("process completed:" + str(time.time() - start_time))          
-
+        
     def process(self):
         start_time = time.time()
         if not self.getAudioFromUri():
@@ -145,7 +144,8 @@ class Rec:
                 with open(self.localfilename, "wb") as local_file:
                    local_file.write(f.read())
             except:
-                self.logs.write('error f.read')
+                if self.logs :
+                    self.logs.write('error f.read')
                 return False
         else:
             return False

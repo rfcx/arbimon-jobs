@@ -2,7 +2,6 @@ from a2audio.rec import Rec
 from pylab import *
 import numpy
 import time
-from a2pyutils.config import Config
 from skimage.measure import structural_similarity as ssim
 import cPickle as pickle
 from scipy.stats import pearsonr as prs
@@ -10,27 +9,56 @@ from scipy.stats import kendalltau as ktau
 from  scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
+from a2pyutils.logger import Logger
+import os
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, columns, tempFolder, logs=None, bucket=None):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False):
+        if type(uri) is not str and type(uri) is not unicode:
+            raise ValueError("uri must be a string")
+        if type(speciesSurface) is not numpy.ndarray:
+            raise ValueError("speciesSurface must be a numpy.ndarray. Input was a "+str(type(speciesSurface)))
+        if type(low) is not int and  type(low) is not float:
+            raise ValueError("low must be a number")
+        if type(high) is not int and  type(high) is not float:
+            raise ValueError("high must be a number")
+        if low>=high :
+            raise ValueError("low must be less than high")
+        if type(tempFolder) is not str:
+            raise ValueError("invalid tempFolder")
+        if not os.path.exists(tempFolder):
+            raise ValueError("invalid tempFolder")
+        elif not os.access(tempFolder, os.W_OK):
+            raise ValueError("invalid tempFolder")
+        if type(bucketName) is not str:
+            raise ValueError("bucketName must be a string")
+        if logs is not None and not isinstance(logs,Logger):
+            raise ValueError("logs must be a a2pyutils.Logger object")
+        
         start_time = time.time()
         self.low = float(low)
         self.high = float(high)
-        self.columns = speciesSurface.shape[1]#int(columns)
+        self.columns = speciesSurface.shape[1]
         self.speciesSurface = speciesSurface
-        self.logs = logs
-        configuration = Config()
-        config = configuration.data()
-        if self.logs:
-           self.logs.write(uri)    
+        self.logs = logs   
         self.uri = uri
+        self.bucketName = bucketName
+        self.tempFolder = tempFolder
+        self.rec = None
+        self.status = 'NoData'
+        
         if self.logs:
-           self.logs.write(self.uri)    
+           self.logs.write("processing: "+self.uri)    
         if self.logs :
             self.logs.write("configuration time --- seconds ---" + str(time.time() - start_time))
+        
+        if not test:
+            self.process()
+    
+    def process(self):
         start_time = time.time()
-        self.rec = Rec(uri,tempFolder,config[4],logs)
+        self.instanceRec()
         if self.logs:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
@@ -44,8 +72,13 @@ class Recanalizer:
                 self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
             self.status = 'Processed'
         else:
-            self.status = 'NoData'        
-        self.tempFolder = tempFolder
+            self.status = 'NoData'
+
+    def getRec(self):
+        return self.rec
+    
+    def instanceRec(self):
+        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None)
         
     def getVector(self ):
         return self.distances
@@ -61,74 +94,28 @@ class Recanalizer:
         if self.logs:
            self.logs.write(self.uri)    
         pieces = self.uri.split('/')
-        filename = '/home/rafa/debugs_pickels/'+pieces[len(pieces)-1]+".pickle"
         self.distances = []
         currColumns = self.spec.shape[1]
         step = 16
         if self.logs:
-           self.logs.write("featureVector in here")     
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])
-        if self.logs:
-           self.logs.write("featureVector write start")
-           
-        #with open(filename, 'wb') as output:
-        #    pickler = pickle.Pickler(output, -1)
-        #    pickle.dump([self.spec,self.matrixSurfacComp], output, -1)
-        #    
-        if self.logs:
-           self.logs.write("featureVector write end")            
+           self.logs.write("featureVector start")     
+        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
         spec = self.spec;
         for j in range(0,currColumns - self.columns,step): 
-            #self.distances.append(self.matrixDistance(numpy.copy(spec[: , j:(j+self.columns)])) )
             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
             if val < 0:
                val = 0
             self.distances.append(  val   )
         if self.logs:
            self.logs.write("featureVector end")
-           
-    def matrixDistance(self,a,stype=2):
-        #val = 0
-        
-        #if stype == 1: #original from RAB thesis (frobenius norm of the difference, squared l2-norm?)
-        #    val = numpy.linalg.norm(a  - self.matrixSurfacComp)
-        #
-        #if stype == 2: # SSIM (structural similarity)
-        val = ssim(a,self.matrixSurfacComp)
-        if val < 0:
-            val = 0
     
-        #if stype == 3: # Mean Squared Error 
-        #    val = ((a - self.matrixSurfacComp) ** 2).mean(axis=None)
-        #
-        #if stype == 4: # Pearson correlation coefficient 
-        #    val = prs((numpy.asarray(a)).reshape(-1) , (numpy.asarray(self.matrixSurfacComp)).reshape(-1) )[0]
-        #    if val < 0:
-        #        val = 0
-        #        
-        #if stype == 5: # Kendall's tau
-        #   val = ktau(a,self.matrixSurfacComp)[0]
-        #   if val < 0:
-        #       val = 0
-        #       
-        #if stype == 6: # Manhattan distance. 
-        #    val = ct(np.asarray(a).reshape(-1) , np.asarray(self.matrixSurfacComp).reshape(-1))
-        #    if val < 0:
-        #        val = 0
-        #        
-        #if stype == 7: # Cosine distance. 
-        #    val = csn(np.asarray(a).reshape(-1) , np.asarray(self.matrixSurfacComp).reshape(-1))
-        #    if val < 0:
-        #        val = 0
-        #        
-        #if stype == 8: # L1-norm
-        #    val = numpy.linalg.norm(a  - self.matrixSurfacComp,ord=1)
-            
-        return val
+    def getSpec(self):
+        return self.spec
     
     def spectrogram(self):
 
         start_time = time.time()
+
         Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=512, Fs=self.rec.sample_rate , noverlap=256)
         dims =  Pxx.shape
         if self.logs:

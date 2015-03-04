@@ -92,7 +92,7 @@ log.write(
 # for line in sys.stdin:
 
 
-def processLine(line, bucket, mod, config, logWorkers):
+def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     global jobId
     start_time_all = time.time()
     log = Logger(jobId, 'recClassify.py', 'worker-thread', logWorkers)
@@ -119,7 +119,7 @@ def processLine(line, bucket, mod, config, logWorkers):
     start_time = time.time()
     log.write(str(type(bucket)))
     recAnalized = Recanalizer(
-        recUri, mod[1], mod[2], mod[3], mod[4], tempFolder, log, bucket)
+        recUri, mod[1], mod[2], mod[3], tempFolder,bucketNam ,log)
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
@@ -206,7 +206,7 @@ def insert_rec_error(db, recId, jobId):
 
 
 resultsParallel = Parallel(n_jobs=num_cores)(
-    delayed(processLine)(line, bucket, mod, config, logWorkers)
+    delayed(processLine)(line, bucket, mod, config, logWorkers,bucketName)
     for line in sys.stdin
 )
 log.write('this worker processed '+str(sum(resultsParallel))+' recordings')

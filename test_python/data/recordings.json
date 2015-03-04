@@ -2,11 +2,17 @@
     {   "a2Uri":"test/short.wav",
         "local":"test_python/data/short.wav",
         "filteredSpec":"test_python/data/short.filtered.spectrogram",
+        "recanalizerSpec":"test_python/data/short.recanalizer.spectrogram",
+        "featureVector": "test_python/data/short.wav.feat.vector",
+        "featureVectorStats": "test_python/data/short.wav.feat.vector.stats",
         "roizerParams":[0,1,1000,2000]
     },
     {   "a2Uri":"test/short.flac",
         "local":"test_python/data/short.flac",
         "filteredSpec":"test_python/data/short.filtered.spectrogram",
+        "recanalizerSpec":"test_python/data/short.recanalizer.spectrogram",
+        "featureVector": "test_python/data/short.flac.feat.vector",
+        "featureVectorStats": "test_python/data/short.flac.feat.vector.stats",
         "roizerParams":[0,1,1000,2000]
     }
 ]
