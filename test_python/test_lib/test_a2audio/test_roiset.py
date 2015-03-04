@@ -3,6 +3,7 @@ from random import randint
 import numpy
 
 def gen_random_matrix(rows,cols):
+    """Generates random stripped matrix"""
     chunckLength = 20
     randomStart = randint(chunckLength,min(100,cols))
     chucnkJump = 3
@@ -17,6 +18,7 @@ def gen_random_matrix(rows,cols):
     return mm
 
 def gen_random_roiset(outputFile):
+    """Generates a random roiset of stripped matrices and saves it to outputFile"""
     from a2audio.roiset import Roiset
     import cPickle as pickle
     from random import randint
