@@ -5,6 +5,15 @@ import time
 class Logger:
 
     def __init__(self,jobId,script,logFor='worker',logON = True):
+        if type(jobId) is not int :
+            raise ValueError("jobId must be a number")
+        if type(script) is not str:
+            raise ValueError("script must be a string")
+        if type(logFor) is not str:
+            raise ValueError("logFor must be a string")
+        if type(logON) is not bool:
+            raise ValueError("logON must be a boolean")
+        
         self.logON = logON
         self.also_print = False
         if self.logON:
@@ -22,6 +31,9 @@ class Logger:
                 
             self.log_file_handle = open(self.filePath,'w')
             self.write(script+' log file')
+            if self.log_file_handle:
+                self.log_file_handle.close()
+            self.log_file_handle = None
             self.jobId = jobId
             self.logFor = logFor
     
@@ -44,19 +56,27 @@ class Logger:
             message, time.time() - start
         ))
 
-
     def write_clean(self,message):
         if self.logON:
-            self.log_file_handle.write(message)
-    
+            if self.log_file_handle:
+                self.log_file_handle.write(message)
+            else :
+                self.log_file_handle = open(self.filePath,'a')
+                self.log_file_handle.write(message)
+            if self.log_file_handle:
+                self.log_file_handle.close()
+                self.log_file_handle = None
+                
     def close(self):
         if self.logON:
             if self.log_file_handle:
                 self.write('end of log')
                 self.log_file_handle.close()
+                self.log_file_handle = None
                 
     def __exit__(self, type, value, traceback):
         if self.logON:
             if self.log_file_handle:
                 self.write('end of log')
                 self.log_file_handle.close()
+                self.log_file_handle = None
