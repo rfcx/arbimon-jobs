@@ -1,0 +1,7 @@
+{
+    "host"     : "dummy_host_test"    ,
+    "user"     : "arbimon2_user_test"  ,
+    "password" : "great_password_test",
+    "database" : "an_arbimon2_test",
+    "timezone" : "config_test"
+}

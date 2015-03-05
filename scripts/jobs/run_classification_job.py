@@ -59,7 +59,7 @@ else:
 
     debug("job done! classificationJob", job_id)
     model.projects.insertNews({
-        news_type_id: 9, // model created and trained
+        news_type_id: 9, # model created and trained
         user_id: req.session.user.id,
         project_id: project,
         data: JSON.stringify({model: rows[0].name, classi: name})
