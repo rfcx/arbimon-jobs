@@ -24,13 +24,12 @@ class Test_bmpio(unittest.TestCase):
 
     def test_write(self):
         """Test bmpio.Writer write function"""
-        import a2pyutils.bmpio
         import a2pyutils.palette as pl
         W = Writer
         fileout = "/tmp/bmpio.test.writer.bmp"
         w = W(width=1, height=255, bitdepth=8, palette=pl.get_palette())
         m = mock_open()
-        with mock.patch('__builtin__.open', m, create=True):
+        with mock.patch('__builtin__.open', m, create=False):
             with open(fileout, 'w') as fout:
                 w.write(fout, [[i] for i in range(255)])
             self.assertTrue(m.called,msg="bmpio.Writer failed to call open method")

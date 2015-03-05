@@ -39,7 +39,7 @@ class Config(object):
             cfgpath = cfgbasepath + '.local.json'
         else:
             cfgpath = cfgbasepath + '.json'
-
+    
         with open(cfgpath) as filedata:
             config = json.load(filedata)
 
