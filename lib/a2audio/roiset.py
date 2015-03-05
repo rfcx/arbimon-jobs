@@ -1,7 +1,6 @@
 from pylab import *
 import numpy
 numpy.seterr(all='ignore')
-import cPickle as pickle
 import scipy
 import math
 class Roiset:   

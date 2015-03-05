@@ -3,7 +3,6 @@ from pylab import *
 import numpy
 import time
 from skimage.measure import structural_similarity as ssim
-import cPickle as pickle
 from scipy.stats import pearsonr as prs
 from scipy.stats import kendalltau as ktau
 from  scipy.spatial.distance import cityblock as ct

@@ -1,4 +1,17 @@
 import unittest
+import mock
+
+def os_access_false(p,a):
+    return False
+
+def os_path_exists_false(p):
+    return False
+
+def os_access_true(p,a):
+    return True
+
+def os_path_exists_true(p):
+    return True
 
 class Test_recanalizer(unittest.TestCase):
 
@@ -27,11 +40,15 @@ class Test_recanalizer(unittest.TestCase):
             ["test/short.wav",spec,1000,2000,"/tmp/",1,logs],
             ["test/short.wav",spec,1000,2000,"/tmp/","bucketName",1],
         ]
-        for ar in raisingargs3:
-            self.assertRaises(ValueError,Recanalizer,ar[0],ar[1],ar[2],ar[3],ar[4],ar[5],ar[6],True)
-        self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",None,True) ,Recanalizer,msg="Cannot create a Recanalizer object")
-        self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",logs,True) ,Recanalizer,msg="Cannot create a Recanalizer object")
-        self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",logs,False) ,Recanalizer,msg="Cannot create a Recanalizer object")
+        with mock.patch('os.path.exists', os_path_exists_false, create=False):
+            with mock.patch('os.access', os_access_false, create=False):
+                for ar in raisingargs3:
+                    self.assertRaises(ValueError,Recanalizer,ar[0],ar[1],ar[2],ar[3],ar[4],ar[5],ar[6],True)
+        with mock.patch('os.path.exists', os_path_exists_true, create=False):
+            with mock.patch('os.access', os_access_true, create=False):                   
+                self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",None,True) ,Recanalizer,msg="Cannot create a Recanalizer object")
+                self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",logs,True) ,Recanalizer,msg="Cannot create a Recanalizer object")
+                self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",logs,False) ,Recanalizer,msg="Cannot create a Recanalizer object")
         shutil.rmtree('/tmp/logs/')
 
     def test_instanceRec(self):

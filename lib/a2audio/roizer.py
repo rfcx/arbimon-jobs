@@ -76,7 +76,7 @@ class Roizer:
         #remove unwanted columns (cut in time)
         i = 0
         while bins[i] < self.iniT:
-            Pxx = np.delete(Pxx, 0,1)
+            Pxx = numpy.delete(Pxx, 0,1)
             i = i + 1
         
         #put zeros in unwanted frequencies (filter)
@@ -86,13 +86,13 @@ class Roizer:
             i = i + 1
         #calculate decibeles in the passband
         while freqs[i] < self.highF:
-            Pxx[i,:] =  10. * np.log10(Pxx[i,:].clip(min=0.0000000001))
+            Pxx[i,:] =  10. * numpy.log10(Pxx[i,:].clip(min=0.0000000001))
             i = i + 1
         #put zeros in unwanted frequencies (filter)
         while i <  dims[0]:
             Pxx[i,:] = 0
             i = i + 1
 
-        Z = np.flipud(Pxx)
+        Z = numpy.flipud(Pxx)
         self.spec = Z
         
