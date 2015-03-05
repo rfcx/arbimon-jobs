@@ -80,6 +80,29 @@ class Test_logger(unittest.TestCase):
             self.assertTrue(ss in fContent,msg="Logger failed to write correct string")
         if os.path.exists('/tmp/logs/'):
             shutil.rmtree('/tmp/logs/')
-                       
+ 
+    def test_time_delta(self):
+        """Test logger time_delta function"""
+        from a2pyutils.logger import Logger
+        import os
+        import shutil
+        import time
+        if os.path.exists('/tmp/logs/'):
+            shutil.rmtree('/tmp/logs/')
+        logs = Logger(1,"tester",'test')
+        logFile = '/tmp/logs/job_1/tester_test_0.log'
+        self.assertTrue(os.path.isfile(logFile),msg="Logger failed to create log file in /tmp/logs")
+        searchContent = ['tester log file','write this','test text logger','another test string','debug this error logger']
+        for ss in searchContent:
+            logs.time_delta(ss,time.time())  
+        fContent = None
+        if os.path.isfile(logFile):
+            with open(logFile) as f:
+                fContent = f.read() 
+        for ss in searchContent:
+            self.assertTrue(ss in fContent,msg="Logger failed to write correct string")
+        if os.path.exists('/tmp/logs/'):
+            shutil.rmtree('/tmp/logs/')
+            
 if __name__ == '__main__':
     unittest.main()
