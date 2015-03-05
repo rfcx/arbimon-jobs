@@ -16,7 +16,7 @@ class Test_recanalizer(unittest.TestCase):
         import numpy
         import shutil
         spec = numpy.random.rand(100,100)
-        logs = Logger('test','Recanalizer','test')
+        logs = Logger(1,'Recanalizer','test')
         raisingargs3 =[
             [1,spec,1000,2000,"/tmp/","bucketName",logs],
             ["test/short.wav",1,1000,2000,"/tmp/","bucketName",logs],

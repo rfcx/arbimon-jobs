@@ -30,7 +30,7 @@ class Test_rec(unittest.TestCase):
             self.assertRaises(ValueError,Rec,ar[0],ar[1],ar[2])
         
         self.assertRaises(ValueError,Rec,"/tmp","/tmp","dummyBucket",1)
-        logs = Logger('test','Rec','test')
+        logs = Logger(1,'Rec','test')
         self.assertRaises(ValueError,Rec,"/tmp","/tmp","dummyBucket",logs,1)
         self.assertRaises(ValueError,Rec,"/tmp","/tmp","dummyBucket",logs,False,1)
         
