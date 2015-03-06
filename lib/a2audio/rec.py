@@ -4,7 +4,7 @@ import time
 import sys
 import warnings
 from urllib import quote
-from urllib2 import urlopen, URLError, HTTPError
+import urllib2
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from scikits.audiolab import Sndfile, Format
@@ -62,7 +62,6 @@ class Rec:
             raise ValueError("removeFile must be a boolean")
         if type(test) is not bool:
             raise ValueError("test must be a boolean")
-        
         start_time = time.time()
         self.logs = logs
         self.localFiles = tempFolder
@@ -125,18 +124,18 @@ class Rec:
         if self.logs :
             self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
         try:
-            f = urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
+            f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :
                 self.logs.write('urlopen success')
-        except HTTPError, e:
+        except urllib2.HTTPError, e:
             if self.logs :
                 self.logs.write("bucket http error:" + str(e.code ))
             return False
-        except URLError, e:
+        except urllib2.URLError, e:
             if self.logs :
                 self.logs.write("bucket url error:" + str(e.reason ))
             return False
-            
+
         if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
