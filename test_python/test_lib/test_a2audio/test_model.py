@@ -1,4 +1,7 @@
 import unittest
+import mock
+from mock import mock_open
+from mock import MagicMock
 
 class Test_model(unittest.TestCase):
 
@@ -218,47 +221,47 @@ class Test_model(unittest.TestCase):
         from a2audio.model import Model
         import numpy
         from sklearn.ensemble import RandomForestClassifier
-        import cPickle as pickle
-        import os
         spec = numpy.random.rand(100,100)
-        mod1 = Model(1,spec,1)
+        m = mock_open()
+        mock_pickle = MagicMock()
+        with mock.patch('__builtin__.open', m, create=False):
+            with mock.patch('cPickle.dump',mock_pickle,create=False):
+                mod1 = Model(1,spec,1)
+                
+                #put data into model
+                #class 0 has a mean of around .5
+                dummyData0 = numpy.random.rand(100,6)
+                for i in range(100):
+                    r = dummyData0[i,]
+                    mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
+                #class 1 has a mean of around 100.5
+                dummyData1 = numpy.random.rand(100,6)+100
+                for i in range(100):
+                    r = dummyData1[i,]
+                    mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         
-        #put data into model
-        #class 0 has a mean of around .5
-        dummyData0 = numpy.random.rand(100,6)
-        for i in range(100):
-            r = dummyData0[i,]
-            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
-        #class 1 has a mean of around 100.5
-        dummyData1 = numpy.random.rand(100,6)+100
-        for i in range(100):
-            r = dummyData1[i,]
-            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
-
-        utp = randint(25,75)
-        utnp = randint(25,75)
-        uvp = randint(15,100-utp-1)
-        uvnp = randint(15,100-utnp-1)
+                utp = randint(25,75)
+                utnp = randint(25,75)
+                uvp = randint(15,100-utp-1)
+                uvnp = randint(15,100-utnp-1)
+                
+                mod1.splitData(utp,utnp,uvp,uvnp)
+                mod1.train()
+                mod1.validate()
         
-        mod1.splitData(utp,utnp,uvp,uvnp)
-        mod1.train()
-        mod1.validate()
+                saveFileName = "/tmp/test.model.pickle"
+                mod1.save(saveFileName,1.1,100.1,10000.1)
+                self.assertTrue(m.called,msg="Rec.model cannot open file")
+                self.assertIsNone( m.assert_called_once_with(saveFileName , 'wb'),  msg="Rec.model cannot write file")                
+                writtenData =  mock_pickle.mock_calls[0]
+                spec1 = writtenData[1][0][1]
+                for i in range(spec.shape[0]):
+                    for j in range(spec.shape[1]):
+                        self.assertEqual(spec[i,j],spec1[i,j],msg="Model.save saved wrong data")
+                self.assertEqual(writtenData[1][0][2],1.1,msg="Model.save saved wrong data")
+                self.assertEqual(writtenData[1][0][3],100.1,msg="Model.save saved wrong data")
+                self.assertEqual(writtenData[1][0][4],10000.1,msg="Model.save saved wrong data")
 
-        saveFileName = "/tmp/test.model.pickle"
-        mod1.save(saveFileName,1.1,100.1,10000.1)
-        self.assertTrue(os.path.isfile(saveFileName),msg="Rec.model model file could not be saved")
-        with open(saveFileName) as f:
-            modSaved = pickle.load(f)
-        self.assertIsInstance(modSaved[0], RandomForestClassifier,msg="Rec.model cannot train model")
-        spec2 = modSaved[1]
-        for i in range(spec.shape[0]):
-            for j in range(spec.shape[1]):
-                self.assertEqual(spec[i,j],spec2[i,j],msg="Model.save saved wrong spec")
-        self.assertEqual(modSaved[2],1.1,msg="Model.save saved wrong data")
-        self.assertEqual(modSaved[3],100.1,msg="Model.save saved wrong data")
-        self.assertEqual(modSaved[4],10000.1,msg="Model.save saved wrong data")
-        if os.path.isfile(saveFileName):
-            os.remove(saveFileName)
     
     def test_saveValidations(self):
         """Test Model.saveValidations function"""
@@ -267,44 +270,40 @@ class Test_model(unittest.TestCase):
         import numpy
         from sklearn.ensemble import RandomForestClassifier
         import os
-        import csv
         spec = numpy.random.rand(100,100)
-        mod1 = Model(1,spec,1)
         
-        #put data into model
-        #class 0 has a mean of around .5
-        dummyData0 = numpy.random.rand(100,6)
-        for i in range(100):
-            r = dummyData0[i,]
-            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
-        #class 1 has a mean of around 100.5
-        dummyData1 = numpy.random.rand(100,6)+100
-        for i in range(100):
-            r = dummyData1[i,]
-            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
-
-        utp = randint(25,75)
-        utnp = randint(25,75)
-        uvp = randint(15,100-utp-1)
-        uvnp = randint(15,100-utnp-1)
+        m = mock_open()
+        mock_writerow = MagicMock()
+        with mock.patch('__builtin__.open', m, create=False):
+            with mock.patch('csv.writer',mock_writerow,create=False):
+                mod1 = Model(1,spec,1)
+                
+                #put data into model
+                #class 0 has a mean of around .5
+                dummyData0 = numpy.random.rand(100,6)
+                for i in range(100):
+                    r = dummyData0[i,]
+                    mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
+                #class 1 has a mean of around 100.5
+                dummyData1 = numpy.random.rand(100,6)+100
+                for i in range(100):
+                    r = dummyData1[i,]
+                    mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         
-        mod1.splitData(utp,utnp,uvp,uvnp)
-        mod1.train()
-        mod1.validate()
-
-        saveFileName = "/tmp/test.validations.csv"
-        mod1.saveValidations(saveFileName)
-        self.assertTrue(os.path.isfile(saveFileName),msg="Rec.model validation file could not be saved")
-        rowsNumb = 0
-        if os.path.isfile(saveFileName):
-            with open(saveFileName, 'rb') as csvfile:
-                spamreader = csv.reader(csvfile, delimiter=',')
-                for row in spamreader:
-                    rowsNumb = rowsNumb + 1
-        self.assertEqual(rowsNumb,utp+utnp+uvp+uvnp,msg="Rec.model validation file has incorrect number of rows")
-        if os.path.isfile(saveFileName):
-            os.remove(saveFileName)
-
+                utp = randint(25,75)
+                utnp = randint(25,75)
+                uvp = randint(15,100-utp-1)
+                uvnp = randint(15,100-utnp-1)
+                
+                mod1.splitData(utp,utnp,uvp,uvnp)
+                mod1.train()
+                mod1.validate()
+        
+                saveFileName = "/tmp/test.validations.csv"
+                mod1.saveValidations(saveFileName)
+                self.assertTrue(m.called,msg="Rec.model validation file could not be saved")
+                self.assertIsNone(m.assert_called_once_with(saveFileName , 'wb'),msg="Rec.model validation file could not be saved")
+                self.assertEqual(len(mock_writerow.mock_calls)-1,utp+utnp+uvp+uvnp,msg="Rec.model validation file has incorrect number of rows")
                 
 if __name__ == '__main__':
     unittest.main()
