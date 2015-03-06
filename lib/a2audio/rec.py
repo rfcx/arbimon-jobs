@@ -1,9 +1,7 @@
-import boto
 import math
 import os
 import time
 import sys
-from boto.s3.connection import S3Connection
 import warnings
 from urllib import quote
 from urllib2 import urlopen, URLError, HTTPError
