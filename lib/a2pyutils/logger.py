@@ -28,7 +28,7 @@ class Logger:
             while os.path.isfile(self.filePath):
                 lognametry =  lognametry + 1
                 self.filePath = self.workingFolder+"/"+script+"_"+logFor+"_"+str(lognametry)+".log"
-                
+              
             self.log_file_handle = open(self.filePath,'w')
             self.write(script+' log file')
             if self.log_file_handle:
