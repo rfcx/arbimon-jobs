@@ -104,7 +104,7 @@ class Recanalizer:
            self.logs.write("featureVector start")     
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
         spec = self.spec;
-        for j in range(2):#,currColumns - self.columns,step): 
+        for j in range(0,currColumns - self.columns,step): 
             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
             if val < 0:
                val = 0
