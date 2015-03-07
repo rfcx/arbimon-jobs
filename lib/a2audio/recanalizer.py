@@ -61,15 +61,19 @@ class Recanalizer:
         if self.logs:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
-            start_time = time.time()
-            self.spectrogram()
-            if self.logs:
-                self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
-            start_time = time.time()
-            self.featureVector()
-            if self.logs:
-                self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
-            self.status = 'Processed'
+            maxFreqInRec = float(self.rec.sample_rate)/2.0
+            if self.high >= maxFreqInRec:
+                self.status = 'CannotProcess'
+            else:
+                start_time = time.time()
+                self.spectrogram()
+                if self.logs:
+                    self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
+                start_time = time.time()
+                self.featureVector()
+                if self.logs:
+                    self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
+                self.status = 'Processed'
         else:
             self.status = 'NoData'
 
@@ -100,7 +104,7 @@ class Recanalizer:
            self.logs.write("featureVector start")     
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
         spec = self.spec;
-        for j in range(0,currColumns - self.columns,step): 
+        for j in range(2):#,currColumns - self.columns,step): 
             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
             if val < 0:
                val = 0
@@ -128,7 +132,7 @@ class Recanalizer:
             i = i + 1
         
         #calculate decibeles in the passband
-        while freqs[i] < self.high:
+        while (i < len(freqs)) and (freqs[i] < self.high):
             Pxx[i,:] =  10. * np.log10( Pxx[i,:].clip(min=0.0000000001))
             i = i + 1
  

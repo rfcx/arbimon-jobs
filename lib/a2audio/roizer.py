@@ -31,7 +31,7 @@ class Roizer:
         if lowFreq>=highFreq :
             raise ValueError("lowFreq must be less than highFreq")
         self.spec = None
-        recording = Rec(uri,tempFolder,bucketName)
+        recording = Rec(uri,tempFolder,bucketName,None)
 
         if  'HasAudioData' in recording.status:
             self.original = recording.original
