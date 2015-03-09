@@ -141,6 +141,7 @@ class Rec:
                 with open(self.localfilename, "wb") as local_file:
                    local_file.write(f.read())
             except:
+                print f
                 if self.logs :
                     self.logs.write('error f.read')
                 return False

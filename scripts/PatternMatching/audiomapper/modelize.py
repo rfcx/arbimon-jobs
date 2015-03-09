@@ -34,7 +34,6 @@ for line in sys.stdin:
     test = line.split(';')
     if len(test) >= 14:
         meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,classid,present,spectrogram,columns ,low , high , jId ,sRate ,recUri= line.split(';')
-        
         lowf = low
         highf = high
         cols =columns
@@ -88,10 +87,11 @@ with closing(db.cursor()) as cursor:
     modelname = decoded['name']
     valiId = row[1]
 
+savedModel = False
+
 for i in classes:
     if not classes[i].splitData(useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent):
         continue
-    
     validationsKey =  'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv'
     validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'
     
@@ -186,8 +186,16 @@ for i in classes:
         db.commit()
         cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
         db.commit()
+        savedModel  = True
 
 #remore temporary directory
-shutil.rmtree(tempFolders+"/training_"+str(jobId))
+#shutil.rmtree(tempFolders+"/training_"+str(jobId))
+
+if savedModel :
+    print 'ended'
+else:
+    print 'err'
+    with closing(db.cursor()) as cursor:
+        cursor.execute('update `jobs` set `state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+        db.commit()   
 db.close()
-print 'ended'

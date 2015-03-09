@@ -46,9 +46,9 @@ class Model:
         presentIndeces = [i for i, j in zip(count(), self.classes) if j == '1']
         notPresentIndices = [i for i, j in zip(count(), self.classes) if j == '0']
         
-        if(len(presentIndeces) < (useTrainingPresent+useValidationPresent)):
+        if(len(presentIndeces) < 1):
             return False
-        if(len(notPresentIndices) < (useTrainingNotPresent+useValidationNotPresent)):
+        if(len(notPresentIndices) < 1):
             return False
           
         random.shuffle(presentIndeces)
