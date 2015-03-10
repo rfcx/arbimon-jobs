@@ -103,7 +103,11 @@ class Recanalizer:
         step = 16
         if self.logs:
            self.logs.write("featureVector start")     
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
+        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])
+        winSize = min(self.matrixSurfacComp.shape)
+        winSize = min(winSize,7)
+        if winSize %2 == 0:
+            winSize = winSize - 1
         spec = self.spec;
         #ax1 = subplot(211)
         #im = ax1.imshow(self.speciesSurface , None)
@@ -116,7 +120,7 @@ class Recanalizer:
             #im = ax2.imshow(self.matrixSurfacComp, None)
             #show()
             #close()
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
+            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
             #except:
             #    val =0
             if val < 0:

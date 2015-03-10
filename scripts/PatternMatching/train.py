@@ -285,7 +285,7 @@ if model_type_id == 1:
     """Recnilize"""
     try:
         results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,patternSurfaces[line[4]]) for line in validationData)
-    except e:
+    except:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
@@ -294,12 +294,14 @@ if model_type_id == 1:
     presentsCount = 0
     ausenceCount = 0
     for res in results:
-        if int(res[7]) == 0:
-            ausenceCount = ausenceCount + 1
-        if int(res[7]) == 1:
-            presentsCount = presentsCount + 1            
-        if presentsCount >= 2 and ausenceCount >= 2:
-            break
+        if 'err' not in res:
+            if int(res[7]) == 0:
+                ausenceCount = ausenceCount + 1
+            if int(res[7]) == 1:
+                presentsCount = presentsCount + 1            
+            if presentsCount >= 2 and ausenceCount >= 2:
+                break
+            
     if presentsCount < 2 and ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
 
@@ -384,7 +386,6 @@ if model_type_id == 1:
                exit_error(db,workingFolder,log,jobId,'error validating model')
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
-        print modFile
         try:
             models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4])
         except:
