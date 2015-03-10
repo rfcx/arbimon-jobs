@@ -37,6 +37,7 @@ class Roizer:
         if  'HasAudioData' in recording.status:
             self.original = recording.original
             self.sample_rate = recording.sample_rate
+            self.recording_sample_rate = recording.sample_rate
             self.channs = recording.channs
             self.samples = recording.samples
             self.status = 'HasAudioData'
@@ -79,6 +80,8 @@ class Roizer:
         data = self.original[initSample:endSample]
         targetrows = len(freqs44100)
         Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
+        if self.sample_rate < 44100:
+            self.sample_rate = 44100
         dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:

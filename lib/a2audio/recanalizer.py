@@ -105,12 +105,20 @@ class Recanalizer:
            self.logs.write("featureVector start")     
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
         spec = self.spec;
+        #ax1 = subplot(211)
+        #im = ax1.imshow(self.speciesSurface , None)
+        #show()
+        #close()
         for j in range(0,currColumns - self.columns,step):
-            val =0
-            try:
-                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
-            except:
-                val =0
+            #ax1 = subplot(211)
+            #im = ax1.imshow(numpy.copy(spec[: , j:(j+self.columns)]) , None)
+            #ax2 = subplot(212, sharex=ax1)
+            #im = ax2.imshow(self.matrixSurfacComp, None)
+            #show()
+            #close()
+            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
+            #except:
+            #    val =0
             if val < 0:
                val = 0
             self.distances.append(  val   )
@@ -130,6 +138,8 @@ class Recanalizer:
         start_time = time.time()
 
         Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft *2, Fs=self.rec.sample_rate , noverlap=nfft )
+        if self.rec.sample_rate < 44100:
+            self.rec.sample_rate = 44100
         dims =  Pxx.shape
         if self.logs:
             self.logs.write("mlab.specgram --- seconds ---" + str(time.time() - start_time))

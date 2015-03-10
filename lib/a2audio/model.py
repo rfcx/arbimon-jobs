@@ -28,7 +28,7 @@ class Model:
         self.jobId = jobid
         
     def addSample(self,present,meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,uri):
-        self.classes.append(present)
+        self.classes.append(str(present))
         self.uris.append(uri)
         if self.minv > minfeat:
             self.minv = minfeat
@@ -43,8 +43,8 @@ class Model:
     def splitData(self,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent):
         self.splitParams = [useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent]
 
-        presentIndeces = [i for i, j in zip(count(), self.classes) if j == '1']
-        notPresentIndices = [i for i, j in zip(count(), self.classes) if j == '0']
+        presentIndeces = [i for i, j in zip(count(), self.classes) if j == '1' or j == 1]
+        notPresentIndices = [i for i, j in zip(count(), self.classes) if j == '0' or j == 0]
         
         if(len(presentIndeces) < 1):
             return False
@@ -80,8 +80,8 @@ class Model:
         self.outurisTraining = [self.uris[i] for i in self.trainDataIndices]
         predictions = self.clf.predict(self.data[self.validationDataIndices])
         self.validationpredictions = predictions;
-        presentIndeces = [i for i, j in zip(count(), classSubset) if j == '1']
-        notPresentIndices = [i for i, j in zip(count(), classSubset) if j == '0']
+        presentIndeces = [i for i, j in zip(count(), classSubset) if j == '1' or j == 1] 
+        notPresentIndices = [i for i, j in zip(count(), classSubset) if j == '0' or j == 0]
         minamxdata = self.data[self.validationDataIndices]
         minv = 99999999
         maxv = -99999999
@@ -96,6 +96,7 @@ class Model:
         self.fp = 0.0
         self.tn = 0.0
         self.fn = 0.0
+        self.accuracy_score = 0.0
         self.precision_score = 0.0
         self.sensitivity_score = 0.0
         self.specificity_score  = 0.0
@@ -115,8 +116,9 @@ class Model:
                 self.tn = self.tn + 1.0
             else:
                 self.fp = self.fp + 1.0
-                
-        self.accuracy_score = (self.tp +  self.tn)/(self.tp+self.fp+self.tn+self.fn)
+        
+        if (self.tp+self.fp+self.tn+self.fn) >0:
+            self.accuracy_score = (self.tp +  self.tn)/(self.tp+self.fp+self.tn+self.fn)
         if (self.tp+self.fp) > 0:
             self.precision_score = self.tp/(self.tp+self.fp)
         if (self.tp+self.fn) > 0:
