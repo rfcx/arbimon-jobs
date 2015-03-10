@@ -457,7 +457,7 @@ if model_type_id == 1:
                 db.commit()
                 row = cursor.fetchone()
                 totalRois = row[0]
-                     
+                
                 statsJson = '{"roicount":'+str(totalRois)+' , "roilength":'+str(lengthRoi)+' , "roilowfreq":'+str(minFrequ)+' , "roihighfreq":'+str(maxFrequ)
                 statsJson = statsJson + ',"accuracy":'+str(modelStats[0])+' ,"precision":'+str(modelStats[1])+',"sensitivity":'+str(modelStats[2])
                 statsJson = statsJson + ', "forestoobscore" :'+str(modelStats[3])+' , "roisamplerate" : '+str(patternSurfaces[i][1])+' , "roipng":"'+pngKey+'"'
@@ -493,7 +493,7 @@ if model_type_id == 1:
         log.write("model saved")
     else:
         exit_error(db,workingFolder,log,jobId,'error saving model')
-            
+       
 else:
     log.write("Unkown model type requested")
 
