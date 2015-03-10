@@ -260,18 +260,19 @@ if model_type_id == 1:
     """Align rois"""
     try:
         for roi in rois:
-            classid = roi[1]
-            lowFreq = roi[0].lowF
-            highFreq = roi[0].highF
-            sample_rate = roi[0].sample_rate
-            spec = roi[0].spec
-            rows = spec.shape[0]
-            columns = spec.shape[1]
-            if classid in classes:
-                classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
-            else:
-                classes[classid] = Roiset(classid,float(sample_rate) )
-                classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
+            if 'err' not in roi:
+                classid = roi[1]
+                lowFreq = roi[0].lowF
+                highFreq = roi[0].highF
+                sample_rate = roi[0].sample_rate
+                spec = roi[0].spec
+                rows = spec.shape[0]
+                columns = spec.shape[1]
+                if classid in classes:
+                    classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
+                else:
+                    classes[classid] = Roiset(classid,float(sample_rate) )
+                    classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
         for i in classes:
             classes[i].alignSamples()
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
