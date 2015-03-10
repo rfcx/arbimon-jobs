@@ -10,6 +10,7 @@ from scipy.spatial.distance import cosine as csn
 import math
 from a2pyutils.logger import Logger
 import os
+import json
 
 class Recanalizer:
     
@@ -104,8 +105,12 @@ class Recanalizer:
            self.logs.write("featureVector start")     
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.lowIndex:self.highIndex,:])          
         spec = self.spec;
-        for j in range(0,currColumns - self.columns,step): 
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
+        for j in range(0,currColumns - self.columns,step):
+            val =0
+            try:
+                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp )
+            except:
+                val =0
             if val < 0:
                val = 0
             self.distances.append(  val   )
@@ -116,10 +121,15 @@ class Recanalizer:
         return self.spec
     
     def spectrogram(self):
-
+        freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
+        maxHertzInRec = float(self.rec.sample_rate)/2.0
+        i = 0
+        while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+            i = i + 1
+        nfft = i
         start_time = time.time()
 
-        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=512, Fs=self.rec.sample_rate , noverlap=256)
+        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft *2, Fs=self.rec.sample_rate , noverlap=nfft )
         dims =  Pxx.shape
         if self.logs:
             self.logs.write("mlab.specgram --- seconds ---" + str(time.time() - start_time))
