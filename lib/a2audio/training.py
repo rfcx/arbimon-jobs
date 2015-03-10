@@ -77,4 +77,3 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern):
     else:
         db.close()
         return 'err'
-    
