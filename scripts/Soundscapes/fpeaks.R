@@ -28,10 +28,16 @@ if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
             quit()
         }
     );
+    epsilonValue = 0.00001
+    if(as.numeric(args[2]) > 0.00001)
+    {
+        epsilonValue = as.numeric(args[2])
+    }
+     
     tryCatch(
         {
             #,amp=c(0.01,0.01)
-            picos<-fpeaks(spec,freq=as.numeric(args[4]),plot=FALSE,threshold=as.numeric(args[2]))
+            picos<-fpeaks(spec,freq=as.numeric(args[4]),plot=FALSE,threshold=epsilonValue)
         }
         ,
         error = function(e)

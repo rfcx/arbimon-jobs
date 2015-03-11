@@ -114,10 +114,6 @@ if bin_size < 0:
     log.close()
     sys.exit(-1)
 
-max_bins = int(max_hertz / bin_size)
-log.write('max_bins '+str(max_bins))
-
-
 bucketName = config[4]
 awsKeyId = config[5]
 awsKeySecret = config[6]
@@ -163,9 +159,8 @@ try:
         sys.exit(-1)
 
     log.write(
-        'init playlist with aggregation: '+str(aggregation) +
-        " bin size:" + str(bin_size) + " bins:" + str(max_bins))
-    scp = soundscape.Soundscape(aggregation, bin_size, max_bins)
+        'init indices calculation with aggregation: '+str(aggregation)
+        )
     
     peaknumbers  = indices.Indices(aggregation)
     
@@ -282,7 +277,17 @@ try:
                 acivalue = None
                 if stdout and 'err' not in stdout:
                     acivalue = float(stdout)
-                                
+                    
+                proc = subprocess.Popen([
+                   '/usr/bin/soxi', '-r',
+                   localFile
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = proc.communicate()
+                
+                recSampleRate = None
+                if stdout and 'err' not in stdout:
+                    recSampleRate = float(stdout)
+                recMaxHertz = float(recSampleRate)/2.0    
                 os.remove(localFile)
                 fresqSplit = freqs.split(',')
                 if len(fresqSplit) < 1:
@@ -290,7 +295,7 @@ try:
                     freqs = None
                 else:
                     freqs = [float(i) for i in fresqSplit]
-                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue}
+                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
@@ -313,6 +318,7 @@ try:
     resultsParallel = Parallel(n_jobs=num_cores)(
         delayed(processRec)(recordingi, config) for recordingi in recsToProcess
     )
+
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
     if len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
@@ -320,6 +326,14 @@ try:
             cursor.execute('update `jobs` set `state`="processing", \
                 `progress` = `progress` + 1 where `job_id` = '+str(job_id))
             db.commit()
+        max_hertz = 22050
+        for result in resultsParallel:
+            if result is not None:
+                if   max_hertz < result['recMaxHertz']:
+                    max_hertz = result['recMaxHertz']
+        max_bins = int(max_hertz / bin_size)
+        log.write('max_bins '+str(max_bins))
+        scp = soundscape.Soundscape(aggregation, bin_size, max_bins)
         start_time_all = time.time()
         for result in resultsParallel:
             if result is not None:
