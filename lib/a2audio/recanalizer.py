@@ -104,6 +104,7 @@ class Recanalizer:
         if self.logs:
            self.logs.write("featureVector start")
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+        self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
         winSize = min(self.matrixSurfacComp.shape)
         winSize = min(winSize,7)
         if winSize %2 == 0:
@@ -124,9 +125,11 @@ class Recanalizer:
         freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
         maxHertzInRec = float(self.rec.sample_rate)/2.0
         i = 0
-        while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
-            i = i + 1
-        nfft = i
+        nfft = 512
+        if self.rec.sample_rate <= 44100:
+            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+                i = i + 1
+            nfft = i
         start_time = time.time()
 
         Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft *2, Fs=self.rec.sample_rate , noverlap=nfft )
@@ -161,21 +164,38 @@ class Recanalizer:
             
         if self.highIndex >= dims[0]:
             self.highIndex = dims[0] - 1
-
-        i = len(freqs44100) - 1
-        j = i
-        while freqs44100[i] > self.high and i>=0:
-            j = j -1 
-            i = i -1
-            
-        while freqs44100[j] > self.low and j>=0:
-            j = j -1 
-        self.speclow = len(freqs44100) - j - 2
-        self.spechigh = len(freqs44100) - i - 2
-        if self.speclow >= len(freqs44100):
-            self.speclow = len(freqs44100)-1
-        if self.spechigh < 0:
-            self.spechigh = 0
+        i = 0
+        j = 0
+        if self.rec.sample_rate <= 44100:
+            i = len(freqs44100) - 1
+            j = i
+            while freqs44100[i] > self.high and i>=0:
+                j = j -1 
+                i = i -1
+                
+            while freqs44100[j] > self.low and j>=0:
+                j = j -1
+            self.speclow = len(freqs44100) - j - 2
+            self.spechigh = len(freqs44100) - i - 2
+            if self.speclow >= len(freqs44100):
+                self.speclow = len(freqs44100)-1
+            if self.spechigh < 0:
+                self.spechigh = 0
+        else:
+            i = len(freqs) - 1
+            j = i
+            while freqs[i] > self.high and i>=0:
+                j = j -1 
+                i = i -1
+                
+            while freqs[j] > self.low and j>=0:
+                j = j -1            
+            self.speclow = len(freqs) - j - 2
+            self.spechigh = len(freqs) - i - 2
+            if self.speclow >= len(freqs):
+                self.speclow = len(freqs)-1
+            if self.spechigh < 0:
+                self.spechigh = 0
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
@@ -188,5 +208,11 @@ class Recanalizer:
         ax = gca()
         im = ax.imshow(self.spec, None)
         ax.axis('auto')
+        show()
+        close()
+        
+    def showSurface(self):
+        print numpy.min(numpy.min(self.matrixSurfacComp))
+        imshow(self.matrixSurfacComp)
         show()
         close()

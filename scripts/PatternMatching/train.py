@@ -200,7 +200,7 @@ if model_type_id == 1:
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
                         validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
-                        spamwriter.writerow(rowValidation[0:3])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
 
         # get Amazon S3 bucket
         conn = S3Connection(awsKeyId, awsKeySecret)
@@ -255,7 +255,7 @@ if model_type_id == 1:
         #roigen defined in a2audio.training
         rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId) for line in trainingData)
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
+        exit_error(db,workingFolder,log,jobId,'roigenerator failed')
     
     if rois is None or len(rois) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
@@ -288,10 +288,10 @@ if model_type_id == 1:
     
     results = None
     """Recnilize"""
-    #try:
-    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
-    #except:
-    #    exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+    try:
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+    except:
+        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')

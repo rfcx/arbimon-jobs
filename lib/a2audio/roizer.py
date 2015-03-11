@@ -73,12 +73,15 @@ class Roizer:
 
         freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
         maxHertzInRec = float(self.sample_rate)/2.0
-        i = 0
-        while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
-            i = i + 1
-        nfft = i
+        nfft = 512
+        targetrows = 512
+        if self.sample_rate <= 44100:
+            i = 0
+            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+                i = i + 1
+            nfft = i
+            targetrows = len(freqs44100)
         data = self.original[initSample:endSample]
-        targetrows = len(freqs44100)
         Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
         if self.sample_rate < 44100:
             self.sample_rate = 44100
