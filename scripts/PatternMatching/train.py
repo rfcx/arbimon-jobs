@@ -21,6 +21,7 @@ from a2audio.roiset import Roiset
 from a2audio.model import Model
 import numpy
 import png
+from pylab import *
 
 num_cores = multiprocessing.cpu_count()
 
@@ -54,7 +55,7 @@ except MySQLdb.Error as e:
 
 def exit_error(db,workingFolder,log,jobId,msg):
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+        cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
         db.commit() 
     log.write(msg)
     if os.path.exists(workingFolder):
@@ -102,7 +103,6 @@ if not row:
 ) = row
 modelName = name
 tempFolders = tempfile.gettempdir()
-
 # select the model_type by its id
 if model_type_id == 1:
     """Pattern Matching (modified Alvarez thesis)"""
@@ -110,13 +110,15 @@ if model_type_id == 1:
     log.write("Pattern Matching (modified Alvarez thesis)")
     progress_steps = 0
     # creating a temporary folder
-    workingFolder = tempFolders+"/training_"+str(jobId)
+    workingFolder = tempFolders+"/training_"+str(jobId)+"/"
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
     os.makedirs(workingFolder)
     if not os.path.exists(workingFolder):
         exit_error(db,workingFolder,log,jobId,'cannot create temporary directory')
     trainingData = []
+    
+    """ Training data file creation """
     try:
         with closing(db.cursor()) as cursor:
             # create training file
@@ -171,6 +173,7 @@ if model_type_id == 1:
         exit_error(db,workingFolder,log,jobId,'cannot create training csvs files or access training data from db')
 
     validationData = []
+    """ Validation file creation """
     try:
         validationFile = workingFolder+'/validation_'+str(jobId)+'.csv'
         with open(validationFile, 'wb') as csvfile:
@@ -249,6 +252,7 @@ if model_type_id == 1:
     rois = None
     """Roigenerator"""
     try:
+        #roigen defined in a2audio.training
         rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
@@ -278,16 +282,16 @@ if model_type_id == 1:
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
         exit_error(db,workingFolder,log,jobId,'cannot align rois')
-        
+   
     if len(patternSurfaces) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
     
     results = None
     """Recnilize"""
-    try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,patternSurfaces[line[4]]) for line in validationData)
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+    #try:
+    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+    #except:
+    #    exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
@@ -306,7 +310,7 @@ if model_type_id == 1:
     if presentsCount < 2 and ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
 
-    """Create model"""
+    """Add samples to model"""
     models = {}
     try:
         for res in results:
@@ -330,6 +334,7 @@ if model_type_id == 1:
     useTrainingNotPresent = None
     useValidationPresent = None
     useValidationNotPresent = None
+    """Get params from database"""
     try:
         with closing(db.cursor()) as cursor:
         
@@ -364,6 +369,7 @@ if model_type_id == 1:
 
     savedModel = False
 
+    """ Create and save model """
     for i in models:
         resultSplit = False
         try:
@@ -403,7 +409,6 @@ if model_type_id == 1:
             pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
             pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
             specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
-                
             rowsInSpec = modelStats[4].shape[0]
             spec = modelStats[4]
             spec[spec == -10000] = float('nan')
@@ -411,10 +416,9 @@ if model_type_id == 1:
                 if abs(sum(spec[j,:])) > 0.0:
                     specToShow = numpy.vstack((specToShow,spec[j,:]))
             specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
-            
             smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
             smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
-            x = 255*(1-((specToShow - smin)/(smax-smin)))    
+            x = 255*(1-((specToShow - smin)/(smax-smin)))
             png.from_array(x, 'L;8').save(pngFilename)
         except:
             exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
@@ -487,7 +491,7 @@ if model_type_id == 1:
                 db.commit()
                 savedModel  = True
         except:
-            exit_error(db,workingFolder,log,jobId,'error saving model except')
+            exit_error(db,workingFolder,log,jobId,'error saving model into database')
             
     if savedModel :
         log.write("model saved")
@@ -505,6 +509,6 @@ with closing(db.cursor()) as cursor:
     """, [jobId])
     db.commit()
 
-shutil.rmtree(tempFolders+"/training_"+str(jobId))
+#shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")

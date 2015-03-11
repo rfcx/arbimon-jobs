@@ -25,7 +25,7 @@ num_cores = multiprocessing.cpu_count()
 jobId = int(sys.argv[1].strip("'").strip(" "))
 modelUri = sys.argv[2].strip("'").strip(" ")
 
-log = Logger(jobId, 'recClassify.py', 'worker')
+log = Logger(int(jobId), 'recClassify.py', 'worker')
 log.write('script started')
 
 models = {}
@@ -95,7 +95,7 @@ log.write(
 def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     global jobId
     start_time_all = time.time()
-    log = Logger(jobId, 'recClassify.py', 'worker-thread', logWorkers)
+    log = Logger(int(jobId), 'recClassify.py', 'worker-thread', logWorkers)
 
     log.write('worker-thread started')
 
@@ -119,7 +119,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     start_time = time.time()
     log.write(str(type(bucket)))
     recAnalized = Recanalizer(
-        recUri, mod[1], mod[2], mod[3], tempFolder,bucketNam ,log)
+        recUri, mod[1], mod[2], mod[3], tempFolder,str(bucketNam) ,log)
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
