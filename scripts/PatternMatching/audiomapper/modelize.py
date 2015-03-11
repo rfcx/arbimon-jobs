@@ -48,7 +48,7 @@ for line in sys.stdin:
             row = s.split(',')
             row = map(float,row)
             spec = numpy.vstack((spec,row))
-        
+ 
         if classid in classes:
             classes[classid].addSample(present,float(meanfeat),float(difffeat),float(maxfeat),float(minfeat),float(stdfeat),float(medfeat),recUri)
         else:
@@ -114,7 +114,7 @@ for i in classes:
     for j in range(0,rowsInSpec):
         if abs(sum(spec[j,:])) > 0.0:
             specToShow = numpy.vstack((specToShow,spec[j,:]))
-            
+    print specToShow.shape
     specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
     
     smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])

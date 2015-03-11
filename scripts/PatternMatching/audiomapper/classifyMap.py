@@ -7,7 +7,7 @@ from a2pyutils.logger import Logger
 jobId = sys.argv[1].strip("'").strip(" ")
 linesExpected = sys.argv[2].strip("'").strip(" ")
 linesProcessed = 0
-log = Logger(jobId, 'classifyMap.py', 'mapper')
+log = Logger(int(jobId), 'classifyMap.py', 'mapper')
 log.write('script started')
 log.write('process '+str(linesExpected)+' expected recordings:')
 for line in sys.stdin:

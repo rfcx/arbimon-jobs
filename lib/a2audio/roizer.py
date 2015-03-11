@@ -3,6 +3,7 @@ from pylab import *
 from matplotlib import *
 import numpy
 import math
+import json
 
 class Roizer:
 
@@ -36,6 +37,7 @@ class Roizer:
         if  'HasAudioData' in recording.status:
             self.original = recording.original
             self.sample_rate = recording.sample_rate
+            self.recording_sample_rate = recording.sample_rate
             self.channs = recording.channs
             self.samples = recording.samples
             self.status = 'HasAudioData'
@@ -64,22 +66,23 @@ class Roizer:
     
     def spectrogram(self):
         
+        initSample = int(math.floor(float((self.iniT)) * float((self.sample_rate))))
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
         if endSample >= len(self.original):
            endSample = len(self.original) - 1
 
-        data = self.original[0:endSample]
-        
-        Pxx, freqs, bins = mlab.specgram(data, NFFT=512, Fs=self.sample_rate, noverlap=256)
-        dims =  Pxx.shape
-         
-        #remove unwanted columns (cut in time)
+        freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
+        maxHertzInRec = float(self.sample_rate)/2.0
         i = 0
-        while bins[i] < self.iniT:
-            Pxx = numpy.delete(Pxx, 0,1)
+        while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
             i = i + 1
-        
-        #put zeros in unwanted frequencies (filter)
+        nfft = i
+        data = self.original[initSample:endSample]
+        targetrows = len(freqs44100)
+        Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
+        if self.sample_rate < 44100:
+            self.sample_rate = 44100
+        dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:
             Pxx[i,:] = 0 
@@ -92,7 +95,8 @@ class Roizer:
         while i <  dims[0]:
             Pxx[i,:] = 0
             i = i + 1
-
-        Z = numpy.flipud(Pxx)
-        self.spec = Z
+        Z = numpy.flipud(Pxx[1:(Pxx.shape[0]-1),:])
+        z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
+        z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
+        self.spec = z
         

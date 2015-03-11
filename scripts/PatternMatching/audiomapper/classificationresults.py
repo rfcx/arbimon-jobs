@@ -13,7 +13,7 @@ from a2pyutils.logger import Logger
 jobId = int(sys.argv[1].strip("'").strip(" "))
 expectedRecordings = int(sys.argv[2].strip("'").strip(" "))
 
-log = Logger(jobId, 'classificationresults.py', 'reducer')
+log = Logger(int(jobId), 'classificationresults.py', 'reducer')
 log.write('script started')
 
 currDir = os.path.dirname(os.path.abspath(__file__))
@@ -84,7 +84,7 @@ with closing(db.cursor()) as cursor:
 
 db.close()
 log.write('removing working folder')
-shutil.rmtree(tempFolders+"/classification_"+str(jobId))
+#shutil.rmtree(tempFolders+"/classification_"+str(jobId))
 print 'ended'
 
 log.close()

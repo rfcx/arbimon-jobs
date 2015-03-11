@@ -203,7 +203,9 @@ try:
         logofthread.write('worker id'+str(id)+' log: rec uri:'+uri)
         start_time_rec = time.time()
         recobject = Rec(
-            str(uri), str(workingFolder), str(config[4]), logofthread, False)
+            str(uri), str(workingFolder), str(config[4]), logofthread, False
+            )
+
         logofthread.write(
             'worker id' + str(id) + ' log: rec from uri' +
             str(time.time()-start_time_rec)
