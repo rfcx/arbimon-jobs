@@ -470,7 +470,7 @@ try:
 
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="completed", `completed`=1, \
-            `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+            `progress` = `progress`  where `job_id` = '+str(job_id))
         insertNews(cursor, uid, pid, json.dumps({"soundscape": name}), 11)
         db.commit()
     log.write('closing database')

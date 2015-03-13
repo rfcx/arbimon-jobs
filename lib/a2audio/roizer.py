@@ -4,6 +4,8 @@ from matplotlib import *
 import numpy
 import math
 import json
+from fullFrequencies import *
+analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
@@ -35,6 +37,9 @@ class Roizer:
         recording = Rec(uri,tempFolder,bucketName,None)
 
         if  'HasAudioData' in recording.status:
+            if float(recording.sample_rate) not in analysis_sample_rates:
+                self.status = "SampleRateNotSupported"
+                return None              
             self.original = recording.original
             self.sample_rate = recording.sample_rate
             self.recording_sample_rate = recording.sample_rate
@@ -70,21 +75,20 @@ class Roizer:
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
         if endSample >= len(self.original):
            endSample = len(self.original) - 1
-
-        freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
+        freqsFull = get_freqs()
         maxHertzInRec = float(self.sample_rate)/2.0
-        nfft = 512
-        targetrows = 512
-        if self.sample_rate <= 44100:
-            i = 0
-            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
-                i = i + 1
-            nfft = i
-            targetrows = len(freqs44100)
+        nfft = 1116 #if 192000 Hz nfft is 1116 else:
+        if float(self.sample_rate) == 16000.0:
+            nfft = 93
+        if float(self.sample_rate) == 32000.0:
+            nfft = 186
+        if float(self.sample_rate) == 48000.0:
+            nfft = 279
+        if float(self.sample_rate) == 96000.0:
+            nfft = 558
+        targetrows = len(freqsFull)
         data = self.original[initSample:endSample]
         Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
-        if self.sample_rate < 44100:
-            self.sample_rate = 44100
         dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:

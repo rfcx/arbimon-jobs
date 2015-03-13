@@ -11,6 +11,7 @@ with warnings.catch_warnings():
 from contextlib import closing
 import numpy as np
 from a2pyutils.logger import Logger
+from scikits.samplerate import resample
 
 encodings = {
     "pcms8":8,
@@ -35,6 +36,8 @@ encodings = {
     "dpcm16":16,
     "dpcm8":8
 }
+
+analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Rec:
 
@@ -96,7 +99,12 @@ class Rec:
         start_time = time.time()
         if not self.readAudioFromFile():
             self.status = 'CorruptedFile'
-            return None  
+            return None
+        
+        if float(self.sample_rate) > 192000.0:
+            self.status = 'SamplingRateNotSupported'
+            return None
+        
         if self.logs :
             self.logs.write("readAudioFromFile:" + str(time.time() - start_time))
         
@@ -111,13 +119,27 @@ class Rec:
         if self.samples == 0:
             self.status = 'NoData'
             return None
- 
+        
         if self.samples != len(self.original):
             self.status = 'CorruptedFile'
             return None
-                    
-        self.status = 'HasAudioData'
         
+        if float(self.sample_rate) not in analysis_sample_rates:
+            self.resample()
+          
+        self.status = 'HasAudioData'
+    
+    def resample(self):
+        to_sample = self.calc_resample_factor()
+        self.original   = resample(self.original, float(to_sample)/float(self.sample_rate) , 'sinc_best')
+        self.samples = len(self.original)
+        self.sample_rate = to_sample
+        
+    def calc_resample_factor(self):
+        for sr in analysis_sample_rates:
+            if self.sample_rate <= sr:
+                return sr
+    
     def getAudioFromUri(self):
         start_time = time.time()
         f = None

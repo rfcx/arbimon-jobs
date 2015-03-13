@@ -11,6 +11,9 @@ import math
 from a2pyutils.logger import Logger
 import os
 import json
+from fullFrequencies import *
+
+analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
@@ -64,7 +67,9 @@ class Recanalizer:
         if self.rec.status == 'HasAudioData':
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
-                self.status = 'CannotProcess'
+                self.status = 'RoiOutsideRecMaxFreq'
+            elif float(self.rec.sample_rate) not in analysis_sample_rates:
+                self.status = "SampleRateNotSupported"
             else:
                 start_time = time.time()
                 self.spectrogram()
@@ -103,8 +108,13 @@ class Recanalizer:
         step = 16
         if self.logs:
            self.logs.write("featureVector start")
+        print self.spechigh,self.speclow
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+        print self.matrixSurfacComp.shape
+        print self.spec.shape
+        removeUnwanted = self.matrixSurfacComp[self.matrixSurfacComp == -10000]
+        if len(removeUnwanted) < 0 :
+            self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
         winSize = min(self.matrixSurfacComp.shape)
         winSize = min(winSize,7)
         if winSize %2 == 0:
@@ -122,19 +132,20 @@ class Recanalizer:
         return self.spec
     
     def spectrogram(self):
-        freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
+        freqsmaxRange = get_freqs()
         maxHertzInRec = float(self.rec.sample_rate)/2.0
-        i = 0
-        nfft = 512
-        if self.rec.sample_rate <= 44100:
-            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
-                i = i + 1
-            nfft = i
+        nfft = 1116
+        if float(self.rec.sample_rate) == 16000.0:
+            nfft = 93
+        if float(self.rec.sample_rate) == 32000.0:
+            nfft = 186
+        if float(self.rec.sample_rate) == 48000.0:
+            nfft = 279
+        if float(self.rec.sample_rate) == 96000.0:
+            nfft = 558
         start_time = time.time()
 
-        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft *2, Fs=self.rec.sample_rate , noverlap=nfft )
-        if self.rec.sample_rate < 44100:
-            self.rec.sample_rate = 44100
+        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft*2, Fs=self.rec.sample_rate , noverlap=nfft )
         dims =  Pxx.shape
         if self.logs:
             self.logs.write("mlab.specgram --- seconds ---" + str(time.time() - start_time))
@@ -164,38 +175,22 @@ class Recanalizer:
             
         if self.highIndex >= dims[0]:
             self.highIndex = dims[0] - 1
-        i = 0
-        j = 0
-        if self.rec.sample_rate <= 44100:
-            i = len(freqs44100) - 1
-            j = i
-            while freqs44100[i] > self.high and i>=0:
-                j = j -1 
-                i = i -1
-                
-            while freqs44100[j] > self.low and j>=0:
-                j = j -1
-            self.speclow = len(freqs44100) - j - 2
-            self.spechigh = len(freqs44100) - i - 2
-            if self.speclow >= len(freqs44100):
-                self.speclow = len(freqs44100)-1
-            if self.spechigh < 0:
-                self.spechigh = 0
-        else:
-            i = len(freqs) - 1
-            j = i
-            while freqs[i] > self.high and i>=0:
-                j = j -1 
-                i = i -1
-                
-            while freqs[j] > self.low and j>=0:
-                j = j -1            
-            self.speclow = len(freqs) - j - 2
-            self.spechigh = len(freqs) - i - 2
-            if self.speclow >= len(freqs):
-                self.speclow = len(freqs)-1
-            if self.spechigh < 0:
-                self.spechigh = 0
+
+        i = len(freqsmaxRange ) - 1
+        j = i
+        while freqsmaxRange[i] > self.high and i>=0:
+            j = j -1 
+            i = i -1
+            
+        while freqsmaxRange[j] > self.low and j>=0:
+            j = j -1
+        self.speclow = len(freqsmaxRange) - j - 2
+        self.spechigh = len(freqsmaxRange) - i - 2
+        if self.speclow >= len(freqsmaxRange):
+            self.speclow = len(freqsmaxRange)-1
+        if self.spechigh < 0:
+            self.spechigh = 0
+
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))

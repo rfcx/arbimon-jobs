@@ -288,10 +288,12 @@ if model_type_id == 1:
     
     results = None
     """Recnilize"""
-    try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+    #try:
+    #results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+    for line in validationData:
+        recnilize(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) 
+    #except:
+        #exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
