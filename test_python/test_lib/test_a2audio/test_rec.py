@@ -6,17 +6,54 @@ import shutil
 import mock
 from mock import patch
 import struct
+from mock import mock_open
+from mock import MagicMock
+import numpy
+from contextlib import contextmanager
 
+
+mock_file_data = []
 class mock_file(object):
     def __init__(self ):
         pass
     def read(self ):
-        return 'this'
-    
+        import numpy
+        data = numpy.random.rand(1)
+        mock_file_data.append(float(data))
+        return float(data)
     
 def mock_urlopen(url):
     retFile = mock_file()
     return retFile
+
+mock_sndfile_data = []
+class mock_sndfile(object):
+    encoding = 'PCM16'
+    channels = 1
+    nframes = 44100
+    samplerate = 44100
+    samples = None
+    
+    def read_frames(self,n,dtype=numpy.dtype('int16')):
+        return self.samples[0:(n)]
+    def __init__(self,filen):
+        global mock_sndfile_data
+        self.samples = numpy.random.rand(self.nframes)
+        mock_sndfile_data.append(self.samples)
+    def __exit__(self,a,b,c):
+        pass
+    def __enter__(self):
+        pass
+    def close(self):
+        pass
+
+@contextmanager           
+def mock_closing(filen):
+    mm = mock_sndfile(filen)
+    try:
+        yield mm
+    finally:
+        mm.close()
 
 class Test_rec(unittest.TestCase):
 
@@ -111,6 +148,8 @@ class Test_rec(unittest.TestCase):
     @patch('os.path.exists')
     @patch('time.time')
     def test_getAudioFromUri(self,time_time,os_path_exists,os_access,os_path_isfile):
+        global mock_file_data
+        import numpy
         time_time.return_value = 123456789
         os_path_exists.return_value = False
         os_access.return_value = False
@@ -120,22 +159,26 @@ class Test_rec(unittest.TestCase):
         from a2audio.rec import Rec
         import filecmp
         recordingsTest = None
+        m =  mock_open()
+        with open('test_python/data/recordings.json') as fd:
+            recordingsTest= json.load(fd)
         with mock.patch('urllib2.urlopen', mock_urlopen , create=False):
             with mock.patch('sys.maxint', sys_maxint , create=False):
-                os_path_exists.return_value = True
-                os_access.return_value = True
-                with open('test_python/data/recordings.json') as fd:
-                    recordingsTest= json.load(fd)
-                for rec in recordingsTest:
-                    rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
-                    self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-                    print rec_test.getAudioFromUri()
-                    #self.assertTrue(os.path.isfile(rec_test.getLocalFileLocation()),msg="Rec.getAudioFromUri failed to get audio file")
-                    #self.assertTrue(filecmp.cmp(rec_test.getLocalFileLocation(),str(rec['local'])),msg="Rec.getAudioFromUri donwloaded file is corrupt")
-                    #os.remove(rec_test.getLocalFileLocation());
-                    #del rec_test
+                with mock.patch('__builtin__.open',m, create=False):
+                    m.return_value = MagicMock(spec=file)
+                    os_path_exists.return_value = True
+                    os_access.return_value = True
+                    for rec in recordingsTest:
+                        rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
+                        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+                        rec_test.getAudioFromUri()
+                        self.assertIsNone(m.assert_any_call(rec_test.getLocalFileLocation(True), 'wb'),msg="Rec.getAudioFromUri: file open function not called")
+                        del rec_test
+                    h =  m.return_value.__enter__.return_value
+                    for data in mock_file_data:
+                        self.assertIsNone(h.write.assert_any_call(data),msg="Rec.getAudioFromUri: wrote invalid data")
         
-    def dtest_parseEncoding(self):
+    def test_parseEncoding(self):
         """Test Rec.parseEncoding function"""
         from a2audio.rec import Rec
         rec_testing = Rec("/tmp/","/tmp/","dummyBucket",None,True,True)
@@ -148,8 +191,9 @@ class Test_rec(unittest.TestCase):
             correct = encodings[e]
             self.assertEqual(val,correct,msg="Cannot parseEncoding "+e+". Got "+str(val)+". Correct is "+str(correct) )
     
-    def dtest_readAudioFromFile(self):
+    def test_readAudioFromFile(self):
         """Test Rec.readAudioFromFile function"""
+        global mock_sndfile_data
         from a2audio.rec import Rec
         import warnings
         import numpy as np
@@ -160,24 +204,23 @@ class Test_rec(unittest.TestCase):
         recordingsTest = None
         with open('test_python/data/recordings.json') as fd:
             recordingsTest= json.load(fd)
-        for rec in recordingsTest:    
-            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
-            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-            rec_test.getAudioFromUri()
-            rec_test.readAudioFromFile()
-            audioStreamTest = rec_test.getAudioFrames()
-            correctStreamTest = None
-            with closing(Sndfile(str(rec['local']))) as f:     
-                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-            self.assertEqual(rec_test.status,'AudioInBuffer',msg="Rec.readAudioFromFile unexpected status")
-            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-            for i in range(len(audioStreamTest)):
-                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-            if rec_test.getLocalFileLocation():
-                os.remove(rec_test.getLocalFileLocation())
-            del rec_test
-            del audioStreamTest
-            del correctStreamTest
+        j = 0
+        with mock.patch('contextlib.closing', mock_closing , create=False):
+            for rec in recordingsTest:    
+                rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,False,True)
+                self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+                rec_test.setLocalFileLocation(str(rec['local']))
+                rec_test.readAudioFromFile()
+                audioStreamTest = rec_test.getAudioFrames()
+                correctStreamTest = mock_sndfile_data[j]
+                j = j + 1
+                self.assertEqual(rec_test.status,'AudioInBuffer',msg="Rec.readAudioFromFile unexpected status")
+                self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
+                for i in range(len(audioStreamTest)):
+                    self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
+                del rec_test
+                del audioStreamTest
+                del correctStreamTest
         
     def dtest_removeFiles(self):
         """Test Rec.removeFiles function"""
