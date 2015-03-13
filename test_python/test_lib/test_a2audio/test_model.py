@@ -63,9 +63,9 @@ class Test_model(unittest.TestCase):
             r = dummyData[i,]
             mr = modData[i,]
             mcr = modClasses[i]
-            self.assertEqual(i,mcr,msg="Model.addSample inserted bad data")
+            self.assertEqual(str(i),mcr,msg="Model.addSample inserted bad data")
             for j in range(len(r)):
-                self.assertEqual(r[j],mr[j],msg="Model.getSpecinserted bad data")
+                self.assertEqual(r[j],mr[j],msg="Model.getSpec inserted bad data")
 
     def test_splitData(self):
         """Test Model splitData function"""

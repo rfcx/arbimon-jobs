@@ -8,7 +8,7 @@ import urllib2
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from scikits.audiolab import Sndfile, Format
-from contextlib import closing
+import contextlib
 import numpy as np
 from a2pyutils.logger import Logger
 from scikits.samplerate import resample
@@ -156,14 +156,12 @@ class Rec:
         except urllib2.URLError, e:
             if self.logs :
                 self.logs.write("bucket url error:" + str(e.reason ))
-            return False
-
+            return False  
         if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
-                   local_file.write(f.read())
+                    local_file.write(f.read())
             except:
-                print f
                 if self.logs :
                     self.logs.write('error f.read')
                 return False
@@ -186,7 +184,7 @@ class Rec:
     
     def readAudioFromFile(self):
         try:
-            with closing(Sndfile(self.localfilename)) as f:
+            with contextlib.closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
                     self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
                 self.bps = 16 #self.parseEncoding(f.encoding)
