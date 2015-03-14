@@ -201,8 +201,8 @@ class Rec:
 
     def removeFiles(self):
         start_time = time.time()
-        if 'flac' in self.filename: #if flac convert to wav
-           if not self.removeFile:
+        if '.flac' in self.filename: #if flac convert to wav
+            if not self.removeFile:
                 try:
                     format = Format('wav')
                     f = Sndfile(self.localfilename+".wav", 'w', format, self.channs, self.sample_rate)

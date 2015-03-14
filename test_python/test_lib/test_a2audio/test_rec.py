@@ -27,6 +27,7 @@ def mock_urlopen(url):
     return retFile
 
 mock_sndfile_data = []
+mock_sndfile_close_calls = []
 class mock_sndfile(object):
     encoding = 'PCM16'
     channels = 1
@@ -38,6 +39,7 @@ class mock_sndfile(object):
         return self.samples[0:(n)]
     def __init__(self,filen):
         global mock_sndfile_data
+        self.filen = filen
         self.samples = numpy.random.rand(self.nframes)
         mock_sndfile_data.append(self.samples)
     def __exit__(self,a,b,c):
@@ -45,8 +47,13 @@ class mock_sndfile(object):
     def __enter__(self):
         pass
     def close(self):
-        pass
-
+        global mock_sndfile_close_calls
+        mock_sndfile_close_calls.append(self.filen)
+        
+    def write_frames(self,data):
+        global mock_sndfile_data
+        mock_sndfile_data.append(data)
+    
 @contextmanager           
 def mock_closing(filen):
     mm = mock_sndfile(filen)
@@ -221,140 +228,81 @@ class Test_rec(unittest.TestCase):
                 del rec_test
                 del audioStreamTest
                 del correctStreamTest
-        
-    def dtest_removeFiles(self):
+                
+    @patch('os.path.isfile')
+    @patch('os.remove')
+    def test_removeFiles(self,os_remove,os_path_isfile):
         """Test Rec.removeFiles function"""
+        global mock_sndfile_data
+        global mock_sndfile_close_calls
         from a2audio.rec import Rec
+        os_path_isfile.return_value = False
+        removeFileFlag = True
+        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,removeFileFlag,True)
+        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+        rec_test.setLocalFileLocation("test_python/data/short.wav")
+        rec_test.removeFiles()
+        self.assertIsNone(os_path_isfile.assert_any_call("test_python/data/short.wav"),msg="Rec.removeFiles: os path isfile was not called")
+        self.assertEqual(0,len(os_remove.mock_calls),msg="Rec.removeFiles: os remove was called with os path is file return False")
+        os_path_isfile.return_value = True       
+        rec_test.removeFiles()
+        self.assertIsNone(os_remove.assert_any_call("test_python/data/short.wav"),msg="Rec.removeFiles: os remove was not called")
+        del rec_test
         
-        removeFileFlag = True
+        removeFileFlag = False
+        os_path_isfile.return_value = False
         rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,removeFileFlag,True)
         self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        rec_test.readAudioFromFile()
-        localFile = rec_test.getLocalFileLocation()
+        rec_test.setLocalFileLocation("test_python/data/short.wav")
+        os_path_isfile.reset_mock()
         rec_test.removeFiles()
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
+        self.assertEqual(0,len(os_path_isfile.mock_calls),msg="Rec.removeFiles: os_path_isfile was called with removeFileFlag False")
         del rec_test
-        if(os.path.isfile(localFile )):
-            os.remove(localFile)
-            
-        removeFileFlag = False
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,removeFileFlag,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        rec_test.readAudioFromFile()
-        localFile = rec_test.getLocalFileLocation()
-        rec_test.removeFiles()
-        self.assertTrue(os.path.isfile(localFile),msg="Rec.removeFiles file was not kept")
-        del rec_test
-        if(os.path.isfile(localFile)):
-            os.remove(localFile)
-            
-        removeFileFlag = True
-        rec_test = Rec("test/short.flac","/tmp/","arbimon2",None,removeFileFlag,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        rec_test.readAudioFromFile()
-        localFile = rec_test.getLocalFileLocation()
-        rec_test.removeFiles()
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles flac file was not removed")
-        localFile = localFile.replace('.flac','.wav')
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
-        del rec_test
-        if(os.path.isfile(localFile )):
-            os.remove(localFile)
-            
-        removeFileFlag = False
-        rec_test = Rec("test/short.flac","/tmp/","arbimon2",None,removeFileFlag,True)
-        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-        rec_test.getAudioFromUri()
-        rec_test.readAudioFromFile()
-        localFile = rec_test.getLocalFileLocation()
-        rec_test.removeFiles()
-        self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles flac file was not removed")
-        localFile = localFile+'.wav'
-        self.assertTrue(os.path.isfile(localFile),msg="Rec.removeFiles file was not kept")
-        if(os.path.isfile(localFile )):
-            os.remove(localFile)
-        if(os.path.isfile(localFile+'.wav' )):
-            os.remove(localFile+'.wav')
 
-    def dtest_process(self):
-        """Test Rec.process function"""
-        from a2audio.rec import Rec
-        import warnings
-        import numpy as np
-        from contextlib import closing
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            from scikits.audiolab import Sndfile, Format
- 
-        recordingsTest = None
-        with open('test_python/data/recordings.json') as fd:
-            recordingsTest= json.load(fd)
-        for rec in recordingsTest:
-            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
-            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-            localFile = rec_test.getLocalFileLocation(True)
-            rec_test.process()
-            self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
-            audioStreamTest = rec_test.getAudioFrames()
-            correctStreamTest = None
-            with closing(Sndfile(str(rec['local']))) as f:     
-                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-            self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
-            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-            for i in range(len(audioStreamTest)):
-                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-            filePath = rec_test.getLocalFileLocation()
-            if filePath is not None:
-                if(os.path.isfile(filePath)):
-                    os.remove(filePath)
-            if(os.path.isfile(localFile)):
-                os.remove(localFile)
-            del rec_test
-            del audioStreamTest
-            del correctStreamTest
-            del filePath
-            del localFile
-     
-    def dtest_usage(self):
-        """Test Rec intended usage"""
-        from a2audio.rec import Rec
-        import warnings
-        import numpy as np
-        from contextlib import closing
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            from scikits.audiolab import Sndfile, Format
-            
-        recordingsTest = None
-        with open('test_python/data/recordings.json') as fd:
-            recordingsTest= json.load(fd)
-        for rec in recordingsTest:            
-            rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2")
-            self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
-            localFile = rec_test.getLocalFileLocation(True)
-            self.assertFalse(os.path.isfile(localFile),msg="Rec.removeFiles file was not removed")
-            audioStreamTest = rec_test.getAudioFrames()
-            correctStreamTest = None
-            with closing(Sndfile(str(rec['local']))) as f:     
-                correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
-            self.assertEqual(rec_test.status,'HasAudioData',msg="Rec.readAudioFromFile unexpected status")
-            self.assertEqual(len(audioStreamTest),len(correctStreamTest),msg="Rec.readAudioFromFile streams have different lenghts")   
-            for i in range(len(audioStreamTest)):
-                self.assertEqual(audioStreamTest[i],correctStreamTest[i],msg="Rec.readAudioFromFile streams have different data")
-            filePath = rec_test.getLocalFileLocation()
-            if filePath is not None:
-                if(os.path.isfile(filePath)):
-                    os.remove(filePath)
-            if(os.path.isfile(localFile)):
-                os.remove(localFile)
-            del rec_test
-            del audioStreamTest
-            del correctStreamTest
-            del filePath
-            del localFile
-            
+        os_remove.reset_mock()
+        os_path_isfile.reset_mock()
+        os_path_isfile.return_value = False
+        removeFileFlag = True
+        rec_test = Rec("test/short.flac.test","/tmp/","arbimon2",None,removeFileFlag,True)
+        self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+        rec_test.setLocalFileLocation("test_python/data/short.flac.test")
+        rec_test.removeFiles()
+        self.assertIsNone(os_path_isfile.assert_any_call("test_python/data/short.flac.test"),msg="Rec.removeFiles: os path isfile was not called")
+        self.assertEqual(0,len(os_remove.mock_calls),msg="Rec.removeFiles: os remove was called with os path is file return False and flac file")
+        os_path_isfile.return_value = True       
+        rec_test.removeFiles()
+        self.assertIsNone(os_remove.assert_any_call("test_python/data/short.flac.test"),msg="Rec.removeFiles: os remove was not called")
+        del rec_test        
+  
+        audiolab_Format = MagicMock()
+        audiolab_Sndfile = MagicMock()
+        with mock.patch('a2audio.rec.Sndfile', audiolab_Sndfile, create=False):
+            with mock.patch('a2audio.rec.Format', audiolab_Format, create=False):
+                removeFileFlag = False
+                os_path_isfile.return_value = False
+                audiolab_Format.return_value = "WavFormat"
+                audiolab_Sndfile.return_value = mock_sndfile("test/short.flac.test")
+                rec_test = Rec("test/short.flac.test","/tmp/","arbimon2",None,removeFileFlag,True)
+                self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
+                os_path_isfile.return_value = True
+                rec_test.setLocalFileLocation("test_python/data/short.flac.test")
+                origTest = numpy.random.rand(1000)
+                for ii in origTest:
+                    rec_test.appendToOriginal(ii)
+                os_path_isfile.reset_mock()
+                os_remove.reset_mock()
+                mock_sndfile_data = []
+                mock_sndfile_close_calls = []
+                rec_test.removeFiles()
+                self.assertIsNone(audiolab_Format.assert_any_call("wav"),msg="Rec.removeFiles: Format was not called")
+                self.assertEqual(0,len(os_path_isfile.mock_calls),msg="Rec.removeFiles: os_path_isfile was called with removeFileFlag False")
+                self.assertIsNone(audiolab_Sndfile.assert_any_call('test_python/data/short.flac.test.wav', 'w', 'WavFormat', 0, 0),msg="Rec.removeFiles: Sndfile was not called")
+                compTest = mock_sndfile_data[0]        
+                for ii in range(len(origTest)):
+                    self.assertEqual( compTest[ii],origTest[ii],msg="Rec.removeFiles: invalid data wrote to file")
+                self.assertEqual(mock_sndfile_close_calls[0],"test/short.flac.test",msg="Rec.removeFiles: Sndfile.close was not called")
+                self.assertIsNone(os_remove.assert_any_call('test_python/data/short.flac.test'),msg="Rec.removeFiles: the original flac file was not removed os_Remove")
+                del rec_test
+
 if __name__ == '__main__':
     unittest.main()
