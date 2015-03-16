@@ -108,10 +108,7 @@ class Recanalizer:
         step = 16
         if self.logs:
            self.logs.write("featureVector start")
-        print self.spechigh,self.speclow
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        print self.matrixSurfacComp.shape
-        print self.spec.shape
         removeUnwanted = self.matrixSurfacComp[self.matrixSurfacComp == -10000]
         if len(removeUnwanted) < 0 :
             self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])

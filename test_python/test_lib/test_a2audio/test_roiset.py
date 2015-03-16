@@ -101,7 +101,6 @@ class Test_roiset(unittest.TestCase):
 
     def test_addRoi(self):
         """Test Roiset.addRoi function"""
-        # lowFreq,highFreq,sample_rate,spec,rows,columns
         from a2audio.roiset import Roiset
         from random import randint
         import numpy

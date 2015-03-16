@@ -1,6 +1,14 @@
 import unittest
 import mock
 
+class MockRec(object):
+    sample_rate = 0
+    original = []
+    def __init__(self):
+        self.sample_rate = 48000
+        for i in range(self.sample_rate):
+            self.original.append(i)
+
 def os_access_false(p,a):
     return False
 
@@ -12,6 +20,22 @@ def os_access_true(p,a):
 
 def os_path_exists_true(p):
     return True
+
+def gen_stripped_matrix(rows,cols):
+    """Generates random stripped matrix"""
+    import numpy
+    chunckLength = 20
+    randomStart = 10
+    chucnkJump = 3
+    chunckLessLength = chunckLength*chucnkJump
+    chunks = int((float(cols-randomStart))/(float(chunckLessLength+chunckLength)))
+    mm = numpy.zeros(shape=(rows,cols))
+    jump = 0
+    for i in range(randomStart,cols-chunckLength,chunckLength):
+        if jump == 0:
+            mm[:,i:(i+chunckLength)] = numpy.ones(shape=(rows,chunckLength))
+        jump = (jump+1)%chucnkJump
+    return mm
 
 class Test_recanalizer(unittest.TestCase):
 
@@ -51,38 +75,6 @@ class Test_recanalizer(unittest.TestCase):
                 self.assertIsInstance( Recanalizer("test/short.wav",spec,1000,2000,"/tmp/","bucketName",logs,False) ,Recanalizer,msg="Cannot create a Recanalizer object")
         shutil.rmtree('/tmp/logs/')
 
-    def test_instanceRec(self):
-        """Test Recanalizer.instanceRec function"""
-        from a2audio.recanalizer import Recanalizer
-        from a2audio.rec import Rec
-        import warnings
-        import json
-        import numpy
-        from contextlib import closing
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            from scikits.audiolab import Sndfile, Format
-        recordingsTest = None
-        with open('test_python/data/recordings.json') as fd:
-            recordingsTest= json.load(fd)
-        spec = numpy.random.rand(100,100)
-        for rec in recordingsTest:
-            recanalizerInstance = Recanalizer(str(rec['a2Uri']),spec,rec['roizerParams'][2],rec['roizerParams'][3],"/tmp/","arbimon2",None,True)
-            self.assertIsInstance( recanalizerInstance ,Recanalizer,msg="Cannot create a Recanalizer object")
-            recanalizerInstance.instanceRec()
-            downloadedRec = recanalizerInstance.getRec()
-            self.assertIsInstance(downloadedRec ,Rec,msg="Recanalizer did not return a Rec object")
-            downloadedRecSamples = downloadedRec.getAudioFrames()
-            correctStreamTest = None
-            with closing(Sndfile(str(rec['local']))) as f:     
-                correctStreamTest = f.read_frames(f.nframes,dtype=numpy.dtype('int16'))
-            if downloadedRec.getLocalFileLocation():
-                os.remove(downloadedRec.getLocalFileLocation())
-            del recanalizerInstance
-            del downloadedRecSamples
-            del downloadedRec
-            del correctStreamTest
-
     def test_spectrogram(self):
         """Test Recanalizer.spectrogram funtion"""
         from a2audio.recanalizer import Recanalizer
@@ -99,18 +91,12 @@ class Test_recanalizer(unittest.TestCase):
         recordingsTest = None
         with open('test_python/data/recordings.json') as fd:
             recordingsTest= json.load(fd)
-        spec = None
+        spec = gen_stripped_matrix(1116,50)
         is_64bits = sys.maxsize > 2**32
-        if is_64bits:
-            with open('test_python/data/test.recanalizer.spectrogram', 'rb') as testFile:
-                spec = pickle.load(testFile)
-        else:
-            with open('test_python/data/test.recanalizer.spectrogram.32', 'rb') as testFile:
-                spec = pickle.load(testFile)
         for rec in recordingsTest:
             recanalizerInstance = Recanalizer(str(rec['a2Uri']),spec,rec['roizerParams'][2],rec['roizerParams'][3],"/tmp/","arbimon2",None,True)
             self.assertIsInstance( recanalizerInstance ,Recanalizer,msg="Cannot create a Recanalizer object")
-            recanalizerInstance.instanceRec()
+            recanalizerInstance.rec = MockRec()
             recanalizerInstance.spectrogram()
             spectrogram = recanalizerInstance.getSpec()
             compSpec=None
@@ -144,45 +130,39 @@ class Test_recanalizer(unittest.TestCase):
         recordingsTest = None
         with open('test_python/data/recordings.json') as fd:
             recordingsTest= json.load(fd)
-        spec = None
-        is_64bits = sys.maxsize > 2**32
-        if is_64bits:
-            with open('test_python/data/test.recanalizer.spectrogram', 'rb') as testFile:
-                spec = pickle.load(testFile)
-        else:
-            with open('test_python/data/test.recanalizer.spectrogram.32', 'rb') as testFile:
-                spec = pickle.load(testFile)
+        spec = gen_stripped_matrix(1116,50)
         for rec in recordingsTest:
             recanalizerInstance = Recanalizer(str(rec['a2Uri']),spec,rec['roizerParams'][2],rec['roizerParams'][3],"/tmp/","arbimon2",None,True)
             self.assertIsInstance( recanalizerInstance ,Recanalizer,msg="Cannot create a Recanalizer object")
-            recanalizerInstance.instanceRec()
+            recanalizerInstance.rec = MockRec()
             recanalizerInstance.spectrogram()
-            #recanalizerInstance.featureVector()
-            #currVector = recanalizerInstance.getVector()
-            #vectStats = recanalizerInstance.features()
-            #compVector =  None
-            #if is_64bits:
-            #    with open(str(rec['featureVector']), 'rb') as specFile:
-            #        compVector=pickle.load(specFile)
-            #else:
-            #    with open(str(rec['featureVector'])+".32", 'rb') as specFile:
-            #        compVector=pickle.load(specFile)
-            #compVectorStats =  None
-            #if is_64bits:
-            #    with open(str(rec['featureVectorStats']), 'rb') as specFile:
-            #        compVectorStats=pickle.load(specFile)
-            #else:
-            #    with open(str(rec['featureVectorStats'])+".32", 'rb') as specFile:
-            #        compVectorStats=pickle.load(specFile)
-            #for j in range(len(currVector)):
-            #    self.assertEqual(currVector[j],compVector[j],msg="Roecanalizer.featureVector computed wrong vector")
-            #for j in range(len(compVectorStats)):
-            #    self.assertEqual(compVectorStats[j],vectStats[j],msg="Roecanalizer.featureVector computed wrong features")
-            #del currVector
-            #del recanalizerInstance
-            #del compVectorStats
-            #del compVector
-            #del vectStats
+            recanalizerInstance.featureVector()
+            currVector = recanalizerInstance.getVector()
+            vectStats = recanalizerInstance.features()
+            compVector =  None
+            is_64bits = sys.maxsize > 2**32
+            if is_64bits:
+                with open(str(rec['featureVector']), 'rb') as specFile:
+                    compVector=pickle.load(specFile)
+            else:
+                with open(str(rec['featureVector'])+".32", 'rb') as specFile:
+                    compVector=pickle.load(specFile)
+            compVectorStats =  None
+            if is_64bits:
+                with open(str(rec['featureVectorStats']), 'rb') as specFile:
+                    compVectorStats=pickle.load(specFile)
+            else:
+                with open(str(rec['featureVectorStats'])+".32", 'rb') as specFile:
+                    compVectorStats=pickle.load(specFile)
+            for j in range(len(currVector)):
+                self.assertEqual(currVector[j],compVector[j],msg="Roecanalizer.featureVector computed wrong vector")
+            for j in range(len(compVectorStats)):
+                self.assertEqual(compVectorStats[j],vectStats[j],msg="Roecanalizer.featureVector computed wrong features")
+            del currVector
+            del recanalizerInstance
+            del compVectorStats
+            del compVector
+            del vectStats
         del spec
         
 if __name__ == '__main__':
