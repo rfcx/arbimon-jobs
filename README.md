@@ -74,12 +74,6 @@ Bio-Acoustic Analyzer - JOBS
    ```
    sudo apt-get install libsndfile-dev
    ```
-   
-   
- - node global dependencies(`sudo npm install -g <package>`):
-  - bower
-  - grunt-cli
-  
   
  - individual python dependencies (`sudo pip install`):
     - numpy 

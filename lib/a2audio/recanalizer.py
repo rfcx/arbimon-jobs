@@ -1,4 +1,5 @@
 from a2audio.rec import Rec
+from a2audio.thresholder import Thresholder
 from pylab import *
 import numpy
 import time
@@ -12,8 +13,11 @@ from a2pyutils.logger import Logger
 import os
 import json
 from fullFrequencies import *
+from scipy.stats import *
+from  scipy.signal import *
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
+
 
 class Recanalizer:
     
@@ -93,9 +97,29 @@ class Recanalizer:
         return self.distances
     
     def features(self):
+        
+        N = len(self.distances)
+        fvi = np.fft.fft(self.distances, n=2*N)
+        acf = np.real( np.fft.ifft( fvi * np.conjugate(fvi) )[:N] )
+        acf = acf/(N - numpy.arange(N))
+        
+        xf = abs(numpy.fft.fft(self.distances))
+        fs = [ numpy.mean(xf), (max(xf)-min(xf)),
+                max(xf), min(xf)
+                , numpy.std(xf) , numpy.median(xf),skew(xf),
+                kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
+        hist = histogram(self.distances,6)[0]
+        cfs =  cumfreq(self.distances,6)[0]
         return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
                 max(self.distances), min(self.distances)
-                , numpy.std(self.distances) , numpy.median(self.distances)]
+                , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
+                kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
+                ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
+                ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
+                ,moment(self.distances,9),moment(self.distances,10)
+                ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
+                ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
+                ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         
     def featureVector(self):
         if self.logs:
@@ -105,9 +129,9 @@ class Recanalizer:
         pieces = self.uri.split('/')
         self.distances = []
         currColumns = self.spec.shape[1]
-        step = 16
+        step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
         if self.logs:
-           self.logs.write("featureVector start")
+            self.logs.write("featureVector start")
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
         removeUnwanted = self.matrixSurfacComp[self.matrixSurfacComp == -10000]
         if len(removeUnwanted) < 0 :
@@ -191,7 +215,9 @@ class Recanalizer:
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
-        self.spec = Z
+            
+        threshold = Thresholder()
+        self.spec = threshold.apply(Z)
     
     def showVectAndSpec(self):
         ax1 = subplot(211)

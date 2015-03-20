@@ -1,8 +1,12 @@
 from pylab import *
 import numpy
 numpy.seterr(all='ignore')
+numpy.seterr(divide='ignore', invalid='ignore')
+import cPickle as pickle
 import scipy
 import math
+from skimage.measure import structural_similarity as ssim
+
 class Roiset:   
 
     def __init__(self, classId,setSRate):
@@ -19,9 +23,11 @@ class Roiset:
         self.setSampleRate = setSRate
         
     def addRoi(self,lowFreq,highFreq,sample_rate,spec,rows,columns):
+        isthebigger = False
         if self.setSampleRate == sample_rate:
             if len(self.sampleLengths) < 1:
                 self.maxColumns = columns
+                self.biggestIndex = 0
                 self.varlengthsIndeces = []
                 self.maxIndeces = []
                 self.maxrois = []
@@ -37,6 +43,8 @@ class Roiset:
             else:
                 highestBand = highFreq - lowFreq
                 if self.maxColumns < columns:
+                    isthebigger = True
+                    self.biggestIndex = self.roiCount + 1
                     self.biggestRoi = spec
                 if self.highestBand <= highestBand and self.maxColumns < columns:
                     self.biggestRoi = spec
@@ -67,7 +75,7 @@ class Roiset:
             self.sampleRates.append(sample_rate)    
             self.sampleLengths.append(columns)
             self.rows = rows
-            self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec)) 
+            self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
             self.roiCount = self.roiCount + 1
     
     def getData(self):
@@ -77,33 +85,62 @@ class Roiset:
         return self.meanSurface
     
     def alignSamples(self):
-        surface = numpy.zeros(shape=(self.rows,self.maxColumns))
-        weights = numpy.zeros(shape=(self.rows,self.maxColumns))
-        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,surface.shape[0]))]
+        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.rows))]
+        big_high_index = 0
+        big_low_index = 0
+        while freqs[big_high_index] >= self.highestFreq:
+            big_high_index = big_high_index + 1
+            big_low_index  = big_low_index  + 1
+        while freqs[big_low_index ] >=  self.lowestFreq:
+            big_low_index  = big_low_index  + 1
+        surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
+        compsurface = numpy.random.rand(self.rows,self.maxColumns*2)
+        jval = math.floor(self.maxColumns/2)
+        surface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
+        compsurface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
+        weights = numpy.zeros(shape=(self.rows,self.maxColumns*2))
+        weights[big_high_index:big_low_index,jval:(jval+self.maxColumns)] = 1
+        dm = 1
+        minj = jval
+        maxj = jval+self.maxColumns
+        index = 0
+        highcut = big_high_index
+        lowcut = big_low_index
         for roi in self.roi:
-            high_index = 0
-            low_index = 0
-            while freqs[high_index] >= roi.highFreq:
-                high_index = high_index + 1
-                low_index  = low_index  + 1
-            while freqs[low_index ] >=  roi.lowFreq:
-                low_index  = low_index  + 1
-            distances = []
-            currColumns = roi.spec.shape[1]
-            
-            for jj in range(self.maxColumns -currColumns ): 
-                subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
-                distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
-            if len(distances) > 0:
-                j = distances.index(min(distances))
-            else:
-                j = 0
-
-            surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
-                
-            weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
-            
-        self.meanSurface = numpy.divide(surface,weights)
+            if index is not self.biggestIndex:
+                high_index = 0
+                low_index = 0
+                while freqs[high_index] >= roi.highFreq:
+                    high_index = high_index + 1
+                    low_index  = low_index  + 1
+                while freqs[low_index ] >=  roi.lowFreq:
+                    low_index  = low_index  + 1
+                distances = []
+                currColumns = roi.spec.shape[1]
+                compareArea = roi.spec[high_index:low_index,:]
+                for jj in range((self.maxColumns*2) -currColumns ): 
+                    subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
+                    #distances.append(ssim(subMatrix ,compareArea  , dynamic_range=dm ) )
+                    distances.append(ssim(subMatrix ,compareArea   ) )
+                j = distances.index(max(distances))
+                del distances
+                if minj > j :
+                    minj = j
+                if maxj< j+currColumns:
+                    maxj = j+currColumns
+                if highcut < high_index:
+                    highcut = high_index
+                if lowcut   >  low_index:
+                    lowcut   =  low_index
+                compsurface[high_index:low_index, j:(j+currColumns)] = compsurface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
+                surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
+                dm = dm + 1    
+                weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+            index = index + 1
+        self.meanSurface = numpy.divide(surface[:,minj:(maxj)],weights[:,minj:(maxj)])
+        self.meanSurface[0:highcut,:] = -10000
+        self.meanSurface[lowcut:(self.meanSurface.shape[0]-1),:] = -10000 
+        self.maxColumns = self.meanSurface.shape[1]
         self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
         
     def alignSamples2(self):
@@ -172,7 +209,7 @@ class Roiset:
 
 class Roi:
 
-    def __init__(self,lowFreq,highFreq,sample_rate,spec):
+    def __init__(self,lowFreq,highFreq,sample_rate,spec,bigflag=False):
         if type(lowFreq) is not int and  type(lowFreq) is not float:
             raise ValueError("lowFreq must be a number")
         if type(highFreq) is not int and  type(highFreq) is not float:
@@ -187,6 +224,7 @@ class Roi:
         self.highFreq = highFreq
         self.sample_rate = sample_rate
         self.spec = spec
+        self.biggest = bigflag
     
     def getData(self):
         return [self.lowFreq,self.highFreq,self.sample_rate,self.spec]
