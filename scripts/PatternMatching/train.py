@@ -22,6 +22,7 @@ from a2audio.model import Model
 import numpy
 import png
 from pylab import *
+import cPickle as pickle
 
 num_cores = multiprocessing.cpu_count()
 
@@ -282,18 +283,19 @@ if model_type_id == 1:
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
         exit_error(db,workingFolder,log,jobId,'cannot align rois')
-   
+    with open("/home/rafa/data.debug", 'wb') as output:
+        pickler = pickle.Pickler(output, -1)
+        pickle.dump([rois,patternSurfaces], output, -1)    
+    quit()
     if len(patternSurfaces) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
-    
+        
     results = None
     """Recnilize"""
-    #try:
-    #results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
-    for line in validationData:
-        recnilize(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) 
-    #except:
-        #exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+    try:
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+    except:
+        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
@@ -302,26 +304,26 @@ if model_type_id == 1:
     ausenceCount = 0
     for res in results:
         if 'err' not in res:
-            if int(res[7]) == 0:
+            if int(res['info'][1]) == 0:
                 ausenceCount = ausenceCount + 1
-            if int(res[7]) == 1:
+            if int(res['info'][1]) == 1:
                 presentsCount = presentsCount + 1            
             if presentsCount >= 2 and ausenceCount >= 2:
                 break
             
-    if presentsCount < 2 and ausenceCount < 2:
+    if presentsCount < 2 or ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
 
     """Add samples to model"""
     models = {}
     try:
         for res in results:
-            classid = res[6]
+            classid = res['info'][0]
             if classid in models:
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
             else:
                 models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
         
@@ -406,18 +408,19 @@ if model_type_id == 1:
         except :
             exit_error(db,workingFolder,log,jobId,'cannot get stats from model')       
         pngKey = None
-        try:
-            
+        try:       
             pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
             pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
             specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
             rowsInSpec = modelStats[4].shape[0]
             spec = modelStats[4]
-            spec[spec == -10000] = float('nan')
+            if len(spec == -10000)>0:
+                spec[spec == -10000] = float('nan')
             for j in range(0,rowsInSpec):
                 if abs(sum(spec[j,:])) > 0.0:
                     specToShow = numpy.vstack((specToShow,spec[j,:]))
-            specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
+            if len(specToShow[:,:]==0)>0:
+                specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
             smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
             smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
             x = 255*(1-((specToShow - smin)/(smax-smin)))

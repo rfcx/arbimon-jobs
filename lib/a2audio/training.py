@@ -18,12 +18,11 @@ def roigen(line,config,tempFolder,currDir ,jobId):
     lowFreq = float(line[5])
     highFreq = float(line[6])
     recuri = line[7]
+    print recuri
     roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq)
-    
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
         db.commit()
-        
     if "NoAudio" in roi.status:
         with closing(db.cursor()) as cursor:
             cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
@@ -65,15 +64,16 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern):
         k = bucket.new_key(vectorUri)
         k.set_contents_from_filename(vectorFile)
         k.set_acl('public-read')
-        fets.append(line[4])
-        fets.append(line[3])
-        fets.append(pattern[4])
-        fets.append(pattern[2])
-        fets.append(pattern[3])
-        fets.append(pattern[1])
-        fets.append(line[0])
+        infos = []
+        infos.append(line[4])
+        infos.append(line[3])
+        infos.append(pattern[4])
+        infos.append(pattern[2])
+        infos.append(pattern[3])
+        infos.append(pattern[1])
+        infos.append(line[0])
         db.close()
-        return fets
+        return {"fets":fets,"info":infos}
     else:
         db.close()
         return 'err'

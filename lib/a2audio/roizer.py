@@ -55,7 +55,7 @@ class Roizer:
         else:
             self.status = "NoAudio"
             return None
-        dur = self.samples/self.sample_rate
+        dur = float(self.samples)/float(self.sample_rate)
         if dur < endiSecs-0.1:
             raise ValueError("endiSecs greater than recording duration")
         
@@ -79,26 +79,33 @@ class Roizer:
         freqsFull = get_freqs()
         maxHertzInRec = float(self.sample_rate)/2.0
         nfft = 1116 #if 192000 Hz nfft is 1116 else:
+        real_sample_Rate = self.sample_rate
         if float(self.sample_rate) == 16000.0:
             nfft = 93
+            self.sample_rate = 16000.0
         if float(self.sample_rate) == 32000.0:
             nfft = 186
+            self.sample_rate = 32000.0
         if float(self.sample_rate) == 48000.0:
             nfft = 279
+            self.sample_rate = 48000.0
         if float(self.sample_rate) == 96000.0:
             nfft = 558
+            self.sample_rate = 96000.0
         targetrows = len(freqsFull)
         data = self.original[initSample:endSample]
-        Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
+        Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=real_sample_Rate, noverlap=nfft)
         dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:
             Pxx[i,:] = 0 
             i = i + 1
+        j = i
         #calculate decibeles in the passband
         while freqs[i] < self.highF:
             Pxx[i,:] =  10. * numpy.log10(Pxx[i,:].clip(min=0.0000000001))
             i = i + 1
+        print "roizer spectrogram:",j,i
         #put zeros in unwanted frequencies (filter)
         while i <  dims[0]:
             Pxx[i,:] = 0

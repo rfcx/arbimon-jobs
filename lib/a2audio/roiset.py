@@ -23,60 +23,57 @@ class Roiset:
         self.setSampleRate = setSRate
         
     def addRoi(self,lowFreq,highFreq,sample_rate,spec,rows,columns):
-        isthebigger = False
-        if self.setSampleRate == sample_rate:
-            if len(self.sampleLengths) < 1:
-                self.maxColumns = columns
-                self.biggestIndex = 0
-                self.varlengthsIndeces = []
-                self.maxIndeces = []
-                self.maxrois = []
-                self.varlengths = set()
-                self.maxrois.append(spec)
-                self.maxIndeces.append(self.roiCount)
-                self.lowestFreq = lowFreq
-                self.highestFreq = highFreq
-                self.highestlowestFreq = lowFreq
-                self.lowesthighestFreq = highFreq
+        if len(self.sampleLengths) < 1:
+            self.maxColumns = columns
+            self.biggestIndex = 0
+            self.varlengthsIndeces = []
+            self.maxIndeces = []
+            self.maxrois = []
+            self.varlengths = set()
+            self.maxrois.append(spec)
+            self.maxIndeces.append(self.roiCount)
+            self.lowestFreq = lowFreq
+            self.highestFreq = highFreq
+            self.highestlowestFreq = lowFreq
+            self.lowesthighestFreq = highFreq
+            self.biggestRoi = spec
+            self.highestBand = highFreq - lowFreq
+        else:
+            highestBand = highFreq - lowFreq
+            if self.maxColumns < columns:
+                self.biggestIndex = self.roiCount + 1
                 self.biggestRoi = spec
-                self.highestBand = highFreq - lowFreq
+            if self.highestBand <= highestBand and self.maxColumns < columns:
+                self.biggestRoi = spec
+            if self.lowestFreq > lowFreq:
+                self.lowestFreq = lowFreq
+            if self.highestFreq < highFreq:
+                self.highestFreq = highFreq
+            if self.highestlowestFreq  < lowFreq:
+                self.highestlowestFreq  = lowFreq
+            if self.lowesthighestFreq > highFreq:
+                self.lowesthighestFreq = highFreq
+            if self.maxColumns < columns:
+                self.varlengths.add(self.maxColumns)
+                self.maxColumns = columns
+                for i in self.maxIndeces:
+                    self.varlengthsIndeces.append(i)
+                self.maxIndeces = []
+                self.maxIndeces.append(self.roiCount)
+                self.maxrois = []
+                self.maxrois.append(spec)
+            elif self.maxColumns == columns:
+                self.maxIndeces.append(self.roiCount)
+                self.maxrois.append(spec)
             else:
-                highestBand = highFreq - lowFreq
-                if self.maxColumns < columns:
-                    isthebigger = True
-                    self.biggestIndex = self.roiCount + 1
-                    self.biggestRoi = spec
-                if self.highestBand <= highestBand and self.maxColumns < columns:
-                    self.biggestRoi = spec
-                if self.lowestFreq > lowFreq:
-                    self.lowestFreq = lowFreq
-                if self.highestFreq < highFreq:
-                    self.highestFreq = highFreq
-                if self.highestlowestFreq  < lowFreq:
-                    self.highestlowestFreq  = lowFreq
-                if self.lowesthighestFreq > highFreq:
-                    self.lowesthighestFreq = highFreq
-                if self.maxColumns < columns:
-                    self.varlengths.add(self.maxColumns)
-                    self.maxColumns = columns
-                    for i in self.maxIndeces:
-                        self.varlengthsIndeces.append(i)
-                    self.maxIndeces = []
-                    self.maxIndeces.append(self.roiCount)
-                    self.maxrois = []
-                    self.maxrois.append(spec)
-                elif self.maxColumns == columns:
-                    self.maxIndeces.append(self.roiCount)
-                    self.maxrois.append(spec)
-                else:
-                    self.varlengthsIndeces.append(self.roiCount)
-                    self.varlengths.add(columns)
-                    
-            self.sampleRates.append(sample_rate)    
-            self.sampleLengths.append(columns)
-            self.rows = rows
-            self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
-            self.roiCount = self.roiCount + 1
+                self.varlengthsIndeces.append(self.roiCount)
+                self.varlengths.add(columns)
+        self.sampleRates.append(sample_rate)    
+        self.sampleLengths.append(columns)
+        self.setSampleRate = max(self.sampleRates)
+        self.rows = rows
+        self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
+        self.roiCount = self.roiCount + 1
     
     def getData(self):
         return [self.roi,self.rows,self.roiCount,self.biggestRoi,self.lowestFreq,self.highestFreq,self.maxColumns]
@@ -88,10 +85,10 @@ class Roiset:
         freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.rows))]
         big_high_index = 0
         big_low_index = 0
-        while freqs[big_high_index] >= self.highestFreq:
+        while freqs[big_high_index] > self.highestFreq:
             big_high_index = big_high_index + 1
             big_low_index  = big_low_index  + 1
-        while freqs[big_low_index ] >=  self.lowestFreq:
+        while freqs[big_low_index ] >  self.lowestFreq:
             big_low_index  = big_low_index  + 1
         surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
         compsurface = numpy.random.rand(self.rows,self.maxColumns*2)
@@ -99,6 +96,7 @@ class Roiset:
         surface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
         compsurface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
         weights = numpy.zeros(shape=(self.rows,self.maxColumns*2))
+        print "alignSamples",big_high_index,big_low_index
         weights[big_high_index:big_low_index,jval:(jval+self.maxColumns)] = 1
         dm = 1
         minj = jval
