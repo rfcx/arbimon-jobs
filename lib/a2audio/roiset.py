@@ -6,10 +6,11 @@ import cPickle as pickle
 import scipy
 import math
 from skimage.measure import structural_similarity as ssim
+from fullFrequencies import *
 
 class Roiset:   
 
-    def __init__(self, classId,setSRate):
+    def __init__(self, classId,setSRate,logs=None):
         if type(classId) is not str and type(classId) is not int:
             raise ValueError("classId must be a string or int. Input was a "+str(type(classId)))
         if type(setSRate) is not int and  type(setSRate) is not float:
@@ -21,6 +22,7 @@ class Roiset:
         self.rows = 0
         self.sampleRates = []
         self.setSampleRate = setSRate
+        self.logs = logs
         
     def addRoi(self,lowFreq,highFreq,sample_rate,spec,rows,columns):
         if len(self.sampleLengths) < 1:
@@ -82,21 +84,26 @@ class Roiset:
         return self.meanSurface
     
     def alignSamples(self):
-        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.rows))]
+        if self.logs:
+            self.logs.write("Roiset.py: set sample rate = "+str(self.setSampleRate))
+        freqs = [i for i in reversed(get_freqs())]#[self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.rows))]
         big_high_index = 0
         big_low_index = 0
-        while freqs[big_high_index] > self.highestFreq:
+        if self.logs:
+            self.logs.write("Roiset.py: high freq = "+str(self.highestFreq)+" low freq "+str(self.lowestFreq))
+        while float(freqs[big_high_index]) >= float(self.highestFreq):
             big_high_index = big_high_index + 1
             big_low_index  = big_low_index  + 1
-        while freqs[big_low_index ] >  self.lowestFreq:
+        while float(freqs[big_low_index ]) >=  float(self.lowestFreq):
             big_low_index  = big_low_index  + 1
+        big_low_index  = big_low_index -1
+        big_high_index = big_high_index + 2
         surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
         compsurface = numpy.random.rand(self.rows,self.maxColumns*2)
         jval = math.floor(self.maxColumns/2)
         surface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
         compsurface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
         weights = numpy.zeros(shape=(self.rows,self.maxColumns*2))
-        print "alignSamples",big_high_index,big_low_index
         weights[big_high_index:big_low_index,jval:(jval+self.maxColumns)] = 1
         dm = 1
         minj = jval
@@ -140,7 +147,9 @@ class Roiset:
         self.meanSurface[lowcut:(self.meanSurface.shape[0]-1),:] = -10000 
         self.maxColumns = self.meanSurface.shape[1]
         self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
-        
+        if self.logs:
+            self.logs.write("Roiset.py: aligned "+str(len(self.roi))+" rois")
+            
     def alignSamples2(self):
         self.surface = numpy.sum(self.maxrois,axis=0)
         weights = numpy.zeros(shape=(self.rows,self.maxColumns))

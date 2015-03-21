@@ -80,13 +80,13 @@ class Rec:
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
             self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
         if self.logs :
-            self.logs.write("init completed:" + str(time.time() - start_time))
+            self.logs.write("Rec.py : init completed:" + str(time.time() - start_time))
             
         if not test:
             start_time = time.time()
             self.process()
             if self.logs :
-                self.logs.write("process completed:" + str(time.time() - start_time))          
+                self.logs.write("Rec.py : process completed:" + str(time.time() - start_time))          
         
     def process(self):
         start_time = time.time()
@@ -94,7 +94,7 @@ class Rec:
            self.status = 'KeyNotFound'
            return None  
         if self.logs :
-            self.logs.write("getAudioFromUri:" + str(time.time() - start_time))
+            self.logs.write("Rec.py : getAudioFromUri:" + str(time.time() - start_time))
         
         start_time = time.time()
         if not self.readAudioFromFile():
@@ -106,11 +106,11 @@ class Rec:
             return None
         
         if self.logs :
-            self.logs.write("readAudioFromFile:" + str(time.time() - start_time))
+            self.logs.write("Rec.py : readAudioFromFile:" + str(time.time() - start_time))
         
         if not self.removeFiles():
             if self.logs :
-                self.logs.write("removeFiles: warning some files could not be removed")
+                self.logs.write("Rec.py : removeFiles: warning some files could not be removed")
         
         if self.channs> 1:
             self.status = 'StereoNotSupported'
@@ -143,19 +143,19 @@ class Rec:
     def getAudioFromUri(self):
         start_time = time.time()
         f = None
-        if self.logs :
-            self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
+        #if self.logs :
+            #self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
         try:
             f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :
-                self.logs.write('urlopen success')
+                self.logs.write('Rec.py : urlopen success')
         except urllib2.HTTPError, e:
             if self.logs :
-                self.logs.write("bucket http error:" + str(e.code ))
+                self.logs.write("Rec.py : bucket http error:" + str(e.code ))
             return False
         except urllib2.URLError, e:
             if self.logs :
-                self.logs.write("bucket url error:" + str(e.reason ))
+                self.logs.write("Rec.py : bucket url error:" + str(e.reason ))
             return False  
         if f:
             try:
@@ -163,14 +163,14 @@ class Rec:
                     local_file.write(f.read())
             except:
                 if self.logs :
-                    self.logs.write('error f.read')
+                    self.logs.write('Rec.py : error f.read')
                 return False
         else:
             return False
         
         if self.logs :
-            self.logs.write('f.read success')
-            self.logs.write("retrieve recording:" + str(time.time() - start_time))
+            self.logs.write('Rec.py : f.read success')
+            self.logs.write("Rec.py : retrieve recording:" + str(time.time() - start_time))
         
         status = 'Downloaded'
         
@@ -186,7 +186,7 @@ class Rec:
         try:
             with contextlib.closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
-                    self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
+                    self.logs.write("Rec.py : sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
                 self.bps = 16 #self.parseEncoding(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
@@ -196,7 +196,7 @@ class Rec:
             return True
         except:
             if self.logs :
-                self.logs.write("error opening : "+self.filename)
+                self.logs.write("Rec.py : error opening : "+self.filename)
             return False
 
     def removeFiles(self):
@@ -212,14 +212,14 @@ class Rec:
                     self.localfilename = self.localfilename+".wav"
                 except:
                     if self.logs :
-                        self.logs.write("error creating wav copy : "+self.localfilename) 
+                        self.logs.write("Rec.py : error creating wav copy : "+self.localfilename) 
                     return False
             
         if self.removeFile:
             if os.path.isfile(self.localfilename):
                 os.remove(self.localfilename)
             if self.logs :
-                self.logs.write("remove temporary file:" + str(time.time() - start_time))
+                self.logs.write("Rec.py : remove temporary file:" + str(time.time() - start_time))
         
         return True
 

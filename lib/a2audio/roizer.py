@@ -10,7 +10,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000):
+    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -35,11 +35,15 @@ class Roizer:
         if lowFreq>=highFreq :
             raise ValueError("lowFreq must be less than highFreq")
         self.spec = None
-        recording = Rec(uri,tempFolder,bucketName,None)
-
+        recording = Rec(uri,tempFolder,bucketName,logs)
+        self.logs = logs
+        if self.logs:
+            logs.write("Roizer: "+str(uri))
         if  'HasAudioData' in recording.status:
             if float(recording.sample_rate) not in analysis_sample_rates:
                 self.status = "SampleRateNotSupported"
+                if self.logs:
+                    logs.write("Roizer: "+str(recording.sample_rate)+" is not supported")
                 return None              
             self.original = recording.original
             self.sample_rate = recording.sample_rate
@@ -52,15 +56,31 @@ class Roizer:
             self.lowF = lowFreq
             self.highF = highFreq 
             self.uri = uri
+            if self.logs:
+                self.logs.write("Roizer: has audio data")          
         else:
+            if self.logs:
+                self.logs.write("Roizer: has no audio data")   
             self.status = "NoAudio"
             return None
         dur = float(self.samples)/float(self.sample_rate)
         if dur < endiSecs-0.1:
+            if self.logs:
+                self.logs.write("Roizer: endiSecs greater than recording duration")   
             raise ValueError("endiSecs greater than recording duration")
         
         if  'HasAudioData' in self.status:
-            self.spectrogram()
+            if self.logs:
+                self.logs.write("Roizer: creating spectrogram")
+            try:
+                self.spectrogram()
+            except:
+                if self.logs:
+                    self.logs.write("Roizer: cannot create spectrogram")
+                self.status = "NoSpectrogram"
+                return None
+            if self.logs:
+                self.logs.write("Roizer: spectrogram done")  
 
     def getAudioSamples(self):
         return self.original
@@ -76,6 +96,12 @@ class Roizer:
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
         if endSample >= len(self.original):
            endSample = len(self.original) - 1
+           
+        if self.logs:
+            self.logs.write("Roizer.py: sampleRate "+str(self.sample_rate))
+            self.logs.write("Roizer.py: Init time: "+str(self.iniT)+" = "+str(initSample)+ " sample ")
+            self.logs.write("Roizer.py: End time: "+str(self.endT)+" = "+str(endSample)+ " sample ")
+            
         freqsFull = get_freqs()
         maxHertzInRec = float(self.sample_rate)/2.0
         nfft = 1116 #if 192000 Hz nfft is 1116 else:
@@ -105,7 +131,6 @@ class Roizer:
         while freqs[i] < self.highF:
             Pxx[i,:] =  10. * numpy.log10(Pxx[i,:].clip(min=0.0000000001))
             i = i + 1
-        print "roizer spectrogram:",j,i
         #put zeros in unwanted frequencies (filter)
         while i <  dims[0]:
             Pxx[i,:] = 0

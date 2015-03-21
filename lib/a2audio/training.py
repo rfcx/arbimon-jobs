@@ -4,11 +4,16 @@ from contextlib import closing
 from boto.s3.connection import S3Connection
 from a2audio.recanalizer import Recanalizer
 import csv
+from a2pyutils.logger import Logger
 
 def roigen(line,config,tempFolder,currDir ,jobId):
+    jobId = int(jobId)
+    log = Logger(jobId, 'training.py', 'roigen')
+    log.also_print = True
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     if len(line) < 8:
         db.close()
+        log.write("roigen: not enough params")
         return 'err'
     recId = int(line[0])
     roispeciesId = int(line[1])
@@ -18,18 +23,21 @@ def roigen(line,config,tempFolder,currDir ,jobId):
     lowFreq = float(line[5])
     highFreq = float(line[6])
     recuri = line[7]
-    print recuri
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq)
+    log.write("roigen: processing "+recuri)
+    log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
+    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log)
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
         db.commit()
     if "NoAudio" in roi.status:
+        log.write("roigen: no audio err " + str(recuri))
         with closing(db.cursor()) as cursor:
             cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
             db.commit()
         db.close()
         return 'err'
-    else:            
+    else:
+        log.write("roigen: done")
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     

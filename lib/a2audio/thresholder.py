@@ -2,12 +2,6 @@ from skimage.filter import threshold_otsu, threshold_adaptive, threshold_isodata
 import numpy
 from sklearn.cluster import k_means
 
-#with results:
-#   global kmeans
-
-
-
-
 funcs = {'global':{'otsu','median','kmeans','isodata','yen'} ,
          'adaptive':{ 'gaussian', 'mean', 'median'}}
 

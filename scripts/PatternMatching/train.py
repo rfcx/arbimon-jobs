@@ -276,20 +276,18 @@ if model_type_id == 1:
                 if classid in classes:
                     classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
                 else:
-                    classes[classid] = Roiset(classid,float(sample_rate) )
+                    logRoiset = Logger(jobId, 'train.py', 'roiset')
+                    logRoiset.also_print = True
+                    classes[classid] = Roiset(classid,float(sample_rate) ,logRoiset)
                     classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
         for i in classes:
             classes[i].alignSamples()
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
         exit_error(db,workingFolder,log,jobId,'cannot align rois')
-    with open("/home/rafa/data.debug", 'wb') as output:
-        pickler = pickle.Pickler(output, -1)
-        pickle.dump([rois,patternSurfaces], output, -1)    
-    quit()
+
     if len(patternSurfaces) == 0 :
-        exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
-        
+        exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')      
     results = None
     """Recnilize"""
     try:
