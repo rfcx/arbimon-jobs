@@ -124,6 +124,8 @@ class Roiset:
                     low_index  = low_index  + 1
                 while float(freqs[low_index ]) >=  float(roi.lowFreq):
                     low_index  = low_index  + 1
+                low_index  = low_index  - 1
+                high_index = high_index + 2
                 distances = []
                 currColumns = roi.spec.shape[1]
                 compareArea = roi.spec[high_index:low_index,:]

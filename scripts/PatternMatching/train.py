@@ -81,7 +81,8 @@ with closing(db.cursor()) as cursor:
             JP.use_in_training_notpresent,
             JP.use_in_validation_present,
             JP.use_in_validation_notpresent,
-            JP.name
+            JP.name,
+            JP.use_ssim
         FROM `jobs` J
         JOIN `job_params_training` JP ON JP.job_id = J.job_id
         WHERE J.`job_id` = %s
@@ -100,16 +101,19 @@ if not row:
     use_in_training_notpresent,
     use_in_validation_present,
     use_in_validation_notpresent,
-    name
+    name,
+    ssim_flag
 ) = row
 modelName = name
 tempFolders = tempfile.gettempdir()
 # select the model_type by its id
 if model_type_id == 1:
     """Pattern Matching (modified Alvarez thesis)"""
-    useSsim = False
-    
-    log.write("Pattern Matching (modified Alvarez thesis)")
+    useSsim = bool(int(ssim_flag))
+    if useSsim:
+        log.write("Pattern Matching (modified Alvarez thesis) with ssim")
+    else:
+        log.write("Pattern Matching (modified Alvarez thesis) without ssim")
     progress_steps = 0
     # creating a temporary folder
     workingFolder = tempFolders+"/training_"+str(jobId)+"/"
