@@ -7,7 +7,7 @@ funcs = {'global':{'otsu','median','kmeans','isodata','yen'} ,
 
 class Thresholder:
         
-    def __init__(self , func = 'global' , method = 'yen'):
+    def __init__(self , func = 'adaptive' , method = 'mean'):
         
         if func in funcs:
             self.func = func
@@ -41,7 +41,7 @@ class Thresholder:
             binary = matrix > value
             
         if  self.func ==  'adaptive':
-            binary = threshold_adaptive(matrix, 15, self.method)
+            binary = threshold_adaptive(matrix, 127, self.method)
             
         return binary.astype('float')
 

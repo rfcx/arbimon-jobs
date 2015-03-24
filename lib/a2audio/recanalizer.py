@@ -153,7 +153,7 @@ class Recanalizer:
         else:
             maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
             for j in range(0,currColumns - self.columns,step):
-                val = numpy.linalg.norm(numpy.copy(spec[: , j:(j+self.columns)] - self.matrixSurfacComp ) )/maxnormforsize
+                val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
                 self.distances.append(  val )
             
         if self.logs:
