@@ -10,7 +10,10 @@ from fullFrequencies import *
 
 class Roiset:   
 
-    def __init__(self, classId,setSRate,logs=None):
+    def __init__(self, classId,setSRate,logs=None,useDynamicRanging=False):
+        
+        """useDynamicRanging when ROI matrices are of zeros and ones (boolean matrices from the thresholder)"""
+        
         if type(classId) is not str and type(classId) is not int:
             raise ValueError("classId must be a string or int. Input was a "+str(type(classId)))
         if type(setSRate) is not int and  type(setSRate) is not float:
@@ -23,6 +26,7 @@ class Roiset:
         self.sampleRates = []
         self.setSampleRate = setSRate
         self.logs = logs
+        self.useDynamicRanging = useDynamicRanging
         
     def addRoi(self,lowFreq,highFreq,sample_rate,spec,rows,columns):
         if len(self.sampleLengths) < 1:
@@ -86,7 +90,7 @@ class Roiset:
     def alignSamples(self):
         if self.logs:
             self.logs.write("Roiset.py: set sample rate = "+str(self.setSampleRate))
-        freqs = [i for i in reversed(get_freqs())]#[self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.rows))]
+        freqs = [i for i in reversed(get_freqs())]
         big_high_index = 0
         big_low_index = 0
         if self.logs:
@@ -115,18 +119,28 @@ class Roiset:
             if index is not self.biggestIndex:
                 high_index = 0
                 low_index = 0
-                while freqs[high_index] >= roi.highFreq:
+                while float(freqs[high_index]) >= float(roi.highFreq):
                     high_index = high_index + 1
                     low_index  = low_index  + 1
-                while freqs[low_index ] >=  roi.lowFreq:
+                while float(freqs[low_index ]) >=  float(roi.lowFreq):
                     low_index  = low_index  + 1
                 distances = []
                 currColumns = roi.spec.shape[1]
                 compareArea = roi.spec[high_index:low_index,:]
-                for jj in range((self.maxColumns*2) -currColumns ): 
-                    subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
-                    #distances.append(ssim(subMatrix ,compareArea  , dynamic_range=dm ) )
-                    distances.append(ssim(subMatrix ,compareArea   ) )
+                winSize = min(compareArea.shape)
+                winSize = min(winSize,7)
+                if winSize %2 == 0:
+                    winSize = winSize - 1
+                if winSize < 1:
+                    winSize = 1
+                if self.useDynamicRanging:
+                    for jj in range((self.maxColumns*2) -currColumns ): 
+                        subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
+                        distances.append(ssim(subMatrix ,compareArea , win_size=winSize, gradient=False  , dynamic_range=dm) )
+                else:
+                    for jj in range((self.maxColumns*2) -currColumns ): 
+                        subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
+                        distances.append(ssim(subMatrix ,compareArea , win_size=winSize  ) )
                 j = distances.index(max(distances))
                 del distances
                 if minj > j :
@@ -149,50 +163,7 @@ class Roiset:
         self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
         if self.logs:
             self.logs.write("Roiset.py: aligned "+str(len(self.roi))+" rois")
-            
-    def alignSamples2(self):
-        self.surface = numpy.sum(self.maxrois,axis=0)
-        weights = numpy.zeros(shape=(self.rows,self.maxColumns))
-        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.surface.shape[0]))]
-        high_index = 0
-        low_index = 0
-        while freqs[high_index] >= self.highestFreq:
-            high_index = high_index + 1
-            low_index  = low_index  + 1
-        while freqs[low_index ] >=  self.lowestFreq:
-            low_index  = low_index  + 1
-        
-        weights[high_index:low_index ,:] = weights[high_index:low_index ,:] + len(self.maxrois)
-        
-        for i in self.varlengthsIndeces:
-            distances = []
-            currColumns = self.roi[i].spec.shape[1]
-            for j in range(self.maxColumns -currColumns ): 
-                subMatrix =  self.surface[:, j:(j+currColumns)]
-                distances.append(numpy.linalg.norm(subMatrix  - self.roi[i].spec) )
-            j = distances.index(min(distances))
-            temp = numpy.zeros(shape=(self.rows,self.maxColumns))
-            temp[:, j:(j+currColumns)] = self.roi[i].spec
-            self.maxrois.append(temp)
-            self.surface[:, j:(j+currColumns)] = self.surface[:, j:(j+currColumns)] + self.roi[i].spec
-            
-            high_index = 0
-            low_index = 0
-            
-            while freqs[high_index] >= self.roi[i].highFreq:
-                high_index = high_index + 1
-                low_index  = low_index  + 1
-                
-            while freqs[low_index ] >=  self.roi[i].lowFreq:
-                low_index  = low_index  + 1
-                
-            weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
-            
-
-        self.meanSurface = numpy.sum(self.maxrois,axis=0)
-        self.meanSurface = numpy.divide(self.meanSurface,weights)
-        self.stdSurface = numpy.std([self.maxrois[j] for j in range(self.roiCount)],axis=0)
-            
+    
     def showSurface(self):
         ax1 = subplot(111)
         im = ax1.imshow(self.surface, None)

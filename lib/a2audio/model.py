@@ -28,14 +28,12 @@ class Model:
         self.jobId = jobid
         
     def addSample(self,present,row,uri):
-    #def addSample(self,present,meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skew,kurt,moment1,moment2,moment3,moment4,moment5,moment6,moment7,moment8,moment9,moment10,cf1,cf2,cf3,cf4,cf5,cf6,hi1,hi2,hi3,hi4,hi5,hi6,fs1,fs2,fs3,fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,uri):
         self.classes.append(present)
         self.uris.append(uri)
         if self.minv >  row[3]:
             self.minv =  row[3]
         if self.maxv < row[2]:
             self.maxv = row[2]
-       #row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,skew,kurt,moment1,moment2,moment3,moment4,moment5,moment6,moment7,moment8,moment9,moment10,cf1,cf2,cf3,cf4,cf5,cf6,hi1,hi2,hi3,hi4,hi5,hi6,fs1,fs2,fs3,fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11]
         self.data = numpy.vstack((self.data,row))
     
     def getDataIndices(self):
@@ -130,10 +128,10 @@ class Model:
     def modelStats(self):
         return [self.accuracy_score,self.precision_score,self.sensitivity_score,self.obbScore,self.speciesSpec,self.specificity_score ,self.tp,self.fp,self.tn,self.fn,self.minv,self.maxv]
     
-    def save(self,filename,l,h,c):
+    def save(self,filename,l,h,c,usesSsim):
         with open(filename, 'wb') as output:
             pickler = pickle.Pickler(output, -1)
-            pickle.dump([self.clf,self.speciesSpec,l,h,c], output, -1)
+            pickle.dump([self.clf,self.speciesSpec,l,h,c,usesSsim], output, -1)
             
     def getSpec(self):
         return self.speciesSpec

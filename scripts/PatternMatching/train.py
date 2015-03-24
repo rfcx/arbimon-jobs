@@ -107,6 +107,7 @@ tempFolders = tempfile.gettempdir()
 # select the model_type by its id
 if model_type_id == 1:
     """Pattern Matching (modified Alvarez thesis)"""
+    useSsim = False
     
     log.write("Pattern Matching (modified Alvarez thesis)")
     progress_steps = 0
@@ -254,7 +255,7 @@ if model_type_id == 1:
     """Roigenerator"""
     try:
         #roigen defined in a2audio.training
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId) for line in trainingData)
+        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,useSsim) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'roigenerator failed')
     
@@ -278,7 +279,7 @@ if model_type_id == 1:
                 else:
                     logRoiset = Logger(jobId, 'train.py', 'roiset')
                     logRoiset.also_print = True
-                    classes[classid] = Roiset(classid,float(sample_rate) ,logRoiset)
+                    classes[classid] = Roiset(classid,float(sample_rate) ,logRoiset, (not useSsim))
                     classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
         for i in classes:
             classes[i].alignSamples()
@@ -287,14 +288,15 @@ if model_type_id == 1:
         exit_error(db,workingFolder,log,jobId,'cannot align rois')
 
     if len(patternSurfaces) == 0 :
-        exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')      
+        exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
+        
     results = None
     """Recnilize"""
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),useSsim) for line in validationData)
     except:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
-    
+
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
     
@@ -396,7 +398,7 @@ if model_type_id == 1:
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
         try:
-            models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4])
+            models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4],useSsim)
         except:
             exit_error(db,workingFolder,log,jobId,'error saving model file to local storage')
             

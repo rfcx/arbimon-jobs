@@ -10,7 +10,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None):
+    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -37,6 +37,7 @@ class Roizer:
         self.spec = None
         recording = Rec(uri,tempFolder,bucketName,logs)
         self.logs = logs
+        self.ssim = useSsim
         if self.logs:
             logs.write("Roizer: "+str(uri))
         if  'HasAudioData' in recording.status:
@@ -138,5 +139,9 @@ class Roizer:
         Z = numpy.flipud(Pxx[1:(Pxx.shape[0]-1),:])
         z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
         z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
-        threshold = Thresholder()
-        self.spec = threshold.apply(z)
+        if self.ssim:
+            self.spec = z
+        else:
+            threshold = Thresholder()
+            self.spec = threshold.apply(z)
+

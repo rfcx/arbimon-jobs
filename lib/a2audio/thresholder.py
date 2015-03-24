@@ -43,5 +43,5 @@ class Thresholder:
         if  self.func ==  'adaptive':
             binary = threshold_adaptive(matrix, 15, self.method)
             
-        return matrix#binary.astype('int')
+        return binary.astype('float')
 

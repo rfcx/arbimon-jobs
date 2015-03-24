@@ -21,7 +21,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -54,6 +54,7 @@ class Recanalizer:
         self.tempFolder = tempFolder
         self.rec = None
         self.status = 'NoData'
+        self.ssim = useSsim
         
         if self.logs:
            self.logs.write("processing: "+self.uri)    
@@ -62,6 +63,8 @@ class Recanalizer:
         
         if not test:
             self.process()
+        else:
+            self.status = 'TestRun'
     
     def process(self):
         start_time = time.time()
@@ -133,19 +136,26 @@ class Recanalizer:
         if self.logs:
             self.logs.write("featureVector start")
         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        removeUnwanted = self.matrixSurfacComp[self.matrixSurfacComp == -10000]
-        if len(removeUnwanted) < 0 :
+        removeUnwanted = self.matrixSurfacComp == -10000
+        if len(removeUnwanted) > 0  :
             self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
         winSize = min(self.matrixSurfacComp.shape)
         winSize = min(winSize,7)
         if winSize %2 == 0:
             winSize = winSize - 1
         spec = self.spec;
-        for j in range(0,currColumns - self.columns,step):
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-            if val < 0:
-               val = 0
-            self.distances.append(  val   )
+        if self.ssim:
+            for j in range(0,currColumns - self.columns,step):
+                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                if val < 0:
+                   val = 0
+                self.distances.append(  val )
+        else:
+            maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
+            for j in range(0,currColumns - self.columns,step):
+                val = numpy.linalg.norm(numpy.copy(spec[: , j:(j+self.columns)] - self.matrixSurfacComp ) )/maxnormforsize
+                self.distances.append(  val )
+            
         if self.logs:
            self.logs.write("featureVector end")
     
@@ -216,8 +226,11 @@ class Recanalizer:
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
             
-        threshold = Thresholder()
-        self.spec = threshold.apply(Z)
+        if self.ssim:
+            self.spec = Z
+        else:
+            threshold = Thresholder()
+            self.spec = threshold.apply(Z)
     
     def showVectAndSpec(self):
         ax1 = subplot(211)
@@ -230,7 +243,6 @@ class Recanalizer:
         close()
         
     def showSurface(self):
-        print numpy.min(numpy.min(self.matrixSurfacComp))
         imshow(self.matrixSurfacComp)
         show()
         close()

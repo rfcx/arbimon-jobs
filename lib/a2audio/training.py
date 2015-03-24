@@ -6,7 +6,7 @@ from a2audio.recanalizer import Recanalizer
 import csv
 from a2pyutils.logger import Logger
 
-def roigen(line,config,tempFolder,currDir ,jobId):
+def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
@@ -25,7 +25,7 @@ def roigen(line,config,tempFolder,currDir ,jobId):
     recuri = line[7]
     log.write("roigen: processing "+recuri)
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log)
+    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log,useSsim)
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
         db.commit()
@@ -41,7 +41,7 @@ def roigen(line,config,tempFolder,currDir ,jobId):
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,config,workingFolder,currDir,jobId,pattern):
+def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim):
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
@@ -57,7 +57,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern):
     if pid is None:
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None)
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
