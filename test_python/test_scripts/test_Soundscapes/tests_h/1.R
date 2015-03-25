@@ -10,7 +10,3 @@ test.h_value <- function()
 {
     checkEquals(0.3458347, work_h('test_python/data/test.wav'),msg=": invalid value returned")
 } 
-test.deactivation <- function()
-{
-    DEACTIVATED('Deactivating this test function')
-}

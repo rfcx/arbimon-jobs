@@ -7,7 +7,7 @@ source('scripts/Soundscapes/h.R')
 source('scripts/Soundscapes/aci.R')
 source('scripts/Soundscapes/fpeaks.R')
 
-test.suite <- defineTestSuite("h",
+test.suite <- defineTestSuite("R_tests",
                               dirs = c(file.path("test_python/test_scripts/test_Soundscapes/tests_h"),
                                         file.path("test_python/test_scripts/test_Soundscapes/tests_aci"),
                                         file.path("test_python/test_scripts/test_Soundscapes/tests_fpeaks")),
@@ -15,6 +15,6 @@ test.suite <- defineTestSuite("h",
  
 test.result <- runTestSuite(test.suite)
  
-printTextProtocol(test.result)
+printTextProtocol(test.result,showDetails =FALSE)
 
 

@@ -10,7 +10,3 @@ test.aci_value <- function()
 {
     checkEquals(150.7278, work_aci('test_python/data/test.wav'),msg=": invalid value returned")
 } 
-test.deactivation <- function()
-{
-    DEACTIVATED('Deactivating this test function')
-}
