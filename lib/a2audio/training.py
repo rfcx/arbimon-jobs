@@ -1,7 +1,7 @@
 import MySQLdb
 from a2audio.roizer import Roizer
 from contextlib import closing
-from boto.s3.connection import S3Connection
+import boto.s3.connection
 from a2audio.recanalizer import Recanalizer
 import csv
 from a2pyutils.logger import Logger
@@ -42,22 +42,37 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
 def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim):
+    if len(config) < 7:
+        return 'err'
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
-    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
-    conn = S3Connection(awsKeyId, awsKeySecret)
-    bucket = conn.get_bucket(bucketName)
+    db = None
+    conn = None
+    bucket = None
+    try:
+        db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
+        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
+        bucket = conn.get_bucket(bucketName)
+    except:
+        return 'err'
     pid = None
     with closing(db.cursor()) as cursor:
         cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
         db.commit()
         rowpid = cursor.fetchone()
-        pid = rowpid[0]
+        try:
+            pid = rowpid[0]
+        except:
+            pid = None
     if pid is None:
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim)
+    recAnalized = None
+    try:
+        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim)
+    except:
+        return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]

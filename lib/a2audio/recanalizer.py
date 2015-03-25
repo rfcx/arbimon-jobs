@@ -33,9 +33,9 @@ class Recanalizer:
         if low>=high :
             raise ValueError("low must be less than high")
         if type(tempFolder) is not str:
-            raise ValueError("invalid tempFolder")
+            raise ValueError("invalid tempFolder must be a string")
         if not os.path.exists(tempFolder):
-            raise ValueError("invalid tempFolder")
+            raise ValueError("invalid tempFolder does not exists")
         elif not os.access(tempFolder, os.W_OK):
             raise ValueError("invalid tempFolder")
         if type(bucketName) is not str:
