@@ -77,7 +77,7 @@ class Roiset:
         self.sampleRates.append(sample_rate)    
         self.sampleLengths.append(columns)
         self.setSampleRate = max(self.sampleRates)
-        self.rows = rows
+        self.rows = 1116
         self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
         self.roiCount = self.roiCount + 1
     
