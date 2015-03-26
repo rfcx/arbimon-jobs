@@ -6,8 +6,8 @@ from a2pyutils.config import Config
 from a2pyutils import tempfilecache
 import a2pyutils.palette
 import soundscape
-from boto.s3.connection import S3Connection
 import sys
+import boto.s3.connection
 
 def exit_error(msg, code=-1):
     print '<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg)
@@ -43,17 +43,20 @@ def get_bucket(config):
     awsKeyId = config[5]
     awsKeySecret = config[6]
     conn = None
-    try:
-        conn = S3Connection(awsKeyId, awsKeySecret)
-    except:
-        exit_error('cannot not connect to aws.')
     bucket = None
     try:
-        bucket = conn.get_bucket(bucketName, validate=False)
-    except Exception, ex:
-        exit_error('cannot not connect to bucket.')
-    if not bucket:
-        exit_error('cannot not connect to bucket.')
+        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
+    except:
+        exit_error('cannot not connect to aws.')
+    if not conn:
+        exit_error('cannot not connect to aws.')
+    else:
+        try:
+            bucket = conn.get_bucket(bucketName, validate=False)
+        except Exception, ex:
+            exit_error('cannot not connect to bucket.')
+        if not bucket:
+            exit_error('cannot not connect to bucket.')
     return bucket
 
 def get_scidx_file(scidx_uri,file_cache,bucket):

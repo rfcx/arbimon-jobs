@@ -173,6 +173,7 @@ class Test_training(unittest.TestCase):
         global key_mock_calls
         global conn_mock_calls
         global status_mock_calls
+        from a2audio.roizer import Roizer
         close_obj_calls = []
         bucket_mock_calls = []
         key_mock_calls = []
