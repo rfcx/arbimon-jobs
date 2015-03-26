@@ -81,8 +81,8 @@ def new_con_none(a,b):
 
 file_cache_mock_calls = []
 class file_cache_mock(object):
-    def __init__(ret):
-        self.ret
+    def __init__(self,ret):
+        self.ret = ret
     def fetch(self,uri):
         global file_cache_mock_calls
         file_cache_mock_calls.append({'f':'fetch','u':uri})
@@ -183,6 +183,7 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
         from soundscape.set_visual_scale_lib import get_scidx_file
+        exitErr = MagicMock()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
             get_scidx_file('randomUri',file_cache_mock(None),'abucket')
         print  file_cache_mock_calls

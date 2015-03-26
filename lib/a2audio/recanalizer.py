@@ -2,6 +2,8 @@ from a2audio.rec import Rec
 from a2audio.thresholder import Thresholder
 from pylab import *
 import numpy
+numpy.seterr(all='ignore')
+numpy.seterr(divide='ignore', invalid='ignore')
 import time
 from skimage.measure import structural_similarity as ssim
 from scipy.stats import pearsonr as prs
@@ -15,6 +17,8 @@ import json
 from fullFrequencies import *
 from scipy.stats import *
 from  scipy.signal import *
+import warnings
+
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
@@ -107,10 +111,13 @@ class Recanalizer:
         acf = acf/(N - numpy.arange(N))
         
         xf = abs(numpy.fft.fft(self.distances))
+        skew(xf)
+        return [1]
         fs = [ numpy.mean(xf), (max(xf)-min(xf)),
                 max(xf), min(xf)
                 , numpy.std(xf) , numpy.median(xf),skew(xf),
                 kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
+        return [1]
         hist = histogram(self.distances,6)[0]
         cfs =  cumfreq(self.distances,6)[0]
         return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
@@ -125,39 +132,41 @@ class Recanalizer:
                 ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         
     def featureVector(self):
-        if self.logs:
-           self.logs.write("featureVector start")
-        if self.logs:
-           self.logs.write(self.uri)    
-        pieces = self.uri.split('/')
-        self.distances = []
-        currColumns = self.spec.shape[1]
-        step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
-        if self.logs:
-            self.logs.write("featureVector start")
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        removeUnwanted = self.matrixSurfacComp == -10000
-        if len(removeUnwanted) > 0  :
-            self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
-        winSize = min(self.matrixSurfacComp.shape)
-        winSize = min(winSize,7)
-        if winSize %2 == 0:
-            winSize = winSize - 1
-        spec = self.spec;
-        if self.ssim:
-            for j in range(0,currColumns - self.columns,step):
-                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-                if val < 0:
-                   val = 0
-                self.distances.append(  val )
-        else:
-            maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
-            for j in range(0,currColumns - self.columns,step):
-                val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
-                self.distances.append(  val )
-            
-        if self.logs:
-           self.logs.write("featureVector end")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+            pieces = self.uri.split('/')
+            self.distances = []
+            currColumns = self.spec.shape[1]
+            step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
+            if self.logs:
+                self.logs.write("featureVector start")
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            removeUnwanted = self.matrixSurfacComp == -10000
+            if len(removeUnwanted) > 0  :
+                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            winSize = min(self.matrixSurfacComp.shape)
+            winSize = min(winSize,7)
+            if winSize %2 == 0:
+                winSize = winSize - 1
+            spec = self.spec;
+            if self.ssim:
+                for j in range(0,currColumns - self.columns,step):
+                    val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                    if val < 0:
+                       val = 0
+                    self.distances.append(  val )
+            else:
+                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
+                for j in range(0,currColumns - self.columns,step):
+                    val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
+                    self.distances.append(  val )
+                
+            if self.logs:
+               self.logs.write("featureVector end")
     
     def getSpec(self):
         return self.spec

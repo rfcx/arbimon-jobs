@@ -18,6 +18,7 @@ class Test_r(unittest.TestCase):
         self.assertTrue('Number of test functions: 9' in stdout,msg='R tests: test functions should have been 9')
         self.assertTrue('Number of errors: 0 ' in stdout,msg='R tests: errors should have been 0')
         self.assertTrue('Number of failures: 0' in stdout,msg='R tests: failures should have been 0')
+        print "\nR Tests passed with no errors."
         
 if __name__ == '__main__':
     unittest.main()

@@ -1,6 +1,7 @@
 import unittest
 from mock import MagicMock
 import cPickle as pickle
+import sys
 
 class Test_thresholder(unittest.TestCase):
 
@@ -17,11 +18,15 @@ class Test_thresholder(unittest.TestCase):
         matrices = []
         funcs = {'global':{'otsu','median','isodata','yen'} ,
          'adaptive':{ 'gaussian', 'mean', 'median'}}
-        
-        with open('test_python/data/thresholds.matrices', 'rb') as output:
+        is_64bits = sys.maxsize > 2**32
+        testfilename = 'test_python/data/thresholds.matrices'
+        if not is_64bits:
+            testfilename = 'test_python/data/thresholds.matrices.32'
+        with open(testfilename, 'rb') as output:
             matrices=pickle.load(output)   
         orig = matrices[0]
         i=1
+        ccs = []
         for f in funcs:
             for m in funcs[f]:
                 cc = Thresholder(f,m).apply(orig)

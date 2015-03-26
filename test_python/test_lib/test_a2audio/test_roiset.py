@@ -30,19 +30,20 @@ def gen_random_roiset(outputFile):
     import numpy
     lowFreqs = []
     highFreqs = []
-    avail_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
-    rows_per_srate = [93,186,279,558,1116]
+    avail_sample_rates = [16000.0,32000.0]
+    rows_per_srate = [93,186]
     sample_rates = []
     specs = []
     rows = []
     columns = []
-    roiCount = 10 
+    roiCount = 3
     roisetTest = Roiset("class",192000)
+    print 'gen matrices'
     for i in range(roiCount):
         lowFreqs.append(randint(1000,2000))
         highFreqs.append(randint(3000,4000))
-        columns.append(randint(600,700))
-        index = randint(0,4)
+        columns.append(randint(200,300))
+        index = randint(0,1)
         sample_rates.append(avail_sample_rates[index ])
         rows.append(rows_per_srate[index])
         specs.append(gen_random_matrix(rows[i],columns[i]))
@@ -51,17 +52,19 @@ def gen_random_roiset(outputFile):
     i=roiCount    
     lowFreqs.append(randint(1000,2000))
     highFreqs.append(randint(3000,4000))
-    columns.append(randint(701,800))
+    columns.append(randint(300,325))
     sample_rates.append(avail_sample_rates[index ])
+    index = randint(0,1)
     rows.append(rows_per_srate[index])
     specs.append(gen_random_matrix(rows[i],columns[i]))
     roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rates[i],specs[i],rows[i],columns[i])
-    
+    print 'aline'
     roisetTest.alignSamples()
     with open(outputFile, 'wb') as output:
         pickler = pickle.Pickler(output, -1)
         pickle.dump([lowFreqs,highFreqs,sample_rates,specs,rows,columns,roisetTest.getSurface()], output, -1)
-        
+    print 'saved'
+    
 class Test_roiset(unittest.TestCase):
     
     def test_import_roi(self):
@@ -157,6 +160,7 @@ class Test_roiset(unittest.TestCase):
                
     def test_alignSamples(self):
         """Test Roiset.alignSamples function"""
+        print "\nALINGMENT TEST TAKES A WHILE...."
         from a2audio.roiset import Roiset
         import cPickle as pickle
         from random import randint
@@ -179,14 +183,14 @@ class Test_roiset(unittest.TestCase):
         compareSurface = datainput[6]
         roisetTest = Roiset("class",192000)
         for i in range(len(specs)):
-            roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rate[i],specs[i],rows[i],columns[i])       
-        roisetTest.alignSamples()
-        #gen_random_roiset("test_python/data/alignSamples.test.data")
+            roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rate[i],specs[i],rows[i],columns[i])
+        roisetTest.alignSamples()       
         testSurface = roisetTest.getSurface()
         for ii in range(compareSurface.shape[0]):
            for j in range(compareSurface.shape[1]):
                self.assertEqual(compareSurface[ii,j],testSurface[ii,j],msg="Roiset.alignSamples did not aligned exactly")        
-            
+        print "DONE"
+        
 if __name__ == '__main__':
     unittest.main()
 
