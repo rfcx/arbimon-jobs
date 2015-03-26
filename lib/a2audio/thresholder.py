@@ -1,4 +1,4 @@
-from skimage.filter import threshold_otsu, threshold_adaptive, threshold_isodata, threshold_yen
+from skimage.filters import threshold_otsu, threshold_adaptive, threshold_isodata, threshold_yen
 import numpy
 from sklearn.cluster import k_means
 
