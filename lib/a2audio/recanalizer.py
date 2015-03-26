@@ -112,12 +112,10 @@ class Recanalizer:
         
         xf = abs(numpy.fft.fft(self.distances))
         skew(xf)
-        return [1]
         fs = [ numpy.mean(xf), (max(xf)-min(xf)),
                 max(xf), min(xf)
                 , numpy.std(xf) , numpy.median(xf),skew(xf),
                 kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
-        return [1]
         hist = histogram(self.distances,6)[0]
         cfs =  cumfreq(self.distances,6)[0]
         return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
