@@ -111,7 +111,7 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         from soundscape.set_visual_scale_lib import exit_error
         sys_exit = MagicMock()
         with mock.patch('sys.exit', sys_exit, create=False):
-            exit_error('THIS IS NOT AN ERROR : TESTING MESSAGE : EXIT_ERROR FUNCTION : THIS IS NOT AN ERROR')
+            exit_error('THIS IS NOT AN ERROR\nTHIS IS A TESTING MESSAGE\nTESTING THE EXIT_ERROR FUNCTION\nTHIS IS NOT AN ERROR')
         sys_exit.assert_any_call(-1)
     
     @patch('MySQLdb.connect')

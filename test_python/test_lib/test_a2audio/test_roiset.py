@@ -160,7 +160,7 @@ class Test_roiset(unittest.TestCase):
                
     def test_alignSamples(self):
         """Test Roiset.alignSamples function"""
-        print "\nALINGMENT TEST TAKES A WHILE...."
+        print "\nALINGMENT TEST TAKES A WHILE"
         from a2audio.roiset import Roiset
         import cPickle as pickle
         from random import randint
