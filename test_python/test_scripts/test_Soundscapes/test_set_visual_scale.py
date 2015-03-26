@@ -48,6 +48,14 @@ def mock_closing(filen):
     finally:
         mm.close()
 
+keyMockCalls = []
+class keyMock(object):
+    def __init__(self):
+        pass
+    def get_contents_to_filename(self, a ):
+        global keyMockCalls
+        keyMockCalls.append({'f':'get_contents_to_filename','a':a})    
+
 bucket_mock_calls = []
 class bucket_mock:
     def __init__(self):
@@ -55,7 +63,12 @@ class bucket_mock:
     def new_key(self,uri):
         global bucket_mock_calls
         bucket_mock_calls.append({'f':'new_key','u':uri})
-        return None
+        return keyMock()
+    def get_key(self,scidx_uri, validate=False ):
+        global bucket_mock_calls
+        bucket_mock_calls.append({'f':'get_key','u':scidx_uri})
+        return keyMock()
+    
     
 conn_mock_calls= []    
 class conn_mock:
@@ -79,6 +92,18 @@ def new_con_none(a,b):
     new_con_none_calls.append({'a':a,'b':b})
     return None
 
+isInstanceMockFalse_calls = []
+def isInstanceMockFalse(a,b):
+    global isInstanceMockFalse_calls
+    isInstanceMockFalse_calls.append({'a':a,'b':str(b)})
+    return False
+
+isInstanceMockTrue_calls = []
+def isInstanceMockTrue(a,b):
+    global isInstanceMockTrue_calls
+    isInstanceMockTrue_calls.append({'a':str(a),'b':str(b)})
+    return True
+
 file_cache_mock_calls = []
 class file_cache_mock(object):
     def __init__(self,ret):
@@ -87,7 +112,25 @@ class file_cache_mock(object):
         global file_cache_mock_calls
         file_cache_mock_calls.append({'f':'fetch','u':uri})
         return self.ret
+
+scidxFile_Calls = []  
+class scidxFile(object):
+    def __init__(self, n):
+        self.file = n
+    def retry_get(self):
+        global scidxFile_Calls
+        scidxFile_Calls.append({'f':'retry_get'})
+        return self.file
     
+    
+
+class file_cache_mock_retry(object):
+    def __init__(self,ret):
+        self.ret = ret
+    def fetch(self,uri):
+        global file_cache_mock_calls
+        file_cache_mock_calls.append({'f':'fetch','u':uri})
+        return scidxFile(self.ret ) 
 
 class Test_set_visual_scale_lib(unittest.TestCase):
 
@@ -179,14 +222,54 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         self.assertEqual(new_con_calls[0],{'a': 'awsKey', 'b': 'awsPass'},msg="get_bucket: S3Connection call incorrect")
         self.assertEqual(new_con_none_calls[0],{'a': 'awsKey', 'b': 'awsPass'},msg="get_bucket: S3Connection call incorrect")
     
+    def test_get_scidx_file_notinstance(self):
+        """Test get_scidx_file procedure"""
+        global file_cache_mock_calls
+        global isInstanceMockFalse_calls
+        global bucket_mock_calls
+        bucket_mock_calls = []
+        isInstanceMockFalse_calls= []
+        file_cache_mock_calls = []
+        from soundscape.set_visual_scale_lib import get_scidx_file
+        exitErr = MagicMock()
+        bucketMock = bucket_mock()
+        with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
+            with mock.patch('__builtin__.isinstance',isInstanceMockFalse, create=False):
+                fcm = file_cache_mock(None)
+                get_scidx_file('randomUri',fcm,bucketMock)
+            
+        self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache wrong call")
+        self.assertEqual(isInstanceMockFalse_calls[0],{'a': None, 'b': "<class 'a2pyutils.tempfilecache.CacheMiss'>"})
+        self.assertEqual(len(bucket_mock_calls),0,msg="get_scidx_file: bucket new_key should have not been call")
+        exitErr.assert_ant_calls('cannot not retrieve scidx_file.')
+        exitErr.reset_mock()
+        
     def test_get_scidx_file(self):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
+        global isInstanceMockTrue_calls
+        global bucket_mock_calls
+        global scidxFile_Calls
+        global keyMockCalls
+        keyMockCalls = []
+        scidxFile_Calls = []
+        bucket_mock_calls = []
+        isInstanceMockTrue_calls= []
+        file_cache_mock_calls = []
         from soundscape.set_visual_scale_lib import get_scidx_file
         exitErr = MagicMock()
+        bucketMock = bucket_mock()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-            get_scidx_file('randomUri',file_cache_mock(None),'abucket')
-        print  file_cache_mock_calls
-        
+            with mock.patch('__builtin__.isinstance',isInstanceMockTrue, create=False):
+                fcm = file_cache_mock_retry('a file')
+                get_scidx_file('randomUri',fcm,bucketMock)
+            
+        self.assertEqual(keyMockCalls[0] ,{'a': 'a file', 'f': 'get_contents_to_filename'},msg="get_scidx_file: get_contents_to_filename call wrong")
+        self.assertEqual(scidxFile_Calls[0],{'f': 'retry_get'},msg="get_scidx_file: retry_get function call wrong")
+        self.assertEqual(bucket_mock_calls[0] ,{'u': 'randomUri', 'f': 'get_key'},msg="get_scidx_file: bucket call wrong")
+        self.assertEqual(isInstanceMockTrue_calls[0]['b'], "<class 'a2pyutils.tempfilecache.CacheMiss'>",msg="get_scidx_file: is intance called wrong")
+        self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache call wrong")
+        self.assertEqual(len(exitErr.mock_calls),0,msg="get_scidx_file: expected no errors ")
+    
 if __name__ == '__main__':
     unittest.main()
