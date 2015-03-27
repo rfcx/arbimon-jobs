@@ -1,5 +1,6 @@
 import unittest
 from mock import patch
+from mock import MagicMock
 
 class mock_file_obj(object):
     mock_calls = []
@@ -114,10 +115,13 @@ class Test_scidx_functions(unittest.TestCase):
                 self.assertEqual(correctCalls[i],mo.mock_calls[i],msg="soundscape.scidx.read_cell_recs: incorrect order of calls")
         except:
             self.fail("soundscape.scidx.read_cell_recs: Incorrect number of calls")
-    
+ 
+class Test_scidx_rw_functions(unittest.TestCase):   
     @patch("__builtin__.file")
     def test_read_scidx(self,m_file):
         """Test soundscape.scidx.read_scidx function"""
+        from sys import modules
+        del modules['soundscape.scidx']
         from soundscape.scidx import read_scidx
         mfile = mock_file_obj()
         mfile.clear_calls()
@@ -139,6 +143,8 @@ class Test_scidx_functions(unittest.TestCase):
     @patch("__builtin__.file")
     def test_write_scidx(self,m_file):
         """Test soundscape.scidx.write_scidx function"""
+        from sys import modules
+        del modules['soundscape.scidx']
         myfile = mock_file_obj()
         myfile.clear_calls()
         m_file.return_value = myfile 
