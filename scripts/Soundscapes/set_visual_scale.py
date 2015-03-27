@@ -14,15 +14,19 @@ USAGE = """
 """.format(
     prog=sys.argv[0]
 )
-    
-if len(sys.argv) < 3:
-    print USAGE
-    sys.exit()
-else:
-    soundscapeId = int(sys.argv[1])
-    clipMax = None if sys.argv[2] == '-' else int(sys.argv[2])
-    paletteId = (
-        (int(sys.argv[3]) if len(sys.argv) > 3 else 0) %
-        len(a2pyutils.palette.palette))
-    run(soundscapeId,clipMax,paletteId)
-    print 'end'
+
+def main(argv):
+    if len(argv) < 3:
+        print USAGE
+        sys.exit()
+    else:
+        soundscapeId = int(argv[1])
+        clipMax = None if argv[2] == '-' else int(argv[2])
+        paletteId = (
+            (int(argv[3]) if len(argv) > 3 else 0) %
+            len(a2pyutils.palette.palette))
+        run(soundscapeId,clipMax,paletteId)
+        print 'end'
+
+if __name__ == '__main__':
+    main(sys.argv)

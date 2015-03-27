@@ -3,6 +3,7 @@ from mock import MagicMock
 import mock
 from mock import patch
 from contextlib import contextmanager
+from mock import Mock
 
 class db_mock:
     calls = []
@@ -20,7 +21,16 @@ class db_mock:
         return co
     def commit(self):
         pass
- 
+    
+sCapeMock_calls = []
+class sCapeMock(object):
+    stats = {}
+    def __init__(self):
+        self.stats['max_count'] = 0
+    def write_image(self,f,p ):
+        global sCapeMock_calls
+        sCapeMock_calls.append({'f':'write_image','file':f,'p':p})
+        
 close_obj_calls =[]
 class close_obj:
     def __init__(self,vv):
@@ -55,20 +65,28 @@ class keyMock(object):
     def get_contents_to_filename(self, a ):
         global keyMockCalls
         keyMockCalls.append({'f':'get_contents_to_filename','a':a})    
-
+    def set_contents_from_filename(self,f ):
+        global keyMockCalls
+        keyMockCalls.append({'f':'set_contents_from_filename','u':f})
+    def set_acl(self,a):
+        global keyMockCalls
+        keyMockCalls.append({'f':'set_acl','u':a})
+    
 bucket_mock_calls = []
 class bucket_mock:
-    def __init__(self):
-        pass
+    def __init__(self,raisee=False):
+        self.raisee = raisee
     def new_key(self,uri):
         global bucket_mock_calls
         bucket_mock_calls.append({'f':'new_key','u':uri})
-        return keyMock()
+        if self.raisee:
+            raise IOError
+        else:
+            return keyMock()
     def get_key(self,scidx_uri, validate=False ):
         global bucket_mock_calls
         bucket_mock_calls.append({'f':'get_key','u':scidx_uri})
         return keyMock()
-    
     
 conn_mock_calls= []    
 class conn_mock:
@@ -121,8 +139,6 @@ class scidxFile(object):
         global scidxFile_Calls
         scidxFile_Calls.append({'f':'retry_get'})
         return self.file
-    
-    
 
 class file_cache_mock_retry(object):
     def __init__(self,ret):
@@ -271,5 +287,137 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache call wrong")
         self.assertEqual(len(exitErr.mock_calls),0,msg="get_scidx_file: expected no errors ")
     
+    def test_write_image_raise(self, ):
+        global readFromIndexRaise_calls
+        from soundscape.set_visual_scale_lib import write_image
+        exitErr = MagicMock()
+        readFromIndex = Mock(side_effect=IOError)
+        with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
+            with mock.patch('soundscape.set_visual_scale_lib.soundscape.Soundscape.read_from_index',readFromIndex,create=False):
+                write_image('/a/image/file.png',{'path':'/scidx/index/path/file.scidx'},None,1)
+
+        readFromIndex.assert_any_calls('/scidx/index/path/file.scidx')
+        exitErr.assert_any_calls('cannot write image file.')
+        
+    def test_write_image(self, ):
+        global readFromIndexRaise_calls
+        global sCapeMock_calls
+        from soundscape.set_visual_scale_lib import write_image
+        exitErr = MagicMock()
+        readFromIndex = MagicMock()
+        sCapeMockObj = sCapeMock()
+        readFromIndex.return_value = sCapeMockObj
+        getPalette = MagicMock()
+        getPalette.return_value = 'palette return value matrix'
+        with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
+            with mock.patch('soundscape.set_visual_scale_lib.soundscape.Soundscape.read_from_index',readFromIndex,create=False):
+                with mock.patch('soundscape.set_visual_scale_lib.a2pyutils.palette.get_palette',getPalette,create=False):
+                    write_image('/a/image/file.png',{'path':'/scidx/index/path/file.scidx'},None,'matrix return value matrix')
+
+        readFromIndex.assert_any_call('/scidx/index/path/file.scidx')
+        self.assertEqual(0,len(exitErr.mock_calls),msg="write_image: no errors expected")
+        self.assertEqual(sCapeMock_calls[0],{'p': 'palette return value matrix', 'file': '/a/image/file.png', 'f': 'write_image'},msg="write_image: Soundscape mock calls are wrong")
+        getPalette.assert_any_call('matrix return value matrix')
+    
+    def test_upload_image_raise(self):
+        global bucket_mock_calls
+        global keyMockCalls
+        keyMockCalls = []
+        bucket_mock_calls = []
+        from soundscape.set_visual_scale_lib import upload_image
+        exitErr = MagicMock()
+        bucketMock = bucket_mock(True)
+        with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
+            upload_image('/any/image/uri','/any/image/path',bucketMock)
+        exitErr.assert_any_calls('cannot upload image file.')
+        self.assertEqual(bucket_mock_calls[0],{'u': '/any/image/uri', 'f': 'new_key'},msg="upload_image_raise: wrong bucket call")
+        self.assertEqual(0,len(keyMockCalls),msg="upload_image_raise: no calls expected to key functions")
+
+    def test_upload_image(self):
+        global bucket_mock_calls
+        global keyMockCalls
+        keyMockCalls = []
+        bucket_mock_calls = []
+        from soundscape.set_visual_scale_lib import upload_image
+        exitErr = MagicMock()
+        bucketMock = bucket_mock(False)
+        with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
+            upload_image('/any/image/uri','/any/image/path',bucketMock)
+        self.assertEqual(bucket_mock_calls[0],{'u': '/any/image/uri', 'f': 'new_key'},msg="upload_image: wrong bucket call")
+        self.assertEqual(keyMockCalls,[{'u': '/any/image/path', 'f': 'set_contents_from_filename'}, {'u': 'public-read', 'f': 'set_acl'}],msg="upload_image: wrong key calls")
+        self.assertEqual(0,len(exitErr.mock_calls),msg="upload_image: no errors expected")
+    
+    def test_update_db(self):
+        global close_obj_calls
+        global mock_closing_calls
+        close_obj_calls = []
+        mock_closing_calls = []
+        from soundscape.set_visual_scale_lib import update_db
+        with mock.patch('contextlib.closing', mock_closing , create=False):
+            dbMock = db_mock()
+            update_db(dbMock,1, 2, 3)
+        correctCalls= [{'q': '\n                UPDATE `soundscapes`\n                SET visual_max_value = %s, visual_palette = %s\n                WHERE soundscape_id = %s\n            ', 'a': [1, 2, 3], 'f': 'execute'}, {'f': 'close'}]
+        self.assertEqual(close_obj_calls,correctCalls,msg="update_db: incorrect calls sequence")
+
+sys_exit_calls = []
+class sys_exit:
+    def __init__(self):
+        pass
+    def exit(self):
+        global sys_exit_calls
+        sys_exit_calls.append({'f':'exit'})
+    
+outputstringcorrect = """    soundscape_id - id of the soundscape whose image to edit
+    max_visual_scale - clip range maximum (if '-', then it is
+                       computed automatically)
+    palette_id - index of the gradient palette to use
+                (defined in a2pyutils.palette)"""
+
+run_mock_calls = []
+def run_mock(a,b,c):
+    global run_mock_calls
+    run_mock_calls.append([a,b,c])
+    
+class Test_set_visual_scale(unittest.TestCase):
+    def test_file_can_be_called(self):
+        from cStringIO import StringIO
+        import sys
+        import imp
+        global sys_exit_calls
+        output = StringIO()
+        saved_stdout = sys.stdout
+        sys.stdout = output
+        set_visual_scale = imp.load_source('set_visual_scale', 'scripts/Soundscapes/set_visual_scale.py')
+        set_visual_scale.sys = sys_exit()
+        set_visual_scale.main([])
+        outputString = output.getvalue()
+        output.close()
+        sys.stdout = saved_stdout
+        self.assertEqual(sys_exit_calls[0],{'f': 'exit'},msg="incorrect sys exit call")
+        self.assertTrue(outputstringcorrect in outputString,msg="file_can_be_called: Incorrect output message")
+        
+    def test_file_can_be_called_with_args(self):
+        from cStringIO import StringIO
+        import sys
+        import imp
+        global sys_exit_calls
+        global run_mock_calls 
+        run_mock_calls = []
+        sys_exit_calls = []
+        output = StringIO()
+        saved_stdout = sys.stdout
+        sys.stdout = output
+        set_visual_scale = imp.load_source('set_visual_scale', 'scripts/Soundscapes/set_visual_scale.py')
+        set_visual_scale.sys = sys_exit()
+        set_visual_scale.a2pyutils.palette.palette = [1]
+        set_visual_scale.run = run_mock
+        set_visual_scale.main([1,2,3])
+        outputString = output.getvalue()
+        output.close()
+        sys.stdout = saved_stdout
+        self.assertEqual(len(sys_exit_calls),0,msg="no exit calls expected")
+        self.assertEqual(run_mock_calls[0],[2, 3, 0],msg="incorrect call to run function")
+        self.assertEqual('end\n',outputString,msg="file_can_be_called: Incorrect output message")
+        
 if __name__ == '__main__':
     unittest.main()
