@@ -22,6 +22,8 @@ class Test_palette(unittest.TestCase):
     
     def test_get_palette(self):
         """Test get_palette function"""
+        import sys
+        del sys.modules['a2pyutils.palette']
         from a2pyutils.palette import get_palette
         with open('test_python/data/palettes.json') as fd:
             palettesTest= json.load(fd)

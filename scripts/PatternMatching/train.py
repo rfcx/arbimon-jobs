@@ -12,7 +12,7 @@ import MySQLdb
 import json
 from boto.s3.connection import S3Connection
 from contextlib import closing
-from a2audio.training import *
+from a2audio.training_lib import *
 from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 import multiprocessing
@@ -518,6 +518,6 @@ with closing(db.cursor()) as cursor:
     """, [jobId])
     db.commit()
 
-#shutil.rmtree(tempFolders+"/training_"+str(jobId))
+shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")

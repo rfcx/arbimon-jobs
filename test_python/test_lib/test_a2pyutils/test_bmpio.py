@@ -24,6 +24,8 @@ class Test_bmpio(unittest.TestCase):
 
     def test_write(self):
         """Test bmpio.Writer write function"""
+        import sys
+        del sys.modules['a2pyutils.palette']
         import a2pyutils.palette as pl
         W = Writer
         fileout = "/tmp/bmpio.test.writer.bmp"

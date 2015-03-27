@@ -9,8 +9,10 @@ import soundscape
 import sys
 import boto.s3.connection
 
-def exit_error(msg, code=-1):
+def exit_error(msg, code=-1,log=None):
     print '<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg)
+    if log:
+        log.write('\n<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg))
     sys.exit(code)
 
 def get_db(config):
