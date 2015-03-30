@@ -13,7 +13,7 @@ def main(argv):
         print USAGE
         sys.exit()
     else:
-        jobId = int(sys.argv[1].strip("'"))
+        jobId = int(str(argv[1]).strip("'"))
         retVal = run_classification(jobId)
         if retVal:
             print 'end'
