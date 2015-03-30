@@ -102,8 +102,8 @@ class Test_training(unittest.TestCase):
 
     def test_import(self):
         try:
-            from a2audio.training import roigen
-            from a2audio.training import recnilize
+            from a2audio.training_lib import roigen
+            from a2audio.training_lib import recnilize
         except ImportError:
             self.fail("Cannot load a2audio.training module")
     
@@ -111,7 +111,7 @@ class Test_training(unittest.TestCase):
     def test_roigen(self,mysql_connect):
         global close_obj_calls
         close_obj_calls = []
-        from a2audio.training import roigen
+        from a2audio.training_lib import roigen
         roizer = MagicMock()
         logger = MagicMock()
         dbMock = db_mock()
@@ -121,8 +121,8 @@ class Test_training(unittest.TestCase):
         lineData = [1,2,3,1.5,2.5,1000.5,2000.5,'any/rec/uri']
         config = ['host','user','pass','db','aws']
         with mock.patch('contextlib.closing', mock_closing , create=False):
-            with mock.patch('a2audio.training.Logger', logger, create=False):
-                with mock.patch('a2audio.training.Roizer', roizer, create=False):
+            with mock.patch('a2audio.training_lib.Logger', logger, create=False):
+                with mock.patch('a2audio.training_lib.Roizer', roizer, create=False):
                     roizer.return_value = Status_mock('NoAudio')
                     ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False)
                     self.assertEqual(ret,'err',msg="roigen should have returned error")
@@ -179,7 +179,7 @@ class Test_training(unittest.TestCase):
         key_mock_calls = []
         conn_mock_calls = []
         status_mock_calls = [] 
-        from a2audio.training import recnilize
+        from a2audio.training_lib import recnilize
         import numpy
         lineData = ['any/rec/uri',2,3,1.5,2.5,1000.5,2000.5,'any/rec/uri']
         config = ['host','user','pass','db','aws','key','secret']
@@ -196,7 +196,7 @@ class Test_training(unittest.TestCase):
         recanalizer = MagicMock()
         mock_writerow = MagicMock()
         with mock.patch('csv.writer',mock_writerow,create=False):
-            with mock.patch('a2audio.training.Recanalizer', recanalizer, create=False):
+            with mock.patch('a2audio.training_lib.Recanalizer', recanalizer, create=False):
                 with mock.patch('contextlib.closing', mock_closing , create=False):
                     with mock.patch('boto.s3.connection.S3Connection', new_con , create=False):
                         recanalizer.return_value = Status_mock('NoAudio')
