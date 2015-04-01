@@ -48,6 +48,7 @@ class Recanalizer:
             raise ValueError("logs must be a a2pyutils.Logger object")
         
         start_time = time.time()
+        self.distances = []
         self.low = float(low)
         self.high = float(high)
         self.columns = speciesSurface.shape[1]
@@ -101,10 +102,26 @@ class Recanalizer:
         self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None)
         
     def getVector(self ):
+        if len(self.distances)<1:
+            self.featureVector()
         return self.distances
     
+    def insertRecAudio(self,data,fs=44100):
+        self.rec = Rec('nouri','/tmp/','bucketName',None,True,True)
+        for i in data[0]:
+            self.rec.original.append(i)
+        self.rec.sample_rate = fs
+        maxFreqInRec = float(self.rec.sample_rate)/2.0
+    
+    def ocurrences(threshold=0.5):
+        if len(self.distances)<1:
+            self.featureVector()
+        if  max(self.distances) < threshold:
+            threshold = self.maxDist
+    
     def features(self):
-        
+        if len(self.distances)<1:
+            self.featureVector()
         N = len(self.distances)
         fvi = np.fft.fft(self.distances, n=2*N)
         acf = np.real( np.fft.ifft( fvi * np.conjugate(fvi) )[:N] )
@@ -140,6 +157,7 @@ class Recanalizer:
             self.distances = []
             currColumns = self.spec.shape[1]
             step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
+            self.step = step
             if self.logs:
                 self.logs.write("featureVector start")
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
@@ -151,6 +169,7 @@ class Recanalizer:
             if winSize %2 == 0:
                 winSize = winSize - 1
             spec = self.spec;
+            self.currColumns = currColumns
             if self.ssim:
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
@@ -162,7 +181,6 @@ class Recanalizer:
                 for j in range(0,currColumns - self.columns,step):
                     val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
                     self.distances.append(  val )
-                
             if self.logs:
                self.logs.write("featureVector end")
     
@@ -240,12 +258,61 @@ class Recanalizer:
             self.spec = threshold.apply(Z)
     
     def showVectAndSpec(self):
+        pdist = [None] * self.spec.shape[1]
+        print len(pdist)
+        index = int(self.speciesSurface.shape[1]/2)
+        if self.step == 1:
+            pdist[index:(index+len(self.distances))] = self.distances
+        else:
+            i = 0
+            print len(pdist)
+            for j in range(index,self.currColumns - self.columns - index,self.step):
+                aa = [self.distances[i]] * self.step
+                print len(aa)
+                pdist[j:(j+index)] = aa
+                i = i + 1
+            #for j in range(index,self.spec.shape[1]-index ,self.step):
+            #    print i,j
+            #    reps = (min(j+self.step,self.spec.shape[1]-index))-j
+            #    pdist[j:(min(j+self.step,self.spec.shape[1]-index))] = [self.distances[i]] * reps 
+            #    i = i + 1
+            start_index = index
+            #for i in range(index):
+            #    pdist2.append(None)
+            #for v in self.distances:
+            #    for i  in range(self.step):
+            #        pdist2.append(v)
+            #for i in range(index):
+            #    pdist2.append(None)
+            #for v in self.distances:
+            #    print start_index 
+            #    pdist[start_index:(start_index+(self.step))] = [v]*(self.step)
+            #    start_index = start_index + (self.step)
+            #print self.distances
+            #print pdist
+            print len(pdist)
+            print self.spec.shape[1]
         ax1 = subplot(211)
-        plot(self.distances)
+        plot(pdist)
         subplot(212, sharex=ax1)
         ax = gca()
         im = ax.imshow(self.spec, None)
         ax.axis('auto')
+        show()
+        close()
+        
+    def showAudio(self):
+        plot(self.rec.original)
+        show()
+        close()
+        
+    def showVect(self):
+        plot(self.distances)
+        show()
+        close()
+        
+    def showspectrogram(self):
+        imshow(self.spec)
         show()
         close()
         

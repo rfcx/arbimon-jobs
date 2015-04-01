@@ -86,7 +86,9 @@ class Rec:
             start_time = time.time()
             self.process()
             if self.logs :
-                self.logs.write("Rec.py : process completed:" + str(time.time() - start_time))          
+                self.logs.write("Rec.py : process completed:" + str(time.time() - start_time))
+        else:
+            self.status = 'TestRun'
         
     def process(self):
         start_time = time.time()
