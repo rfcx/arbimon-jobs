@@ -108,7 +108,7 @@ class Recanalizer:
     
     def insertRecAudio(self,data,fs=44100):
         self.rec = Rec('nouri','/tmp/','bucketName',None,True,True)
-        for i in data[0]:
+        for i in data:
             self.rec.original.append(i)
         self.rec.sample_rate = fs
         maxFreqInRec = float(self.rec.sample_rate)/2.0
@@ -156,7 +156,7 @@ class Recanalizer:
             pieces = self.uri.split('/')
             self.distances = []
             currColumns = self.spec.shape[1]
-            step = 16#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
+            step = 1#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
             self.step = step
             if self.logs:
                 self.logs.write("featureVector start")
@@ -173,6 +173,7 @@ class Recanalizer:
             if self.ssim:
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                    print val
                     if val < 0:
                        val = 0
                     self.distances.append(  val )
@@ -258,19 +259,21 @@ class Recanalizer:
             self.spec = threshold.apply(Z)
     
     def showVectAndSpec(self):
-        pdist = [None] * self.spec.shape[1]
-        print len(pdist)
+        pdist = [0] * self.spec.shape[1]
         index = int(self.speciesSurface.shape[1]/2)
+        print self.distances
         if self.step == 1:
             pdist[index:(index+len(self.distances))] = self.distances
         else:
             i = 0
-            print len(pdist)
-            for j in range(index,self.currColumns - self.columns - index,self.step):
-                aa = [self.distances[i]] * self.step
-                print len(aa)
-                pdist[j:(j+index)] = aa
+            for j in range(index,self.currColumns - self.columns,self.step):
+                pdist[j] = self.distances[i]
                 i = i + 1
+            #for j in range(index,self.currColumns - self.columns - index,self.step):
+            #    aa = [self.distances[i]] * self.step
+            #    print len(aa)
+            #    pdist[j:(j+index)] = aa
+            #    i = i + 1
             #for j in range(index,self.spec.shape[1]-index ,self.step):
             #    print i,j
             #    reps = (min(j+self.step,self.spec.shape[1]-index))-j
@@ -290,6 +293,7 @@ class Recanalizer:
             #    start_index = start_index + (self.step)
             #print self.distances
             #print pdist
+            print pdist
             print len(pdist)
             print self.spec.shape[1]
         ax1 = subplot(211)
