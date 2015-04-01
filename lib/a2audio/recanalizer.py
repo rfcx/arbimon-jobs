@@ -25,7 +25,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -60,6 +60,7 @@ class Recanalizer:
         self.rec = None
         self.status = 'NoData'
         self.ssim = useSsim
+        self.step = step
         
         if self.logs:
            self.logs.write("processing: "+self.uri)    
@@ -156,8 +157,7 @@ class Recanalizer:
             pieces = self.uri.split('/')
             self.distances = []
             currColumns = self.spec.shape[1]
-            step = 1#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
-            self.step = step
+            step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
             if self.logs:
                 self.logs.write("featureVector start")
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
@@ -261,7 +261,6 @@ class Recanalizer:
     def showVectAndSpec(self):
         pdist = [0] * self.spec.shape[1]
         index = int(self.speciesSurface.shape[1]/2)
-        print self.distances
         if self.step == 1:
             pdist[index:(index+len(self.distances))] = self.distances
         else:
@@ -293,9 +292,6 @@ class Recanalizer:
             #    start_index = start_index + (self.step)
             #print self.distances
             #print pdist
-            print pdist
-            print len(pdist)
-            print self.spec.shape[1]
         ax1 = subplot(211)
         plot(pdist)
         subplot(212, sharex=ax1)

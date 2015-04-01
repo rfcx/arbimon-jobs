@@ -12,7 +12,7 @@ def gen_random_matrix(rows,cols):
     chucnkJump = 3
     chunckLessLength = chunckLength*chucnkJump
     chunks = int((float(cols-randomStart))/(float(chunckLessLength+chunckLength)))
-    mm = numpy.random.rand(rows,cols)*.91
+    mm = numpy.random.rand(rows,cols)
     jump = 0
     dd = [.9,.95,.99]
     for i in range(randomStart,cols-chunckLength,chunckLength):
@@ -46,9 +46,11 @@ au1 = numpy.random.rand(2*len(au))
 ii=len(au)/2
 au1[ii:(ii+len(au))] = au
 ss = numpy.copy(mm[:,490:550])
-
+from a2audio.thresholder import Thresholder
+threshold = Thresholder()
+ss = threshold.apply(ss)
 from a2audio.recanalizer import Recanalizer
-recAna = Recanalizer('anyuri', ss , 1000.0, 5000.0, '/tmp/','bucketname', logs=None,test=True,useSsim = False)
+recAna = Recanalizer('anyuri', ss , 1000.0, 5000.0, '/tmp/','bucketname', logs=None,test=True,useSsim = False,step=16)
 recAna.insertRecAudio(au,192000)
 recAna.spectrogram()
 recAna.featureVector()
