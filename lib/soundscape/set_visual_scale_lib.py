@@ -138,7 +138,6 @@ def upload_image(img_uri, img_file, bucket):
 
 
 def update_db(db, clip_max, palette_id, soundscape_id, normalized):
-    print [clip_max, palette_id, soundscape_id, normalized]
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute("""
