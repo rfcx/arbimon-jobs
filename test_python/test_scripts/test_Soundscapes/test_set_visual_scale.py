@@ -46,6 +46,9 @@ class close_obj:
         global close_obj_calls
         close_obj_calls.append({'f':'fetch_one'})
         return self.vv
+    def __iter__(self):
+        close_obj_calls.append({'f':'__iter__'})
+        return iter(self.vv)
 
 mock_closing_calls = [] 
 @contextmanager           
@@ -192,6 +195,7 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         """Test the get_sc_data procedure"""
         global close_obj_calls
         global mock_closing_calls
+        close_obj_calls=[]
         from soundscape.set_visual_scale_lib import get_sc_data
         exitErr = MagicMock()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
@@ -202,10 +206,11 @@ class Test_set_visual_scale_lib(unittest.TestCase):
                 dbMock = db_mock(1)
                 self.assertEqual(get_sc_data(dbMock,1),1,msg="get_sc_data : incorrect return value")
         self.assertEqual(dbMock.calls[0],{'f': 'cursor'},msg="get_sc_data: call not found")
-        closeObjCalls = [{'q': 'SELECT uri FROM soundscapes WHERE soundscape_id = %s', 'a': [1], 'f': 'execute'},
+        select_query = '\n                SELECT S.uri, S.playlist_id, SAT.identifier as aggregation\n                FROM soundscapes S\n                JOIN soundscape_aggregation_types SAT ON S.soundscape_aggregation_type_id = SAT.soundscape_aggregation_type_id\n                WHERE soundscape_id = %s\n            '
+        closeObjCalls = [{'q': select_query, 'a': [1], 'f': 'execute'},
                          {'f': 'fetch_one'},
                          {'f': 'close'},
-                         {'q': 'SELECT uri FROM soundscapes WHERE soundscape_id = %s', 'a': [1], 'f': 'execute'},
+                         {'q': select_query, 'a': [1], 'f': 'execute'},
                          {'f': 'fetch_one'},
                          {'f': 'close'}]
         try:
@@ -214,6 +219,42 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         except:
             self.fail('get_sc_data: Incorrect number of calls')
         exitErr.assert_any_calls('Soundscape #1 not found')
+
+    def test_get_norm_vector(self):
+        """Test the get_norm_vector procedure"""
+        global close_obj_calls
+        global mock_closing_calls
+        close_obj_calls = []
+        from soundscape.set_visual_scale_lib import get_norm_vector
+        exitErr = MagicMock()
+        with mock.patch('contextlib.closing', mock_closing, create=False):
+            dbMock = db_mock([
+                {'dp_0': '1', 'count': 1},
+                {'dp_0': '2', 'count': 3}
+            ])
+            result = get_norm_vector(dbMock, {'aggregation': 'time_of_day', 'playlist_id': 1})
+            expected_result = {1: 1, 2: 3}
+            self.assertEqual(result, expected_result, msg="get_norm_vector : incorrect return value")
+        self.assertEqual(dbMock.calls[0],{'f': 'cursor'},msg="get_norm_vector: call not found")
+        select_query = (
+            '\n' +
+            '                SELECT DATE_FORMAT(R.datetime, "%H") as dp_0 , COUNT(*) as count\n' +
+            '                FROM `playlist_recordings` PR\n' +
+            '                JOIN `recordings` R ON R.recording_id = PR.recording_id\n' +
+            '                WHERE PR.playlist_id = 1\n' +
+            '                GROUP BY DATE_FORMAT(R.datetime, "%H")\n' +
+            '            '
+        )
+        closeObjCalls = [
+            {'q': select_query, 'a': None, 'f': 'execute'},
+            {'f': '__iter__'},
+            {'f': 'close'}
+        ]
+        try:
+            for i in range(len(closeObjCalls)):
+                self.assertEqual(closeObjCalls[i], close_obj_calls[i], msg="get_norm_vector: calls should be the same")
+        except:
+            self.fail('get_norm_vector: Incorrect number of calls')
     
     def test_get_bucket(self):
         """Test get_bucket procedure"""
@@ -355,8 +396,8 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         from soundscape.set_visual_scale_lib import update_db
         with mock.patch('contextlib.closing', mock_closing , create=False):
             dbMock = db_mock()
-            update_db(dbMock,1, 2, 3)
-        correctCalls= [{'q': '\n                UPDATE `soundscapes`\n                SET visual_max_value = %s, visual_palette = %s\n                WHERE soundscape_id = %s\n            ', 'a': [1, 2, 3], 'f': 'execute'}, {'f': 'close'}]
+            update_db(dbMock,1, 2, 3, 4)
+        correctCalls= [{'q': '\n                UPDATE `soundscapes`\n                SET visual_max_value = %s, visual_palette = %s,\n                    normalized = %s\n                WHERE soundscape_id = %s\n            ', 'a': [1, 2, 4, 3], 'f': 'execute'}, {'f': 'close'}]
         self.assertEqual(close_obj_calls,correctCalls,msg="update_db: incorrect calls sequence")
 
 sys_exit_calls = []
@@ -374,9 +415,9 @@ outputstringcorrect = """    soundscape_id - id of the soundscape whose image to
                 (defined in a2pyutils.palette)"""
 
 run_mock_calls = []
-def run_mock(a,b,c):
+def run_mock(a,b,c,d):
     global run_mock_calls
-    run_mock_calls.append([a,b,c])
+    run_mock_calls.append([a,b,c,d])
     
 class Test_set_visual_scale(unittest.TestCase):
     def test_file_can_be_called(self):
@@ -401,7 +442,7 @@ class Test_set_visual_scale(unittest.TestCase):
         import sys
         import imp
         global sys_exit_calls
-        global run_mock_calls 
+        global run_mock_calls
         run_mock_calls = []
         sys_exit_calls = []
         output = StringIO()
@@ -411,12 +452,12 @@ class Test_set_visual_scale(unittest.TestCase):
         set_visual_scale.sys = sys_exit()
         set_visual_scale.a2pyutils.palette.palette = [1]
         set_visual_scale.run = run_mock
-        set_visual_scale.main([1,2,3])
+        set_visual_scale.main([1,2,3,0])
         outputString = output.getvalue()
         output.close()
         sys.stdout = saved_stdout
         self.assertEqual(len(sys_exit_calls),0,msg="no exit calls expected")
-        self.assertEqual(run_mock_calls[0],[2, 3, 0],msg="incorrect call to run function")
+        self.assertEqual(run_mock_calls[0],[2, 3, 0, 0],msg="incorrect call to run function")
         self.assertEqual('end\n',outputString,msg="file_can_be_called: Incorrect output message")
         
 if __name__ == '__main__':
