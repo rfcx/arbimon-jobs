@@ -1,6 +1,7 @@
 import unittest
 from mock import patch
 from mock import MagicMock
+import json
 
 class mock_file_obj(object):
     mock_calls = []
@@ -118,14 +119,14 @@ class Test_scidx_functions(unittest.TestCase):
  
 class Test_scidx_rw_functions(unittest.TestCase):   
     @patch("__builtin__.file")
-    def test_read_scidx(self,m_file):
+    def test_read_scidx_v1(self,m_file):
         """Test soundscape.scidx.read_scidx function"""
         from sys import modules
         del modules['soundscape.scidx']
         from soundscape.scidx import read_scidx
         mfile = mock_file_obj()
         mfile.clear_calls()
-        m_file.return_value = mfile 
+        m_file.return_value = mfile
         retData = read_scidx('/dummy/file/name')
         m_file.assert_any_calls('/dummy/file/name', 'rb')
         correctCalls = ['seek', 'tell', 'seek', 'read', 'read', 'read', 'read', 'read', 'seek', 'read', 'seek', 'read', 'seek', 'read', 'tell', 'seek', 'tell', 'seek', 'tell', 'read']
@@ -134,11 +135,41 @@ class Test_scidx_rw_functions(unittest.TestCase):
                 self.assertEqual(correctCalls[i],mfile.mock_calls[i],msg="soundscape.scidx.read_cell_recs: incorrect order of calls")
         except:
             self.fail("soundscape.scidx.read_cell_recs: Incorrect number of calls")
-        self.assertEqual(retData[0][1][1][0],0,msg="soundscape.scidx.read_scidx: returned incorrect values")
-        self.assertEqual(retData[2],1,msg="soundscape.scidx.read_scidx: returned incorrect values")
+        self.assertEqual(retData[0],1,msg="soundscape.scidx.read_scidx: returned incorrect version")
+        self.assertEqual(retData[1][1][1][0],1024,msg="soundscape.scidx.read_scidx: returned incorrect values")
         self.assertEqual(retData[3],1,msg="soundscape.scidx.read_scidx: returned incorrect values")
         self.assertEqual(retData[4],1,msg="soundscape.scidx.read_scidx: returned incorrect values")
         self.assertEqual(retData[5],1,msg="soundscape.scidx.read_scidx: returned incorrect values")
+        self.assertEqual(retData[6],1,msg="soundscape.scidx.read_scidx: returned incorrect values")
+
+    def test_read_scidx_v2(self):
+        """Test soundscape.scidx.read_scidx function"""
+        TAG = "soundscape.scidx.read_scidx_v2: "
+        data = 'test_python/data/'
+        from sys import modules
+        del modules['soundscape.scidx']
+        from soundscape.scidx import read_scidx
+        retData = read_scidx('test_python/data/v2.scidx')
+        with open(data+'scp.recordings.peaks.data.json', 'rb') as fp:
+            x_recs = json.load(fp)
+        with open(data+'scp.bins.peaks.data.json', 'rb') as fp:
+            x_bins = dict([
+                (int(i_row), dict([
+                    (int(i_col), dict([
+                        (int(i_cell), cell) for i_cell, cell in col.items()
+                    ])) for i_col, col in row.items()
+                ])) for i_row, row in json.load(fp).items()
+            ])
+        self.assertEqual(len(retData), 11, msg=TAG+"should return a 11-tuple")
+        (version, index, recs,
+         offsetx, width, offsety, height, minx, maxx, miny, maxy) = retData
+        self.assertEqual(version, 2, msg=TAG+"returned incorrect version")
+        self.assertEqual(recs, x_recs, msg=TAG+"returned incorrect values")
+        self.assertEqual(index, x_bins, msg=TAG+"returned incorrect values")
+        self.assertEqual(offsetx, 1, msg=TAG+"returned incorrect offsetx")
+        self.assertEqual(width, 1, msg=TAG+"returned incorrect width")
+        self.assertEqual(offsety, 1, msg=TAG+"returned incorrect offsety")
+        self.assertEqual(height, 1, msg=TAG+"returned incorrect height")
     
     @patch("__builtin__.file")
     def test_write_scidx(self,m_file):
