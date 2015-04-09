@@ -173,7 +173,6 @@ class Recanalizer:
             if self.ssim:
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-                    print val
                     if val < 0:
                        val = 0
                     self.distances.append(  val )

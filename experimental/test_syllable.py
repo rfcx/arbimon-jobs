@@ -12,7 +12,7 @@ class Test_syllable(unittest.TestCase):
         
         syl = Syllable()
         
-        print dir(syl)
+        #print dir(syl)
         
 if __name__ == '__main__':
     unittest.main()
