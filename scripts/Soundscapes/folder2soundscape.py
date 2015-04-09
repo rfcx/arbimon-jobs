@@ -73,11 +73,11 @@ hIndex = indices.Indices(aggregation)
 aciIndex = indices.Indices(aggregation)
 
 def processRec(rec):
-    if not ".flac" in rec:
-        return None
+    #if not ".flac" in rec:
+        #return None
     id = 1
     rec_wav = rec.replace(".flac",".wav")
-    rec_date = rec.replace("100N-","").replace(".flac","")
+    rec_date = rec.replace("t1-","").replace(".wav","")
     date = datetime.strptime(rec_date, '%Y-%m-%d_%H-%M')
     if not os.path.isfile(rec_wav):
         proc = subprocess.Popen([
@@ -101,7 +101,12 @@ def processRec(rec):
         elif stdout:
             if 'err' in stdout:
                 return None
-            freqs = stdout.strip(',')
+            ff=json.loads(stdout)
+            freqs =[]
+            amps =[]
+            for i in range(len(ff)):
+                freqs.append(ff[i]['f'])
+                amps.append(ff[i]['a'])
             proc = subprocess.Popen([
                '/usr/bin/Rscript', currDir+'/h.R',
                localFile
@@ -130,21 +135,22 @@ def processRec(rec):
             if stdout and 'err' not in stdout:
                 recSampleRate = float(stdout)
             recMaxHertz = float(recSampleRate)/2.0    
-            fresqSplit = freqs.split(',')
-            if len(fresqSplit) < 1:
-                freqs = None
-            else:
-                freqs = [float(i) for i in fresqSplit]
-            results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
-            return results
+            results = {"date": date, "id": id, "freqs": freqs , "amps":amps , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
+            return results 
     else:
         return None
+
+
+for recordingi in recsToProcess:
+    print processRec(recordingi)
+    quit()
+quit()
+
 
 start_time_all = time.time()
 resultsParallel = Parallel(n_jobs=num_cores)(
      delayed(processRec)(recordingi) for recordingi in recsToProcess
 )
-
 
 if len(resultsParallel) > 0:
     max_hertz = 22050

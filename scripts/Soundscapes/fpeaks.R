@@ -16,9 +16,18 @@ work_fpeaks = function(argss)
         }   
     );
     AmplPeaks = c()
-    if(class(archivo) == 'Wave')
+    if(class(archivo) == 'Wave' || class(archivo) == 'WaveMC')
     {
-        if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
+        data = c()
+        if(class(archivo) == 'Wave')
+        {
+            data = archivo@left
+        }
+        else
+        {
+            data = archivo@.Data
+        }
+        if(length(data)>archivo@samp.rate)# at least one second of audio
         {
             bin_size = as.numeric(argss[3])
             picos = c()
@@ -52,7 +61,7 @@ work_fpeaks = function(argss)
             tryCatch(
                 {
                     #,amp=c(0.01,0.01)
-                    picos<-fpeaks(spec,freq=as.numeric(argss[4]),plot=FALSE,threshold=epsilonValue)
+                    picos<-fpeaks(spec,freq=as.numeric(argss[4]),plot=FALSE)#,threshold=epsilonValue)
                 }
                 ,
                 error = function(e)
@@ -61,10 +70,13 @@ work_fpeaks = function(argss)
                     quit()
                 }
             );
-            
-            if( is.na(picos) || length(picos) < 1)
+            if(is.null(picos))
             {
-               return('err3')
+                return('[]')
+            }
+            if( is.na(picos) || length(picos[,1]) < 1)
+            {
+               return('[]')
             }
             else
             {
@@ -74,20 +86,20 @@ work_fpeaks = function(argss)
                if (p[1]>=1)
                {
                    pico<-data.frame(picos)
-                   retStr = paste(pico[1,1],sep=",")
+                   retStr = paste( "{\"f\":", pico[1,1], ",\"a\":" ,pico[1,2]   , "}" ,sep="" )
                    ii = 2
                    while(ii <=length(pico[,1]))
                    {
-                        retStr = paste(retStr,pico[ii,1],sep=",")
+                        retStr =paste(retStr, paste( "{\"f\":", pico[ii,1], ",\"a\":" ,pico[ii,2]   , "}" ,sep="" ) ,sep="," )
                         ii = ii + 1
                    }
 
-                   return(retStr)
-               }else return ('err4')
+                   return(paste("[",retStr,"]"))
+               }else return ('[]')
             }      
         
         }else return('err5')
-    }else return('err5')
+    }else return('err6')
 }
 if(length(args) >=4)
 {
