@@ -74,21 +74,35 @@ class Test_soundscape(unittest.TestCase):
             spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
             next(spamreader, None)
             for row in spamreader:
-                scp.insert_peaks(datetime.strptime(row[10], '%m/%d/%Y %I:%M %p'),[float(row[6])],int(row[0]))
+                scp.insert_peaks(
+                    datetime.strptime(row[10], '%m/%d/%Y %I:%M %p'),
+                    [float(row[6])],
+                    [float(row[7])],
+                    int(row[0])
+                )
           
         with open('test_python/data/scp.recordings.peaks.data.json', 'rb') as fp:
             recordings = json.load(fp)
         with open('test_python/data/scp.bins.peaks.data.json', 'rb') as fp:
-            bins = json.load(fp)
+            bins = dict([
+                (int(i_row), dict([
+                    (int(i_col), dict([
+                        (int(i_cell), cell) for i_cell, cell in col.items()
+                    ])) for i_col, col in row.items()
+                ])) for i_row, row in json.load(fp).items()
+            ])
+
         with open('test_python/data/scp.stats.peaks.data.json', 'rb') as fp:
             stats = json.load(fp)
         
         self.assertEqual(scp.recordings,recordings,msg="soundscape.Soundscape: scp computed wrong recordings")
-        try:
-            for k in bins:
-                scp.bins[int(k)]
-        except:
-            self.fail("soundscape.Soundscape: scp computed wrong bins")
+        if scp.bins != bins:
+            for r in scp.bins:
+                if r not in bins:
+                    print ":: ", r, " missing"
+                else:
+                    print ":: ", r, " :: ", (scp.bins[r] == bins)
+            self.assertTrue(False, msg="soundscape.Soundscape: scp computed wrong bins")
         self.assertEqual(scp.stats,stats,msg="soundscape.Soundscape: scp computed wrong stats")
 
     def test_init_with_finp(self):
@@ -251,7 +265,7 @@ class Test_soundscape_read_from_index(unittest.TestCase):
         from soundscape import soundscape
         from soundscape.soundscape import aggregations
         read_scidx_mock = MagicMock()
-        read_scidx_mock.return_value = [{0:{0:{}}},{},0,0,0,0,0,0,0,0]
+        read_scidx_mock.return_value = [1,{0:{0:{}}},{},0,0,0,0,0,0,0,0]
         soundscape.scidx.read_scidx = read_scidx_mock
         scp = soundscape.Soundscape(aggregations['time_of_day'], 86, 256)
         obj = scp.read_from_index("/dummy/index/file")
