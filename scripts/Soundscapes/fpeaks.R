@@ -61,7 +61,7 @@ work_fpeaks = function(argss)
             tryCatch(
                 {
                     #,amp=c(0.01,0.01)
-                    picos<-fpeaks(spec,freq=as.numeric(argss[4]),plot=FALSE)#,threshold=epsilonValue)
+                    picos<-fpeaks(spec,freq=as.numeric(argss[4]),plot=FALSE,threshold=epsilonValue)
                 }
                 ,
                 error = function(e)

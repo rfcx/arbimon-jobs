@@ -26,12 +26,72 @@ from boto.s3.connection import S3Connection
 num_cores = multiprocessing.cpu_count()
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
+USAGE = """
+{prog} job_id
+    job_id - job id in database
+""".format(prog=sys.argv[0])
+
+
+if len(sys.argv) < 2:
+    print USAGE
+    sys.exit(-1)
+
+job_id = int(sys.argv[1].strip("'"))
 
 tempFolders = tempfile.gettempdir()
 workingFolder = tempFolders+"/soundscape_"+str(job_id)+"/"
 if os.path.exists(workingFolder):
     shutil.rmtree(workingFolder)
 os.makedirs(workingFolder)
+
+log = Logger(job_id, 'playlist2soundscape.py', 'main')
+log.also_print = True
+log.write('script started')
+
+
+configuration = Config()
+config = configuration.data()
+log.write('configuration loaded')
+log.write('trying database connection')
+try:
+    db = MySQLdb.connect(
+        host=config[0], user=config[1],
+        passwd=config[2], db=config[3]
+    )
+except MySQLdb.Error as e:
+    print "# fatal error cannot connect to database."
+    log.write('fatal error cannot connect to database.')
+    log.close()
+    quit()
+log.write('database connection succesful')
+
+
+with closing(db.cursor()) as cursor:
+    cursor.execute("""
+    SELECT JP.playlist_id, JP.max_hertz, JP.bin_size,
+        JP.soundscape_aggregation_type_id,
+        SAT.identifier as aggregation, JP.threshold,
+        J.project_id, J.user_id, JP.name, JP.frequency
+    FROM jobs J
+    JOIN job_params_soundscape JP ON J.job_id = JP.job_id
+    JOIN soundscape_aggregation_types SAT ON
+        SAT.soundscape_aggregation_type_id = JP.soundscape_aggregation_type_id
+    WHERE J.job_id = {0}
+    LIMIT 1
+    """.format(job_id))
+
+    job = cursor.fetchone()
+
+if not job:
+    print "Soundscape job #{0} not found".format(job_id)
+    sys.exit(-1)
+
+
+(
+    playlist_id, max_hertz, bin_size, agrrid, agr_ident,
+    threshold, pid, uid, name, frequency
+) = job
+
 
 aggregation = soundscape.aggregations.get(agr_ident)
 
@@ -59,6 +119,7 @@ awsKeyId = config[5]
 awsKeySecret = config[6]
 
 try:
+#------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
     q = (
         "SELECT r.`recording_id`,`uri`, DATE_FORMAT( `datetime` , \
         '%Y-%m-%d %H:%i:%s' ) as date FROM `playlist_recordings` pr , \
@@ -109,6 +170,8 @@ try:
     aciIndex = indices.Indices(aggregation)
     
     log.write("start parallel... ")
+    
+#------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
 
     def processRec(rec, config):
         logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
@@ -199,7 +262,12 @@ try:
                         '------------------END WORKER THREAD LOG (id:' +
                         str(id) + ')------------------')
                     return None
-                freqs = stdout.strip(',')
+                ff=json.loads(stdout)
+                freqs =[]
+                amps =[]
+                for i in range(len(ff)):
+                    freqs.append(ff[i]['f'])
+                    amps.append(ff[i]['a'])
                 proc = subprocess.Popen([
                    '/usr/bin/Rscript', currDir+'/h.R',
                    localFile
@@ -231,13 +299,7 @@ try:
                     recSampleRate = float(stdout)
                 recMaxHertz = float(recSampleRate)/2.0    
                 os.remove(localFile)
-                fresqSplit = freqs.split(',')
-                if len(fresqSplit) < 1:
-                    logofthread.write('no peaks found')
-                    freqs = None
-                else:
-                    freqs = [float(i) for i in fresqSplit]
-                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
+                results = {"date": date, "id": id, "freqs": freqs , "amps":amps , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
@@ -255,12 +317,14 @@ try:
                 ')------------------'
             )
             return None
-
+#finish function
+#------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
     resultsParallel = Parallel(n_jobs=num_cores)(
         delayed(processRec)(recordingi, config) for recordingi in recsToProcess
     )
-
+#----------------------------END PARALLEL --------------------------------------------------------------------------------------------------------------------
+# process result
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
     if len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
@@ -281,7 +345,7 @@ try:
             if result is not None:
                 if result['freqs'] is not None:
                     if len(result['freqs']) > 0:
-                        scp.insert_peaks(result['date'], result['freqs'], result['id'])
+                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], i)
                     peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
                 if result['h'] is not None:
                     hIndex.insert_value(result['date'] ,result['h'],result['id'])
@@ -410,7 +474,7 @@ try:
 
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="completed", `completed`=1, \
-            `progress` = `progress`  where `job_id` = '+str(job_id))
+            `progress` = `progress` + 1 where `job_id` = '+str(job_id))
         insertNews(cursor, uid, pid, json.dumps({"soundscape": name}), 11)
         db.commit()
     log.write('closing database')
