@@ -119,6 +119,7 @@ awsKeyId = config[5]
 awsKeySecret = config[6]
 
 try:
+#------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
     q = (
         "SELECT r.`recording_id`,`uri`, DATE_FORMAT( `datetime` , \
         '%Y-%m-%d %H:%i:%s' ) as date FROM `playlist_recordings` pr , \
@@ -169,6 +170,8 @@ try:
     aciIndex = indices.Indices(aggregation)
     
     log.write("start parallel... ")
+    
+#------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
 
     def processRec(rec, config):
         logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
@@ -259,7 +262,12 @@ try:
                         '------------------END WORKER THREAD LOG (id:' +
                         str(id) + ')------------------')
                     return None
-                freqs = stdout.strip(',')
+                ff=json.loads(stdout)
+                freqs =[]
+                amps =[]
+                for i in range(len(ff)):
+                    freqs.append(ff[i]['f'])
+                    amps.append(ff[i]['a'])
                 proc = subprocess.Popen([
                    '/usr/bin/Rscript', currDir+'/h.R',
                    localFile
@@ -291,13 +299,7 @@ try:
                     recSampleRate = float(stdout)
                 recMaxHertz = float(recSampleRate)/2.0    
                 os.remove(localFile)
-                fresqSplit = freqs.split(',')
-                if len(fresqSplit) < 1:
-                    logofthread.write('no peaks found')
-                    freqs = None
-                else:
-                    freqs = [float(i) for i in fresqSplit]
-                results = {"date": date, "id": id, "freqs": freqs , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
+                results = {"date": date, "id": id, "freqs": freqs , "amps":amps , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
@@ -315,12 +317,14 @@ try:
                 ')------------------'
             )
             return None
-
+#finish function
+#------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
     resultsParallel = Parallel(n_jobs=num_cores)(
         delayed(processRec)(recordingi, config) for recordingi in recsToProcess
     )
-
+#----------------------------END PARALLEL --------------------------------------------------------------------------------------------------------------------
+# process result
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
     if len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
@@ -341,7 +345,7 @@ try:
             if result is not None:
                 if result['freqs'] is not None:
                     if len(result['freqs']) > 0:
-                        scp.insert_peaks(result['date'], result['freqs'], result['id'])
+                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], i)
                     peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
                 if result['h'] is not None:
                     hIndex.insert_value(result['date'] ,result['h'],result['id'])
