@@ -83,24 +83,17 @@ class Test_soundscape(unittest.TestCase):
         with open('test_python/data/scp.recordings.peaks.data.json', 'rb') as fp:
             recordings = json.load(fp)
         with open('test_python/data/scp.bins.peaks.data.json', 'rb') as fp:
-            bins = dict([
-                (int(i_row), dict([
-                    (int(i_col), dict([
-                        (int(i_cell), cell) for i_cell, cell in col.items()
-                    ])) for i_col, col in row.items()
-                ])) for i_row, row in json.load(fp).items()
-            ])
-
+            bins = json.load(fp)
         with open('test_python/data/scp.stats.peaks.data.json', 'rb') as fp:
             stats = json.load(fp)
         self.assertEqual(scp.recordings,recordings,msg="soundscape.Soundscape: scp computed wrong recordings")
-        if scp.bins != bins:
-            for r in scp.bins:
-                if r not in bins:
-                    print ":: ", r, " missing"
-                else:
-                    print ":: ", r, " :: ", (scp.bins[r] == bins)
-            self.assertTrue(False, msg="soundscape.Soundscape: scp computed wrong bins")
+        try:   
+            for i in bins:
+               for j in bins[i]:
+                    for k in bins[i][j]:
+                        self.assertEqual(scp.bins[int(i)][int(j)][int(k)], bins[i][j][k], msg="soundscape.Soundscape: scp returned incorrect index values")
+        except:
+           self.fail("soundscape.scidx.write_scidx: Incorrect number of index values")
         self.assertEqual(scp.stats,stats,msg="soundscape.Soundscape: scp computed wrong stats")
 
     def test_init_with_finp(self):
