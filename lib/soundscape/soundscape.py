@@ -35,6 +35,7 @@ class Soundscape():
         self.bin_size = bin_size
         self.amplitude_th = None
         self.max_list_global = None
+        self.norm_vector = None
         bins = {}
         recordings = {}
         self.recstemp = {}
@@ -152,7 +153,7 @@ class Soundscape():
                     v = len(cell) if cell else 0
             else:
                 v = 0
-            yield scalefn(v)
+            yield scalefn(v,x)
 
     @classmethod
     def rows_gen(cls, bins, scalefn, from_y, to_y, from_x, to_x, amp_th=None):
@@ -184,9 +185,22 @@ class Soundscape():
         if scale == 0:
             scale = 1
 
+        scalefn = lambda x, col: max(0, min(int(x * 255.0 / scale), 255))
+
+        if self.norm_vector:
+            scale = 1
+            sfn = scalefn
+
+            def nv_scalefn(x, col):
+                nv = float(self.norm_vector.get(col, 0) or 0)
+                v = sfn(x / nv, col)
+                print v
+                return v
+            scalefn = nv_scalefn
+
         fout = file(imgout, "wb")
         w.write(fout, self.rows_gen(
-            self.bins, lambda x: max(0, min(int(x * 255.0 / scale), 255)),
+            self.bins, scalefn,
             0, height, offsetx, offsetx + width, self.amplitude_th
         ))
 
