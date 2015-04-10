@@ -152,7 +152,7 @@ class Soundscape():
                     v = len(cell) if cell else 0
             else:
                 v = 0
-            yield scalefn(v)
+            yield scalefn(v,x)
 
     @classmethod
     def rows_gen(cls, bins, scalefn, from_y, to_y, from_x, to_x, amp_th=None):
