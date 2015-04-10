@@ -130,7 +130,7 @@ class Test_soundscape(unittest.TestCase):
         from soundscape import soundscape
         from soundscape.soundscape import aggregations
         scp = soundscape.Soundscape(aggregations['time_of_day'], 86, 256)
-        scaleFunction = lambda x: x
+        scaleFunction = lambda x,col: x
         dummtBins = {}
         binsLength = []
         binsc = randint(50,100)
@@ -148,7 +148,7 @@ class Test_soundscape(unittest.TestCase):
         from soundscape import soundscape
         from soundscape.soundscape import aggregations
         scp = soundscape.Soundscape(aggregations['time_of_day'], 86, 256)
-        scaleFunction = lambda x: x
+        scaleFunction = lambda x,col: x
         dummtBins = {}
         binsLength = {}
         maxx = randint(25,100)
