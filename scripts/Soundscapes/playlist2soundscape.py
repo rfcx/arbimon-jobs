@@ -22,6 +22,8 @@ from a2audio.rec import Rec
 from a2pyutils import palette
 from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
+from soundscape.set_visual_scale_lib import get_norm_vector
+from soundscape.set_visual_scale_lib import get_sc_data
 
 num_cores = multiprocessing.cpu_count()
 
@@ -71,7 +73,7 @@ with closing(db.cursor()) as cursor:
     SELECT JP.playlist_id, JP.max_hertz, JP.bin_size,
         JP.soundscape_aggregation_type_id,
         SAT.identifier as aggregation, JP.threshold,
-        J.project_id, J.user_id, JP.name, JP.frequency
+        J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize
     FROM jobs J
     JOIN job_params_soundscape JP ON J.job_id = JP.job_id
     JOIN soundscape_aggregation_types SAT ON
@@ -86,15 +88,12 @@ if not job:
     print "Soundscape job #{0} not found".format(job_id)
     sys.exit(-1)
 
-
 (
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
-    threshold, pid, uid, name, frequency
+    threshold, pid, uid, name, frequency , normalized
 ) = job
 
-
 aggregation = soundscape.aggregations.get(agr_ident)
-
 
 if not aggregation:
     print "# Wrong agregation."
@@ -354,7 +353,9 @@ try:
                     
         log.write("inserting peaks:" + str(time.time() - start_time_all))
         start_time_all = time.time()
+
         scp.write_index(workingFolder+scidxout)
+        
         log.write("writing indices:" + str(time.time() - start_time_all))
         
         peaknFile = workingFolder+'peaknumbers'
@@ -377,16 +378,16 @@ try:
             INSERT INTO `soundscapes`( `name`, `project_id`, `user_id`,
             `soundscape_aggregation_type_id`, `bin_size`, `uri`, `min_t`,
             `max_t`, `min_f`, `max_f`, `min_value`, `max_value`,
-            `date_created`, `playlist_id`, `threshold` ,	`frequency`)
+            `date_created`, `playlist_id`, `threshold` ,`frequency` ,`normalized`)
             VALUES (
                 %s, %s, %s, %s, %s, NULL, %s, %s, 0, %s, 0, %s, NOW(), %s,
-                %s, %s
+                %s, %s , %s
             )
         """, [
             name, pid, uid, agrrid,
             bin_size, statsMin, statsMax,
             max_hertz, scp.stats['max_count'],
-            playlist_id, threshold, frequency
+            playlist_id, threshold, frequency , normalized
         ])
 
         scpId = -1
@@ -402,6 +403,11 @@ try:
         log.write('inserted soundscape into database')
         soundscapeId = scpId
         start_time_all = time.time()
+                
+        norm_vector = get_norm_vector(db, get_sc_data(db,soundscapeId)) if normalized else None
+        if norm_vector is not None:
+            scp.norm_vector = norm_vector
+            
         scp.write_image(workingFolder + imgout, palette.get_palette())
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \
@@ -482,7 +488,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()
