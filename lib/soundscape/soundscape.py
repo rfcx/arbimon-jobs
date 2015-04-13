@@ -186,15 +186,14 @@ class Soundscape():
             scale = 1
 
         scalefn = lambda x, col: max(0, min(int(x * 255.0 / scale), 255))
-
         if self.norm_vector:
             scale = 1
             sfn = scalefn
 
             def nv_scalefn(x, col):
-                nv = float(self.norm_vector.get(col, 0) or 0)
+                nv = float(self.norm_vector.get(col, 1) or 1)
                 v = sfn(x / nv, col)
-                print v
+                #print v
                 return v
             scalefn = nv_scalefn
 
