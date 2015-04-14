@@ -119,7 +119,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     start_time = time.time()
     log.write(str(type(bucket)))
     recAnalized = Recanalizer(
-        recUri, mod[1], mod[2], mod[3], tempFolder,str(bucketNam) ,log)
+        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log)
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
