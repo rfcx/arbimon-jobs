@@ -160,13 +160,8 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
             k = bucket.new_key(vectorUri)
             k.set_contents_from_filename(vectorLocal)
             k.set_acl('public-read')
-            fets = recAnalized.features()
-            clf = mod[0]
-            noErrorFlag = True
-            log.time_delta("uploaded vector file", start_time)
-            start_time = time.time()
             try:
-                res = clf.predict(fets)
+                fets = recAnalized.features()
             except:
                 log.write('error predicting on recording: '+recUri)
                 with closing(db.cursor()) as cursor:
@@ -177,7 +172,24 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
                     """, [recId, jobId])
                     db.commit()
                 noErrorFlag = False
-            log.time_delta("prediction", start_time)
+            if noErrorFlag:
+                clf = mod[0]
+                noErrorFlag = True
+                log.time_delta("uploaded vector file", start_time)
+                start_time = time.time()
+                try:
+                    res = clf.predict(fets)
+                except:
+                    log.write('error predicting on recording: '+recUri)
+                    with closing(db.cursor()) as cursor:
+                        cursor.execute("""
+                            INSERT INTO `recordings_errors`
+                                (`recording_id`, `job_id`)
+                            VALUES (%s, %s)
+                        """, [recId, jobId])
+                        db.commit()
+                    noErrorFlag = False
+                log.time_delta("prediction", start_time)
             if noErrorFlag:
                 print recId, ";", res[0], ";", jobId, ";", species, ";",
                 print songtype, ";", min(featvector), ";", max(featvector)
