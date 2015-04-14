@@ -160,6 +160,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
             k = bucket.new_key(vectorUri)
             k.set_contents_from_filename(vectorLocal)
             k.set_acl('public-read')
+            noErrorFlag = True
             try:
                 fets = recAnalized.features()
             except:
@@ -174,7 +175,6 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
                 noErrorFlag = False
             if noErrorFlag:
                 clf = mod[0]
-                noErrorFlag = True
                 log.time_delta("uploaded vector file", start_time)
                 start_time = time.time()
                 try:
