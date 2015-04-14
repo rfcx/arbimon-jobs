@@ -8,11 +8,11 @@ class Test_syllable(unittest.TestCase):
         sys.path.append('/home/rafa/node/arbimon2-jobs/lib')
         if 'gen_random_species' in sys.modules:
             del sys.modules['gen_random_species']
-        from gen_random_species import Syllable
+        from gen_random_species import Species
         
-        syl = Syllable()
+        sp = Species()
         
-        print dir(syl)
+        print dir(sp)
         
 if __name__ == '__main__':
     unittest.main()
