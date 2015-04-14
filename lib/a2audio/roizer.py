@@ -65,9 +65,7 @@ class Roizer:
             self.status = "NoAudio"
             return None
         dur = float(self.samples)/float(self.sample_rate)
-        if dur < endiSecs-0.1:
-            if self.logs:
-                self.logs.write("Roizer: endiSecs greater than recording duration")   
+        if dur <= endiSecs-0.001:
             raise ValueError("endiSecs greater than recording duration")
         
         if  'HasAudioData' in self.status:

@@ -1,22 +1,14 @@
 import unittest
 import imp
 import json
-import importlib
+import warnings
 
 def load(lib):
     path = None
-    flag = False
     try:
         fp,path,desc = imp.find_module(lib)
-        path = 'found'
     except:
-	flag = True
-    if flag:
-        try:
-	    i = importlib.import_module(lib)
-	    path = 'found'
-        except:
-	    """do nothing"""
+        """do nothing"""
     return path
     
 class Test_enviroment(unittest.TestCase):
@@ -25,7 +17,21 @@ class Test_enviroment(unittest.TestCase):
         with open('test_python/data/libs.json') as fd:
             libs = json.load(fd)
         for i in libs:
-            self.assertEqual(load(i),'found',msg="Lib "+i+" is not installed in current enviroment")
+            self.assertIsNotNone(load(i),msg="Lib "+i+" is not installed in current enviroment")
+
+    def test_sampleratelib(self):
+        try:
+            from scikits.samplerate import resample
+        except:
+            self.fail("Lib scikits.samplerate is not installed in current enviroment")
+            
+    def test_scikits_audiolab(self):
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                from scikits.audiolab import Sndfile, Format
+        except:
+            self.fail("Lib scikits.audiolab is not installed in current enviroment")
 
 if __name__ == '__main__':
     unittest.main()

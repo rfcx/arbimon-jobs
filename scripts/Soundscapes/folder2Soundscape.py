@@ -140,18 +140,10 @@ def processRec(rec):
     else:
         return None
 
-
-for recordingi in recsToProcess:
-    print processRec(recordingi)
-    quit()
-quit()
-
-
 start_time_all = time.time()
 resultsParallel = Parallel(n_jobs=num_cores)(
      delayed(processRec)(recordingi) for recordingi in recsToProcess
 )
-
 if len(resultsParallel) > 0:
     max_hertz = 22050
     for result in resultsParallel:
@@ -167,7 +159,7 @@ if len(resultsParallel) > 0:
             i = i + 1
             if result['freqs'] is not None:
                 if len(result['freqs']) > 0:
-                    scp.insert_peaks(result['date'], result['freqs'], i)
+                    scp.insert_peaks(result['date'], result['freqs'], result['amps'], i)
                 peaknumbers.insert_value(result['date'] ,len(result['freqs']),i)
             if result['h'] is not None:
                 hIndex.insert_value(result['date'] ,result['h'],i)

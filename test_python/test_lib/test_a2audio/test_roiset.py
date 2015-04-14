@@ -38,7 +38,6 @@ def gen_random_roiset(outputFile):
     columns = []
     roiCount = 3
     roisetTest = Roiset("class",192000)
-    print 'gen matrices'
     for i in range(roiCount):
         lowFreqs.append(randint(1000,2000))
         highFreqs.append(randint(3000,4000))
@@ -58,12 +57,10 @@ def gen_random_roiset(outputFile):
     rows.append(rows_per_srate[index])
     specs.append(gen_random_matrix(rows[i],columns[i]))
     roisetTest.addRoi(lowFreqs[i],highFreqs[i],sample_rates[i],specs[i],rows[i],columns[i])
-    print 'aline'
     roisetTest.alignSamples()
     with open(outputFile, 'wb') as output:
         pickler = pickle.Pickler(output, -1)
         pickle.dump([lowFreqs,highFreqs,sample_rates,specs,rows,columns,roisetTest.getSurface()], output, -1)
-    print 'saved'
     
 class Test_roiset(unittest.TestCase):
     

@@ -12,8 +12,11 @@ class Test_syllable(unittest.TestCase):
         
         sp = Species()
         
+
         print dir(sp)
-        
+
+        #print dir(syl)
+       
 if __name__ == '__main__':
     unittest.main()
 
