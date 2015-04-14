@@ -110,20 +110,28 @@ def insert_rec_error(db, recId, jobId):
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
     errorProcessing = False
     db = get_db(config)
-    try:
-        recAnalized = Recanalizer(rec['uri'], mod[1], mod[2], mod[3], workingFolder,str(config[4]) ,log,False,mod[5])
-        with closing(db.cursor()) as cursor:
-            cursor.execute("""
-                UPDATE `jobs`
-                SET `progress` = `progress` + 1
-                WHERE `job_id` = %s
-            """, [jobId])
-            db.commit()
+    recAnalized = None
+    #try:
+    useSsim = True
+    oldModel = False
+    if len(mod) > 5:
+        useSsim =  mod[5]
+    else:
+        oldModel = True
+    recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim,16,oldModel )
+    with closing(db.cursor()) as cursor:
+        cursor.execute("""
+            UPDATE `jobs`
+            SET `progress` = `progress` + 1
+            WHERE `job_id` = %s
+        """, [jobId])
+        db.commit()
         
-    except:
-        errorProcessing = True
+    #except:
+        #errorProcessing = True
     featvector = None
     fets = None
+    print recAnalized,'recAnalized.status ',recAnalized.status 
     if recAnalized.status == 'Processed':
         try:
             featvector = recAnalized.getVector()
@@ -226,19 +234,21 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype):
     return json.dumps({"minv": minVectorVal, "maxv": maxVectorVal})
    
 def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config):
-    try:
-        num_cores = multiprocessing.cpu_count()
-        log.write('using Pattern Matching algorithm' )
-        workingFolder = create_temp_dir(jobId,log)
-        recsToClassify = get_playlist(db,playlistId,log)
-        set_progress_params(db,len(recsToClassify), jobId)
-        mod = get_model(model_uri,config,log,workingFolder)
-        resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId)
-            for rec in recsToClassify
-        )
-    except:
-        return False
+    #try:
+    num_cores = multiprocessing.cpu_count()
+    log.write('using Pattern Matching algorithm' )
+    workingFolder = create_temp_dir(jobId,log)
+    recsToClassify = get_playlist(db,playlistId,log)
+    set_progress_params(db,len(recsToClassify), jobId)
+    mod = get_model(model_uri,config,log,workingFolder)
+    resultsParallel = Parallel(n_jobs=num_cores)(
+        delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId)
+        for rec in recsToClassify
+    )
+    for rec in recsToClassify:
+        classify_rec(rec,mod,workingFolder,log,config,jobId)
+    #except:
+        #return False
     try:
         jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype)
     except:

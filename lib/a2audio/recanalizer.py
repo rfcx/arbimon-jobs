@@ -25,7 +25,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16,oldModel =False):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -61,14 +61,16 @@ class Recanalizer:
         self.status = 'NoData'
         self.ssim = useSsim
         self.step = step
-        
+        self.oldModel = oldModel 
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
             self.logs.write("configuration time --- seconds ---" + str(time.time() - start_time))
         
         if not test:
+            print 'processing'
             self.process()
+            print 'end proc'
         else:
             self.status = 'TestRun'
     
@@ -79,6 +81,7 @@ class Recanalizer:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             maxFreqInRec = float(self.rec.sample_rate)/2.0
+            print self.high,maxFreqInRec
             if self.high >= maxFreqInRec:
                 self.status = 'RoiOutsideRecMaxFreq'
             elif float(self.rec.sample_rate) not in analysis_sample_rates:
@@ -160,7 +163,24 @@ class Recanalizer:
             step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
             if self.logs:
                 self.logs.write("featureVector start")
-            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            if self.oldModel:
+                freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
+                i = len(freqs44100) - 1
+                j = i
+                while freqs44100[i] > self.high and i>=0:
+                    j = j -1
+                    i = i -1
+                while freqs44100[j] > self.low and j>=0:
+                    j = j -1
+                speclow = len(freqs44100) - j - 2
+                spechigh = len(freqs44100) - i - 2
+                if speclow >= len(freqs44100):
+                    speclow = len(freqs44100)-1
+                if spechigh < 0:
+                    spechigh = 0
+                self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
+            else:
+                self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
             removeUnwanted = self.matrixSurfacComp == -10000
             if len(removeUnwanted) > 0  :
                 self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
@@ -170,6 +190,7 @@ class Recanalizer:
                 winSize = winSize - 1
             spec = self.spec;
             self.currColumns = currColumns
+            print self.spechigh,self.speclow
             if self.ssim:
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
@@ -205,7 +226,6 @@ class Recanalizer:
         dims =  Pxx.shape
         if self.logs:
             self.logs.write("mlab.specgram --- seconds ---" + str(time.time() - start_time))
-
         i = 0
         j = 0
         start_time = time.time()
@@ -246,7 +266,6 @@ class Recanalizer:
             self.speclow = len(freqsmaxRange)-1
         if self.spechigh < 0:
             self.spechigh = 0
-
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
