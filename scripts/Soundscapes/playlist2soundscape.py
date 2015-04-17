@@ -349,7 +349,7 @@ try:
             if result is not None:
                 if result['freqs'] is not None:
                     if len(result['freqs']) > 0:
-                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], i)
+                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], result['id'])
                     peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
                 if result['h'] is not None:
                     hIndex.insert_value(result['date'] ,result['h'],result['id'])
