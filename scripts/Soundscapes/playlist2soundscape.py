@@ -488,7 +488,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()

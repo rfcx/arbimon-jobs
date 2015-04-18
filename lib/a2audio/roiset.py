@@ -6,7 +6,7 @@ import cPickle as pickle
 import scipy
 import math
 from skimage.measure import structural_similarity as ssim
-from fullFrequencies import *
+from samplerates import *
 import warnings
 
 class Roiset:   
@@ -78,7 +78,7 @@ class Roiset:
         self.sampleRates.append(sample_rate)    
         self.sampleLengths.append(columns)
         self.setSampleRate = max(self.sampleRates)
-        self.rows = 1116
+        self.rows = None
         self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
         self.roiCount = self.roiCount + 1
     
@@ -94,6 +94,7 @@ class Roiset:
             if self.logs:
                 self.logs.write("Roiset.py: set sample rate = "+str(self.setSampleRate))
             freqs = [i for i in reversed(get_freqs())]
+            self.rows = len(freqs)
             big_high_index = 0
             big_low_index = 0
             if self.logs:
@@ -101,15 +102,25 @@ class Roiset:
             while float(freqs[big_high_index]) >= float(self.highestFreq):
                 big_high_index = big_high_index + 1
                 big_low_index  = big_low_index  + 1
-            while float(freqs[big_low_index ]) >=  float(self.lowestFreq):
+            if self.logs:
+                self.logs.write("Roiset.py: search freqs ")
+            while big_low_index <= (len(freqs)-1) and float(freqs[big_low_index ]) >=  float(self.lowestFreq) :
                 big_low_index  = big_low_index  + 1
+            if self.logs:
+                self.logs.write("Roiset.py: freqs searched")
             big_low_index  = big_low_index -1
             big_high_index = big_high_index + 2
+            if self.logs:
+                self.logs.write("Roiset.py: creating temp computation space ")
             surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
             compsurface = numpy.random.rand(self.rows,self.maxColumns*2)
+            if self.logs:
+                self.logs.write("Roiset.py: done creating temp computation space ")
             jval = math.floor(self.maxColumns/2)
             surface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
             compsurface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
+            if self.logs:
+                self.logs.write("Roiset.py: weights initialization ")
             weights = numpy.zeros(shape=(self.rows,self.maxColumns*2))
             weights[big_high_index:big_low_index,jval:(jval+self.maxColumns)] = 1
             dm = 1
@@ -118,6 +129,8 @@ class Roiset:
             index = 0
             highcut = big_high_index
             lowcut = big_low_index
+            if self.logs:
+                self.logs.write("Roiset.py:start align ")
             for roi in self.roi:
                 if index is not self.biggestIndex:
                     high_index = 0
@@ -166,6 +179,8 @@ class Roiset:
             self.meanSurface[lowcut:(self.meanSurface.shape[0]-1),:] = -10000 
             self.maxColumns = self.meanSurface.shape[1]
             self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
+            #imshow(self.meanSurface[big_high_index:big_low_index,:])
+            #show()
             if self.logs:
                 self.logs.write("Roiset.py: aligned "+str(len(self.roi))+" rois")
     

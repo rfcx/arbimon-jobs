@@ -12,7 +12,8 @@ import contextlib
 import numpy as np
 from a2pyutils.logger import Logger
 from scikits.samplerate import resample
-
+from pylab import *
+import math
 encodings = {
     "pcms8":8,
     "pcm16":16,
@@ -47,7 +48,7 @@ class Rec:
     channs = 0
     status = 'NotProcessed'
     
-    def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False):
+    def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False,resample=True):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -76,6 +77,7 @@ class Rec:
         self.filename = tempfilename[len(tempfilename)-1]
         self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
         self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
+        self.doresample = resample
         while os.path.isfile(self.localfilename):
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
             self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
@@ -126,14 +128,22 @@ class Rec:
             self.status = 'CorruptedFile'
             return None
         
-        if float(self.sample_rate) not in analysis_sample_rates:
+        if self.doresample and float(self.sample_rate) not in analysis_sample_rates:
             self.resample()
           
         self.status = 'HasAudioData'
     
     def resample(self):
+        if self.logs :
+            self.logs.write("Rec.py : resampling recording")      
+       # a,b,c=mlab.specgram(self.original,NFFT=256,Fs=self.sample_rate)
+        #imshow(20*log10(a))
+        #show()
         to_sample = self.calc_resample_factor()
         self.original   = resample(self.original, float(to_sample)/float(self.sample_rate) , 'sinc_best')
+        #a,b,c=mlab.specgram(self.original,NFFT=256,Fs=to_sample)
+        #imshow(20*log10(a))
+        #show()
         self.samples = len(self.original)
         self.sample_rate = to_sample
         
@@ -145,8 +155,8 @@ class Rec:
     def getAudioFromUri(self):
         start_time = time.time()
         f = None
-        #if self.logs :
-            #self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
+        if self.logs :
+            self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri)
         try:
             f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :

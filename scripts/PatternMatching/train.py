@@ -141,15 +141,17 @@ if model_type_id in [1,2]:
                 'training_{}_{}.csv'.format(jobId, training_set_id)
             )
             # write training file to temporary folder
+            banwds = []
             with open(trainingFileName, 'wb') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter=',')
                 numTrainingRows = int(cursor.rowcount)
                 progress_steps = numTrainingRows
                 for x in range(0, numTrainingRows):
                     rowTraining = cursor.fetchone()
+                    banwds.append(float(rowTraining[6])-float(rowTraining[5]))
                     trainingData.append(rowTraining)
                     spamwriter.writerow(rowTraining[0:7+1] + (jobId,))
-    
+            meanBand = numpy.mean(banwds) 
             cursor.execute("""
                 SELECT DISTINCT `recording_id`
                 FROM `training_set_roi_set_data`
@@ -177,7 +179,7 @@ if model_type_id in [1,2]:
                 speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create training csvs files or access training data from db')
-
+    quit()
     validationData = []
     """ Validation file creation """
     try:

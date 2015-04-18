@@ -5,7 +5,7 @@ from matplotlib import *
 import numpy
 import math
 import json
-from fullFrequencies import *
+from samplerates import *
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
@@ -90,7 +90,6 @@ class Roizer:
         return self.spec
     
     def spectrogram(self):
-        
         initSample = int(math.floor(float((self.iniT)) * float((self.sample_rate))))
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
         if endSample >= len(self.original):
@@ -100,23 +99,11 @@ class Roizer:
             self.logs.write("Roizer.py: sampleRate "+str(self.sample_rate))
             self.logs.write("Roizer.py: Init time: "+str(self.iniT)+" = "+str(initSample)+ " sample ")
             self.logs.write("Roizer.py: End time: "+str(self.endT)+" = "+str(endSample)+ " sample ")
-            
         freqsFull = get_freqs()
         maxHertzInRec = float(self.sample_rate)/2.0
-        nfft = 1116 #if 192000 Hz nfft is 1116 else:
+        nfft = get_nfft(self.sample_rate)
         real_sample_Rate = self.sample_rate
-        if float(self.sample_rate) == 16000.0:
-            nfft = 93
-            self.sample_rate = 16000.0
-        if float(self.sample_rate) == 32000.0:
-            nfft = 186
-            self.sample_rate = 32000.0
-        if float(self.sample_rate) == 48000.0:
-            nfft = 279
-            self.sample_rate = 48000.0
-        if float(self.sample_rate) == 96000.0:
-            nfft = 558
-            self.sample_rate = 96000.0
+        
         targetrows = len(freqsFull)
         data = self.original[initSample:endSample]
         Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=real_sample_Rate, noverlap=nfft)

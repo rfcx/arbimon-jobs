@@ -14,18 +14,17 @@ import math
 from a2pyutils.logger import Logger
 import os
 import json
-from fullFrequencies import *
 from scipy.stats import *
 from  scipy.signal import *
 import warnings
-
+from samplerates import *
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16,oldModel =False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -61,16 +60,15 @@ class Recanalizer:
         self.status = 'NoData'
         self.ssim = useSsim
         self.step = step
-        self.oldModel = oldModel 
+        self.oldModel = oldModel
+        self.numsoffeats = numsoffeats
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
             self.logs.write("configuration time --- seconds ---" + str(time.time() - start_time))
         
         if not test:
-            print 'processing'
             self.process()
-            print 'end proc'
         else:
             self.status = 'TestRun'
     
@@ -81,21 +79,21 @@ class Recanalizer:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             maxFreqInRec = float(self.rec.sample_rate)/2.0
-            print self.high,maxFreqInRec
             if self.high >= maxFreqInRec:
                 self.status = 'RoiOutsideRecMaxFreq'
-            elif float(self.rec.sample_rate) not in analysis_sample_rates:
-                self.status = "SampleRateNotSupported"
             else:
-                start_time = time.time()
-                self.spectrogram()
-                if self.logs:
-                    self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
-                start_time = time.time()
-                self.featureVector()
-                if self.logs:
-                    self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
-                self.status = 'Processed'
+                if not self.oldModel and float(self.rec.sample_rate) not in analysis_sample_rates:
+                    self.status = "SampleRateNotSupported"
+                else:
+                    start_time = time.time()
+                    self.spectrogram()
+                    if self.logs:
+                        self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
+                    start_time = time.time()
+                    self.featureVector()
+                    if self.logs:
+                        self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
+                    self.status = 'Processed'
         else:
             self.status = 'NoData'
 
@@ -103,7 +101,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,False,False,not self.oldModel)
         
     def getVector(self ):
         if len(self.distances)<1:
@@ -139,16 +137,20 @@ class Recanalizer:
                 kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
         hist = histogram(self.distances,6)[0]
         cfs =  cumfreq(self.distances,6)[0]
-        return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
-                max(self.distances), min(self.distances)
-                , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
-                kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
-                ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
-                ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
-                ,moment(self.distances,9),moment(self.distances,10)
-                ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
-                ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
-                ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
+        ffs = [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
+                    max(self.distances), min(self.distances)
+                    , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
+                    kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
+                    ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
+                    ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
+                    ,moment(self.distances,9),moment(self.distances,10)
+                    ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
+                    ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
+                    ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
+        if self.oldModel:
+            return ffs[:self.numsoffeats]
+        else:
+            return ffs
         
     def featureVector(self):
         with warnings.catch_warnings():
@@ -161,17 +163,21 @@ class Recanalizer:
             self.distances = []
             currColumns = self.spec.shape[1]
             step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
-            if self.logs:
-                self.logs.write("featureVector start")
             if self.oldModel:
+                if self.logs:
+                    self.logs.write("Backward compatibility mode")  
                 freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
                 i = len(freqs44100) - 1
                 j = i
+                if self.logs:
+                    self.logs.write('Searchjing frequencies')  
                 while freqs44100[i] > self.high and i>=0:
                     j = j -1
                     i = i -1
                 while freqs44100[j] > self.low and j>=0:
                     j = j -1
+                if self.logs:
+                    self.logs.write('Search done')  
                 speclow = len(freqs44100) - j - 2
                 spechigh = len(freqs44100) - i - 2
                 if speclow >= len(freqs44100):
@@ -190,7 +196,8 @@ class Recanalizer:
                 winSize = winSize - 1
             spec = self.spec;
             self.currColumns = currColumns
-            print self.spechigh,self.speclow
+            if self.logs:
+                self.logs.write('Computing distances')
             if self.ssim:
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
@@ -203,7 +210,7 @@ class Recanalizer:
                     val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
                     self.distances.append(  val )
             if self.logs:
-               self.logs.write("featureVector end")
+               self.logs.write("Done featureVector end")
     
     def getSpec(self):
         return self.spec
@@ -211,15 +218,10 @@ class Recanalizer:
     def spectrogram(self):
         freqsmaxRange = get_freqs()
         maxHertzInRec = float(self.rec.sample_rate)/2.0
-        nfft = 1116
-        if float(self.rec.sample_rate) == 16000.0:
-            nfft = 93
-        if float(self.rec.sample_rate) == 32000.0:
-            nfft = 186
-        if float(self.rec.sample_rate) == 48000.0:
-            nfft = 279
-        if float(self.rec.sample_rate) == 96000.0:
-            nfft = 558
+        if self.oldModel:
+            nfft = self.speciesSurface.shape[0]
+        else:
+            nfft = get_nfft(self.rec.sample_rate)
         start_time = time.time()
 
         Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft*2, Fs=self.rec.sample_rate , noverlap=nfft )
