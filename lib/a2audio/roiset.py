@@ -131,7 +131,11 @@ class Roiset:
             lowcut = big_low_index
             if self.logs:
                 self.logs.write("Roiset.py:start align ")
+            cccc=0
             for roi in self.roi:
+                cccc = cccc+1
+                if self.logs:
+                    self.logs.write("roi:"+str(cccc))
                 if index is not self.biggestIndex:
                     high_index = 0
                     low_index = 0

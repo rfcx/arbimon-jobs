@@ -179,7 +179,9 @@ if model_type_id in [1,2]:
                 speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create training csvs files or access training data from db')
-    quit()
+        
+    cancelStatus(db,jobId,workingFolder)
+    
     validationData = []
     """ Validation file creation """
     try:
@@ -252,6 +254,8 @@ if model_type_id in [1,2]:
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
         
+    cancelStatus(db,jobId,workingFolder)
+    
     if len(trainingData) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
  
@@ -264,6 +268,8 @@ if model_type_id in [1,2]:
         rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,useSsim) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'roigenerator failed')
+        
+    cancelStatus(db,jobId,workingFolder)
     
     if rois is None or len(rois) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
@@ -293,6 +299,8 @@ if model_type_id in [1,2]:
     except:
         exit_error(db,workingFolder,log,jobId,'cannot align rois')
 
+    cancelStatus(db,jobId,workingFolder)
+    
     if len(patternSurfaces) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
         
@@ -305,6 +313,8 @@ if model_type_id in [1,2]:
 
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
+    
+    cancelStatus(db,jobId,workingFolder)
     
     presentsCount = 0
     ausenceCount = 0
@@ -332,7 +342,9 @@ if model_type_id in [1,2]:
                 models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
-        
+    
+    cancelStatus(db,jobId,workingFolder)
+    
     modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
     project_id = None
     user_id = None
@@ -377,6 +389,8 @@ if model_type_id in [1,2]:
     except:
         exit_error(db,workingFolder,log,jobId,'error querying database')
 
+    cancelStatus(db,jobId,workingFolder)
+    
     savedModel = False
 
     """ Create and save model """
@@ -433,7 +447,10 @@ if model_type_id in [1,2]:
             png.from_array(x, 'L;8').save(pngFilename)
         except:
             exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
-        modKey = None  
+        modKey = None
+        
+        cancelStatus(db,jobId,workingFolder)
+        
         try:
             conn = S3Connection(awsKeyId, awsKeySecret)
             bucket = conn.get_bucket(bucketName)

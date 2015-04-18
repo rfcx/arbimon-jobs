@@ -1,6 +1,7 @@
 from a2pyutils.logger import Logger
 from a2pyutils.config import Config
 from a2audio.recanalizer import Recanalizer
+from a2audio.training_lib import cancelStatus
 from soundscape.set_visual_scale_lib import *
 import time
 import MySQLdb
@@ -106,10 +107,18 @@ def insert_rec_error(db, recId, jobId):
             db.commit()
     except:
         exit_error("Could not insert recording error")
-
+        
+import sys
+classificationCanceled =False
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
+    global classificationCanceled
+    if classificationCanceled:
+        return None
     errorProcessing = False
     db = get_db(config)
+    if cancelStatus(db,jobId,workingFolder,False):
+        classificationCanceled = True
+        quit()
     recAnalized = None
     clfFeatsN = mod[0].n_features_
     try:
@@ -151,23 +160,30 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
     if errorProcessing:
         insert_rec_error(db,rec['recording_id'],jobId)
         db.close()
+        return None
     else:
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
         
 def get_model(model_uri,config,log,workingFolder):
+    log.write('reaching bucket.')
     modelLocal = workingFolder+'model.mod'
     bucket = get_bucket(config)
     try:
+        log.write('getting aws file key...')
         k = bucket.get_key(model_uri, validate=False)
+        log.write('contents to filename...')
         k.get_contents_to_filename(modelLocal)
     except:
         exit_error('fatal error model '+str(model_uri)+' not found in aws',-1,log)
+    log.write('model in local file system.')
     mod = None
+    log.write('loading model to memory...')
     if os.path.isfile(modelLocal):
         mod = pickle.load(open(modelLocal, "rb"))
     else:
         exit_error('fatal error cannot load model',-1,log)
+    log.write('model was loaded to memory.')
     return mod
 
 def write_vector(recUri,tempFolder,featvector):
@@ -236,19 +252,32 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype):
     return {"t":processed,"stats":{"minv": minVectorVal, "maxv": maxVectorVal}}
    
 def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config):
+    global classificationCanceled
     try:
         num_cores = multiprocessing.cpu_count()
         log.write('using Pattern Matching algorithm' )
         workingFolder = create_temp_dir(jobId,log)
+        log.write('created working directory.')
         recsToClassify = get_playlist(db,playlistId,log)
+        log.write('playlist generated.')
+        cancelStatus(db,jobId,workingFolder)
         set_progress_params(db,len(recsToClassify), jobId)
+        log.write('job progress set to start.')
         mod = get_model(model_uri,config,log,workingFolder)
-        resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId)
-            for rec in recsToClassify
-        )
+        cancelStatus(db,jobId,workingFolder)
+        log.write('model was fetched.')
     except:
         return False
+    log.write('starting parallel for.')
+    try:
+        resultsParallel = Parallel(n_jobs=num_cores)(
+            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
+        )
+    except:
+        if classificationCanceled:
+            log.write('job cancelled')
+        return False
+    cancelStatus(db,jobId,workingFolder)
     try:
         jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype)
     except:

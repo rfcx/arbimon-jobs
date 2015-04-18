@@ -1,7 +1,7 @@
 from pylab import *
 import numpy as np
 import math
-import randint
+import random
 
 syl_types = { 'spline' :{} }
 spline_types = {'overlaping':{},'nonoverlaping':{}}
@@ -27,7 +27,8 @@ class Spline(object):
         pass
     
     def gen_random_point(self,xmi,xma,ymi,yma):
-        return randint(xmi,xma),randint(ymi,yma)
+        pass
+        #return randint(xmi,xma),randint(ymi,yma)
     
 class Species(object):
     

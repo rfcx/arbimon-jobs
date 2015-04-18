@@ -5,8 +5,36 @@ import boto.s3.connection
 from a2audio.recanalizer import Recanalizer
 import csv
 from a2pyutils.logger import Logger
+import os
+import shutil
 
+
+def cancelStatus(db,jobId,rmFolder=None,quitj=True):
+    status = None
+    with closing(db.cursor()) as cursor:
+        cursor.execute('select `cancel_requested` from`jobs`  where `job_id` = '+str(jobId))
+        db.commit()
+        status = cursor.fetchone()
+        if 'cancel_requested' in status:
+            status = status['cancel_requested']
+        else:
+            status  = status[0]
+        if int(status) > 0:
+            cursor.execute('update `jobs` set `state`="canceled" where `job_id` = '+str(jobId))
+            db.commit()
+            print 'job canceled'
+            if rmFolder:
+                if os.path.exists(rmFolder):
+                    shutil.rmtree(rmFolder)
+            if quitj:
+                quit()
+            else:
+                return True
+        else:
+            return False
+        
 def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
+    
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
@@ -15,6 +43,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
         db.close()
         log.write("roigen: not enough params")
         return 'err'
+    cancelStatus(db,jobId,tempFolder)
     recId = int(line[0])
     roispeciesId = int(line[1])
     roisongtypeId= int(line[2])
@@ -57,6 +86,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim):
     except:
         return 'err'
     pid = None
+    cancelStatus(db,jobId,workingFolder)
     with closing(db.cursor()) as cursor:
         cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
         db.commit()

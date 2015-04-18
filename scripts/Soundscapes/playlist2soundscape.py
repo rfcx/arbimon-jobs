@@ -19,6 +19,7 @@ from indices import indices
 from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 from a2audio.rec import Rec
+from a2audio.training_lib import cancelStatus
 from a2pyutils import palette
 from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
@@ -95,6 +96,8 @@ if not job:
 
 aggregation = soundscape.aggregations.get(agr_ident)
 
+cancelStatus(db,job_id,workingFolder)
+
 if not aggregation:
     print "# Wrong agregation."
     print USAGE
@@ -157,6 +160,8 @@ try:
             db.commit()
         log.close()
         sys.exit(-1)
+        
+    cancelStatus(db,job_id,workingFolder)
 
     log.write(
         'init indices calculation with aggregation: '+str(aggregation)
@@ -171,8 +176,14 @@ try:
     log.write("start parallel... ")
     
 #------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
-
+    cancelStatusFlag = False
     def processRec(rec, config):
+        global cancelStatusFlag
+        if cancelStatusFlag:
+            return None
+        cancelStatusFlag  = cancelStatus(db,job_id,workingFolder,False)
+        if cancelStatusFlag :
+            return None
         logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
 
         id = rec['id']
@@ -317,15 +328,27 @@ try:
             )
             return None
 #finish function
+
+    cancelStatus(db,job_id,workingFolder)
+
 #------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
-    resultsParallel = Parallel(n_jobs=num_cores)(
-        delayed(processRec)(recordingi, config) for recordingi in recsToProcess
-    )
+    resultsParallel = None
+    try:
+        resultsParallel = Parallel(n_jobs=num_cores)(
+            delayed(processRec)(recordingi, config) for recordingi in recsToProcess
+        )
+    except:
+        if cancelStatus(db,job_id,workingFolder,False):
+            log.write('job cancelled')    
+            quit()
+    
+    cancelStatus(db,job_id,workingFolder)
+
 #----------------------------END PARALLEL --------------------------------------------------------------------------------------------------------------------
 # process result
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
-    if len(resultsParallel) > 0:
+    if resultsParallel and len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \
@@ -466,13 +489,13 @@ try:
         k.set_acl('public-read')
         
     else:
-        print 'no results from playlist id:'+playlist_id
+        print 'no results from playlist'
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="error", \
                 `completed` = -1,`remarks` = \'Error: No results found.\' \
                 where `job_id` = '+str(job_id))
             db.commit()
-        log.write('no results from playlist id:'+playlist_id)
+        log.write('no results from playlist')
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set \
                 `progress` = `progress` + 4 where `job_id` = '+str(job_id))

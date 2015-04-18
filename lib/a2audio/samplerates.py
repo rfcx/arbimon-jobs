@@ -8,7 +8,7 @@ from pylab import *
 # 16 for 5.376344086021505hz     0.09299... segs
 multiplier = [1,2,4,8,16]
 
-def get_nfft(sRate,mindex=0):
+def get_nfft(sRate,mindex=3):
     nfft = 1116*multiplier[mindex]
     if float(sRate) == 16000.0:
         nfft = 93*multiplier[mindex]
@@ -20,7 +20,7 @@ def get_nfft(sRate,mindex=0):
         nfft = 558*multiplier[mindex]
     return nfft
 
-def get_freqs(mindex=0):
+def get_freqs(mindex=3):
     nft=1116*multiplier[mindex]
     x = numpy.random.rand(192000)
     Pxx, freqs, bins = mlab.specgram(x,NFFT=nft*2,Fs=192000,noverlap=nft)
