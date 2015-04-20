@@ -59,6 +59,11 @@ try:
         host=config[0], user=config[1],
         passwd=config[2], db=config[3]
     )
+    dbDict = MySQLdb.connect(
+        host=config[0], user=config[1],
+        passwd=config[2], db=config[3],
+        cursorclass=MySQLdb.cursors.DictCursor
+    )
 except MySQLdb.Error as e:
     print "# fatal error cannot connect to database."
     log.write('fatal error cannot connect to database.')
@@ -370,7 +375,7 @@ try:
             if result is not None:
                 if result['freqs'] is not None:
                     if len(result['freqs']) > 0:
-                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], i)
+                        scp.insert_peaks(result['date'], result['freqs'], result['amps'], result['id'])
                     peaknumbers.insert_value(result['date'] ,len(result['freqs']),result['id'])
                 if result['h'] is not None:
                     hIndex.insert_value(result['date'] ,result['h'],result['id'])
@@ -417,8 +422,6 @@ try:
         ])
 
         scpId = -1
-        print query
-        log.write(query)
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \
                 `progress` = `progress` + 1 where `job_id` = '+str(job_id))
@@ -452,45 +455,78 @@ try:
         bucket = None
         conn = S3Connection(awsKeyId, awsKeySecret)
         try:
-            log.write('connecting to '+bucketName)
-            bucket = conn.get_bucket(bucketName)
-        except Exception, ex:
-            log.write('fatal error cannot connect to bucket '+ex.error_message)
+            log.write('inserted soundscape into database')
+            soundscapeId = scpId
+            start_time_all = time.time()
+            nv= get_norm_vector(dbDict,{"aggregation":agr_ident,'playlist_id':playlist_id})
+            norm_vector = nv if normalized else None
+            if norm_vector is not None:
+                scp.norm_vector = norm_vector
+                
+            scp.write_image(workingFolder + imgout, palette.get_palette())
             with closing(db.cursor()) as cursor:
-                cursor.execute('UPDATE `jobs` \
-                SET `completed` = -1, `state`="error", \
-                `remarks` = \'Error: connecting to bucket.\' \
-                WHERE `job_id` = '+str(job_id))
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                 db.commit()
-            quit()
-        log.write('connect to bucket  succesful')
-        k = bucket.new_key(imageUri)
-        k.set_contents_from_filename(workingFolder+imgout)
-        k.set_acl('public-read')
-        with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", \
-                `progress` = `progress` + 1 where `job_id` = '+str(job_id))
-            db.commit()
-        k = bucket.new_key(indexUri)
-        k.set_contents_from_filename(workingFolder+scidxout)
-        k.set_acl('public-read')
-        with closing(db.cursor()) as cursor:
-            cursor.execute("update `soundscapes` set `uri` = '"+imageUri+"' \
-                where  `soundscape_id` = "+str(soundscapeId))
-            db.commit()
+            log.write("writing image:" + str(time.time() - start_time_all))
+            uriBase = 'project_'+str(pid)+'/soundscapes/'+str(soundscapeId)
+            imageUri = uriBase + '/image.png'
+            indexUri = uriBase + '/index.scidx'
+            peaknumbersUri = uriBase + '/peaknumbers.json'
+            hUri = uriBase + '/h.json'
+            aciUri = uriBase + '/aci.json'
             
-        k = bucket.new_key(peaknumbersUri)
-        k.set_contents_from_filename(peaknFile+'.json')
-        k.set_acl('public-read')
-
-        k = bucket.new_key(hUri)
-        k.set_contents_from_filename(hFile+'.json')
-        k.set_acl('public-read')
- 
-        k = bucket.new_key(aciUri)
-        k.set_contents_from_filename(aciFile+'.json')
-        k.set_acl('public-read')
-        
+            log.write('tring connection to bucket')
+            start_time = time.time()
+            bucket = None
+            conn = S3Connection(awsKeyId, awsKeySecret)
+            try:
+                log.write('connecting to '+bucketName)
+                bucket = conn.get_bucket(bucketName)
+            except Exception, ex:
+                log.write('fatal error cannot connect to bucket '+ex.error_message)
+                with closing(db.cursor()) as cursor:
+                    cursor.execute('UPDATE `jobs` \
+                    SET `completed` = -1, `state`="error", \
+                    `remarks` = \'Error: connecting to bucket.\' \
+                    WHERE `job_id` = '+str(job_id))
+                    db.commit()
+                quit()
+            log.write('connect to bucket  succesful')
+            k = bucket.new_key(imageUri)
+            k.set_contents_from_filename(workingFolder+imgout)
+            k.set_acl('public-read')
+            with closing(db.cursor()) as cursor:
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+                db.commit()
+            k = bucket.new_key(indexUri)
+            k.set_contents_from_filename(workingFolder+scidxout)
+            k.set_acl('public-read')
+            with closing(db.cursor()) as cursor:
+                cursor.execute("update `soundscapes` set `uri` = '"+imageUri+"' \
+                    where  `soundscape_id` = "+str(soundscapeId))
+                db.commit()
+                
+            k = bucket.new_key(peaknumbersUri)
+            k.set_contents_from_filename(peaknFile+'.json')
+            k.set_acl('public-read')
+    
+            k = bucket.new_key(hUri)
+            k.set_contents_from_filename(hFile+'.json')
+            k.set_acl('public-read')
+     
+            k = bucket.new_key(aciUri)
+            k.set_contents_from_filename(aciFile+'.json')
+            k.set_acl('public-read')
+        except:
+            with closing(db.cursor()) as cursor:
+                cursor.execute('delete from soundscapes where soundscape_id ='+str(scpId))
+                db.commit()
+                cursor.execute('update `jobs` set `state`="error", \
+                    `completed` = -1,`remarks` = \'Error: No results found.\' \
+                    where `job_id` = '+str(job_id))
+                db.commit()            
     else:
         print 'no results from playlist'
         with closing(db.cursor()) as cursor:
@@ -514,7 +550,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()
