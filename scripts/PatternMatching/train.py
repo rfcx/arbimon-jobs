@@ -24,8 +24,6 @@ import png
 from pylab import *
 import cPickle as pickle
 
-num_cores = multiprocessing.cpu_count()
-
 USAGE = """Runs a model training job.
 {prog} job_id
     job_id - job id in database
@@ -82,7 +80,8 @@ with closing(db.cursor()) as cursor:
             JP.use_in_validation_present,
             JP.use_in_validation_notpresent,
             JP.name,
-            MT.usesSsim
+            MT.usesSsim,
+            J.ncpu
         FROM `jobs` J
         JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
         WHERE J.`job_id` = %s and MT.`model_type_id` =  JP.`model_type_id`
@@ -102,8 +101,14 @@ if not row:
     use_in_validation_present,
     use_in_validation_notpresent,
     name,
-    ssim_flag
+    ssim_flag,
+    ncpu
 ) = row
+    
+num_cores = multiprocessing.cpu_count()
+if int(ncpu) > 0:
+    num_cores = int(ncpu)
+
 modelName = name
 tempFolders = tempfile.gettempdir()
 # select the model_type by its id

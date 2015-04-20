@@ -26,8 +26,6 @@ from boto.s3.connection import S3Connection
 from soundscape.set_visual_scale_lib import get_norm_vector
 from soundscape.set_visual_scale_lib import get_sc_data
 
-num_cores = multiprocessing.cpu_count()
-
 currDir = (os.path.dirname(os.path.realpath(__file__)))
 USAGE = """
 {prog} job_id
@@ -74,7 +72,7 @@ with closing(db.cursor()) as cursor:
     SELECT JP.playlist_id, JP.max_hertz, JP.bin_size,
         JP.soundscape_aggregation_type_id,
         SAT.identifier as aggregation, JP.threshold,
-        J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize
+        J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize ,J.ncpu
     FROM jobs J
     JOIN job_params_soundscape JP ON J.job_id = JP.job_id
     JOIN soundscape_aggregation_types SAT ON
@@ -91,9 +89,13 @@ if not job:
 
 (
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
-    threshold, pid, uid, name, frequency , normalized
+    threshold, pid, uid, name, frequency , normalized , ncpu
 ) = job
 
+num_cores = multiprocessing.cpu_count()
+if int(ncpu) > 0:
+    num_cores = int(ncpu)
+log.write("running job with "+str(num_cores)+" cpus")
 aggregation = soundscape.aggregations.get(agr_ident)
 
 cancelStatus(db,job_id,workingFolder)
@@ -178,10 +180,18 @@ try:
 #------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
     cancelStatusFlag = False
     def processRec(rec, config):
+        try:
+            db1 = MySQLdb.connect(
+                host=config[0], user=config[1], passwd=config[2], db=config[3]
+            )
+        except MySQLdb.Error as e:
+            logofthread.write('worker id'+str(id)+' log: worker cannot \
+                connect \to db')
+            return None
         global cancelStatusFlag
         if cancelStatusFlag:
             return None
-        cancelStatusFlag  = cancelStatus(db,job_id,workingFolder,False)
+        cancelStatusFlag  = cancelStatus(db1,job_id,workingFolder,False)
         if cancelStatusFlag :
             return None
         logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
@@ -191,14 +201,7 @@ try:
             '------------------START WORKER THREAD LOG (id:'+str(id) +
             ')------------------'
         )
-        try:
-            db1 = MySQLdb.connect(
-                host=config[0], user=config[1], passwd=config[2], db=config[3]
-            )
-        except MySQLdb.Error as e:
-            logofthread.write('worker id'+str(id)+' log: worker cannot \
-                connect \to db')
-            return None
+
         logofthread.write('worker id'+str(id)+' log: connected to db')
         with closing(db1.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \

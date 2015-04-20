@@ -21,7 +21,7 @@ def get_job_data(db,jobId):
             cursor.execute("""
                 SELECT J.`project_id`, J.`user_id`,
                     JP.model_id, JP.playlist_id,
-                    JP.name
+                    JP.name , J.ncpu
                 FROM `jobs` J
                 JOIN `job_params_classification` JP ON JP.job_id = J.job_id
                 WHERE J.`job_id` = %s
@@ -31,7 +31,7 @@ def get_job_data(db,jobId):
         exit_error("Could not query database with classification job #{}".format(jobId))
     if not row:
         exit_error("Could not find classification job #{}".format(jobId))
-    return [row['model_id'],row['project_id'],row['user_id'],row['name'],row['playlist_id']]
+    return [row['model_id'],row['project_id'],row['user_id'],row['name'],row['playlist_id'],row['ncpu']]
 
 def get_model_params(db,classifierId,log):
     try:
@@ -251,10 +251,12 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype):
         exit_error('cannot process results.')
     return {"t":processed,"stats":{"minv": minVectorVal, "maxv": maxVectorVal}}
    
-def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config):
+def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
     global classificationCanceled
     try:
         num_cores = multiprocessing.cpu_count()
+        if int(ncpu)>0:
+            num_cores = int(ncpu)
         log.write('using Pattern Matching algorithm' )
         workingFolder = create_temp_dir(jobId,log)
         log.write('created working directory.')
@@ -315,7 +317,7 @@ def run_classification(jobId):
         log.write('database connection succesful')
         (
             classifierId,projectId, userId,
-            classificationName, playlistId   
+            classificationName, playlistId,ncpu   
         ) = get_job_data(db,jobId)
         log.write('job data fetched.')
         model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
@@ -323,7 +325,7 @@ def run_classification(jobId):
     except:
         return False
     if model_type_id in [1,2]:
-        retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config)
+        retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         db.close()
         return retValue
     else:
