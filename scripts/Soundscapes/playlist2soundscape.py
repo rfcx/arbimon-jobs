@@ -78,7 +78,7 @@ with closing(db.cursor()) as cursor:
     SELECT JP.playlist_id, JP.max_hertz, JP.bin_size,
         JP.soundscape_aggregation_type_id,
         SAT.identifier as aggregation, JP.threshold,
-        J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize
+        J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize ,J.ncpu
     FROM jobs J
     JOIN job_params_soundscape JP ON J.job_id = JP.job_id
     JOIN soundscape_aggregation_types SAT ON
@@ -95,9 +95,11 @@ if not job:
 
 (
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
-    threshold, pid, uid, name, frequency , normalized
+    threshold, pid, uid, name, frequency , normalized ,ncpu
 ) = job
-
+num_cores = multiprocessing.cpu_count()
+if int(ncpu) > 0:
+    num_cores = int(ncpu)
 aggregation = soundscape.aggregations.get(agr_ident)
 
 if not aggregation:
