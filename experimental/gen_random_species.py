@@ -9,52 +9,93 @@ syl_types = { 'spline' :{} }
 spline_types = {'overlaping':{},'nonoverlaping':{}}
 
 class Spline(object):
-    def __init__(self,xsize,ysize):
+    def __init__(self,xsize,ysize,syllables=1):
         self.xsize = xsize
         self.ysize = ysize
         self.sig = None
+        self.syls= syllables
         
     def gen_random_spline_signature(self,spline_type = 'nonoverlaping'):
-        num_of_points = random.randint(3,6)
+        
         self.spline_type = spline_type
         if spline_type not in spline_types:
             self.spline_type = 'nonoverlaping'
-        sig = {}
-        if spline_type == 'nonoverlaping':
-            for i in range(num_of_points):
-                x=random.randint(0,self.xsize)
-                y=random.randint(0,self.ysize)
-                sig[i]= {'x':x,'y':y}
-        elif spline_type == 'overlaping':
-            print 'not yet implemented'
+        sig = []
+        spos = 0
+        epos = random.randint(int(float(self.xsize)/4.0),int(float(self.xsize)/3.0))
+        for j in range(self.syls):
+            sigc = []
+            repeated  = False
+            if random.randint(0,1) > 0:
+                print 'repeating syl'
+                if len(sig)>0:
+                    sigc = sig[len(sig)-1]
+                    repeated = True
+            if not repeated:
+                if spline_type == 'nonoverlaping':
+                    num_of_points = random.randint(3,6)
+                    for i in range(num_of_points):
+                        x=random.randint(spos,epos)
+                        y=random.randint(0,self.ysize)
+                        sigc.append( {'x':x,'y':y})
+                elif spline_type == 'overlaping':
+                    print 'not yet implemented'
+                spos = epos + random.randint(int(float(self.xsize)/13.0),int(float(self.xsize)/12.0))
+                epos = random.randint(spos+int(float(self.xsize)/6.0),spos+int(float(self.xsize)/3.0) )
+            sig.append(sigc)
         self.sig = sig 
     
     def test_sig(self):
-        x = []
-        y = []
-        for s in self.sig:
-            xx,yy = self.gen_random_point(self.sig[s]['x'],self.sig[s]['y'])
-            x.append(xx)
-            y.append(yy)
-        try:
-            tck,u = interpolate.splprep([x,y], s=0)
-            return True
-        except:
-            return False
-                
+        sylsTrues = True
+        for i in range(len(self.sig)):
+            x = []
+            y = []
+            csig = self.sig[i]
+            for s in range(len(csig)) :
+                ccsig = csig[s]
+                xx,yy = self.gen_random_point(ccsig['x'],ccsig['y'])
+                x.append(xx)
+                y.append(yy)
+            try:
+                tck,u = interpolate.splprep([x,y], s=0)   
+            except:
+                sylsTrues = False
+        return sylsTrues
+    
     def gen_spline(self):
-        x = []
-        y = []
-        for s in self.sig:
-            xx,yy = self.gen_random_point(self.sig[s]['x'],self.sig[s]['y'])
-            x.append(xx)
-            y.append(yy)
-            
-        tck,u = interpolate.splprep([x,y], s=0)
         
-        unew = np.arange(0, 1.01, 0.01)
-        out = interpolate.splev(unew, tck)
-        return out[0], out[1]
+        tries = True
+        x = None
+        y = None
+        while tries:
+            try:
+                x,y=self.gen_spline_work()
+                tries = False
+            except:
+                """ """
+        return x,y
+    
+    def gen_spline_work(self):
+        outs0 = []
+        outs1 = []
+        for i in range(len(self.sig)):
+            x = []
+            y = []
+            csig = self.sig[i]
+            for s in range(len(csig)):
+                ccsig = csig[s]
+                xx,yy = self.gen_random_point(ccsig['x'],ccsig['y'])
+                x.append(xx)
+                y.append(yy)
+            tck,u = interpolate.splprep([x,y], s=0)
+            unew = np.arange(0, 1.01, 0.01)
+            out = interpolate.splev(unew, tck)
+            for j in out[0]:
+                outs0.append(j)
+            for j in out[1]:
+                outs1.append(j)           
+        
+        return outs0, outs1
         
     def gen_random_point(self,x,y,tol=2):
         xx=randint(x-tol,x+tol)
@@ -105,7 +146,7 @@ class Species(object):
             self.low_freq_index = self.low_freq_index - 1
         
         self.splineY = (self.high_freq_index-self.low_freq_index)
-        self.sp = Spline(self.splineX,self.splineY)
+        self.sp = Spline(self.splineX,self.splineY,syllables)
 
         self.sp.gen_random_spline_signature()
         while not self.sp.test_sig():
