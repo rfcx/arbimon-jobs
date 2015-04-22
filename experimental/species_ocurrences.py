@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/var/lib/jobs-git/app/lib/')
+sys.path.append('/var/lib/jobs/app/lib/')
 import numpy
 if 'a2audio.recanalizer' in sys.modules:
     del sys.modules['a2audio.recanalizer']
