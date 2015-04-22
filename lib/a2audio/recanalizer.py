@@ -107,8 +107,8 @@ class Recanalizer:
         self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
         winSize = min(self.matrixSurfacComp.shape)
         winSize = min(winSize,7)
-        #if winSize %2 == 0:
-            #winSize = winSize - 1
+        if winSize %2 == 0:
+            winSize = winSize - 1
         spec = self.spec;
         for j in range(0,currColumns - self.columns,step):
             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
