@@ -88,7 +88,7 @@ def drawMatches(img1, kp1, img2, kp2, matches):
     #cv2.waitKey(0)
     #cv2.destroyAllWindows()
 
-inputAudio = '/home/rafa/Desktop/sp40/rec-2010-12-14_00-00.wav'
+inputAudio = '/home/rafa/Desktop/sp35/rec-2010-12-14_00-00.wav'
 fs=None
 au=None
 with warnings.catch_warnings():
@@ -97,7 +97,7 @@ with warnings.catch_warnings():
 
 sp,fqs,b = mlab.specgram(au,NFFT=512,Fs=fs,noverlap=256)
 
-inputAudio2 = '/home/rafa/Desktop/sp40/rec-2010-12-14_00-06.wav'
+inputAudio2 = '/home/rafa/Desktop/sp36/rec-2010-12-14_00-01.wav'
 fs2=None
 au2=None
 with warnings.catch_warnings():
@@ -106,11 +106,11 @@ with warnings.catch_warnings():
 
 sp2,fqs2,b2 = mlab.specgram(au2,NFFT=512,Fs=fs2,noverlap=256)
 
-pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[150:220,210:300]
+pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[150:220,350:520]
 pattern = ((pattern-numpy.min(numpy.min(pattern)))/(numpy.max(numpy.max(pattern))-numpy.min(numpy.min(pattern))))*255
 pattern = pattern.astype('uint8')
 
-
+#plots(pattern)
 
 # sift = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
 # kp,points = sift.detectAndCompute(spec,None)
@@ -128,15 +128,38 @@ MIN_MATCH_COUNT = 10
 
 img1 = pattern          # queryImage
 #img2 = spec # fullImage
-specc = numpy.flipud(10*numpy.log10(sp2[1:,]))
+specc = numpy.flipud(10*numpy.log10(sp2[1:,]))[150:220,]
 specc = ((specc-numpy.min(numpy.min(specc)))/(numpy.max(numpy.max(specc))-numpy.min(numpy.min(specc))))*255
+speccc=specc.astype('uint8')
+
+# currColumns = speccc.shape[1]
+# fgbg = cv2.BackgroundSubtractorMOG()
+# fgbg2 = cv2.BackgroundSubtractorMOG()
+# i = 0
+# fullMask = numpy.zeros(speccc.shape)
+# for j in range(0,currColumns - pattern.shape[1],pattern.shape[1]):
+#     
+#     if i % 2 == 0:
+#         del fgbg
+#         fgbg = cv2.BackgroundSubtractorMOG()
+#         
+#     i = i + 1
+#     frame = speccc[:,j:(j+pattern.shape[1])]
+#     fgmask = fgbg.apply(frame)
+#     
+#     if i % 2 == 0:
+#         fullMask[:,j:(j+pattern.shape[1])] = fgmask
+# 
+# plots(speccc)
+# plots(fullMask)
+# quit()
 # Initiate SIFT detector
 
 orb = False
 if orb:
     orb = cv2.ORB(1000, 1.2)
     # find the keypoints and descriptors with SIFT
-    
+    img2 = specc.astype('uint8')
     kp1, des1 = orb.detectAndCompute(img1,None)
     kp2, des2 = orb.detectAndCompute(img2,None)
     
@@ -153,8 +176,20 @@ if orb:
     # Show only the top 10 matches
     drawMatches(img1, kp1, img2, kp2, matches[:10])
 else:
-    sift = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
-    kp1, des1 = sift.detectAndCompute(img1,None)
+    #dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
+    
+    #dect = cv2.FastFeatureDetector()
+    #kp = dect.detect(img1,None)
+    #brief = cv2.DescriptorExtractor_create("BRIEF")
+    
+    dect = cv2.SURF(500, nOctaves=4, nOctaveLayers=2, extended=True, upright=False)
+    
+  # Initiate BRIEF extractor
+    
+    
+    kp1, des1 = dect.detectAndCompute(img1,None)
+    #kp1, des1 = brief.compute(img1, kp)
+    
     
     kpss = []
     tt=specc.shape[1]/300
@@ -164,7 +199,10 @@ else:
         spec = numpy.copy(specc)
         spec = spec[:,ww:(ww+300)]
         img2 = spec.astype('uint8')  
-        kp2, des2 = sift.detectAndCompute(img2,None)
+        kp2, des2 = dect.detectAndCompute(img2,None)
+        
+        #kp2 = dect.detect(img2,None)
+        #kp2, des2 = brief.compute(img2, kp2)
         img=cv2.drawKeypoints(img2,kp2)
         #plots(img)
         FLANN_INDEX_KDTREE = 0

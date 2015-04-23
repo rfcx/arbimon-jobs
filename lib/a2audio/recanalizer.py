@@ -18,6 +18,8 @@ from scipy.stats import *
 from  scipy.signal import *
 import warnings
 from samplerates import *
+import cv2
+from cv import *
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
@@ -45,7 +47,6 @@ class Recanalizer:
             raise ValueError("bucketName must be a string")
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
-        
         start_time = time.time()
         self.distances = []
         self.low = float(low)
@@ -113,6 +114,7 @@ class Recanalizer:
         for i in data:
             self.rec.original.append(i)
         self.rec.sample_rate = fs
+        self.rec.resample()
         maxFreqInRec = float(self.rec.sample_rate)/2.0
     
     def ocurrences(threshold=0.5):
@@ -223,7 +225,6 @@ class Recanalizer:
         else:
             nfft = get_nfft(self.rec.sample_rate)
         start_time = time.time()
-
         Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft*2, Fs=self.rec.sample_rate , noverlap=nfft )
         dims =  Pxx.shape
         if self.logs:
@@ -282,7 +283,8 @@ class Recanalizer:
         pdist = [0] * self.spec.shape[1]
         index = int(self.speciesSurface.shape[1]/2)
         if self.step == 1:
-            pdist[index:(index+len(self.distances))] = self.distances
+            if len(self.distances)>0:
+                pdist[index:(index+len(self.distances))] = self.distances
         else:
             i = 0
             for j in range(index,self.currColumns - self.columns,self.step):
@@ -337,6 +339,67 @@ class Recanalizer:
         close()
         
     def showSurface(self):
-        imshow(self.matrixSurfacComp)
+        imshow(self.speciesSurface)
         show()
         close()
+        
+    def ransac(self):
+        print 'ransac it'
+         with warnings.catch_warnings():
+             warnings.simplefilter("ignore")
+             if self.logs:
+                self.logs.write("featureVector start")
+             if self.logs:
+                self.logs.write(self.uri)    
+             self.distances = []
+        #     currColumns = self.spec.shape[1]
+        #     step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
+        #     if self.oldModel:
+        #         if self.logs:
+        #             self.logs.write("Backward compatibility mode")  
+        #         freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
+        #         i = len(freqs44100) - 1
+        #         j = i
+        #         if self.logs:
+        #             self.logs.write('Searchjing frequencies')  
+        #         while freqs44100[i] > self.high and i>=0:
+        #             j = j -1
+        #             i = i -1
+        #         while freqs44100[j] > self.low and j>=0:
+        #             j = j -1
+        #         if self.logs:
+        #             self.logs.write('Search done')  
+        #         speclow = len(freqs44100) - j - 2
+        #         spechigh = len(freqs44100) - i - 2
+        #         if speclow >= len(freqs44100):
+        #             speclow = len(freqs44100)-1
+        #         if spechigh < 0:
+        #             spechigh = 0
+        #         self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
+        #     else:
+        #         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+        #     removeUnwanted = self.matrixSurfacComp == -10000
+        #     if len(removeUnwanted) > 0  :
+        #         self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+        #     winSize = min(self.matrixSurfacComp.shape)
+        #     winSize = min(winSize,7)
+        #     if winSize %2 == 0:
+        #         winSize = winSize - 1
+        #     spec = self.spec;
+        #     self.currColumns = currColumns
+        #     if self.logs:
+        #         self.logs.write('Computing distances')
+        #     if self.ssim:
+        #         for j in range(0,currColumns - self.columns,step):
+        #             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+        #             if val < 0:
+        #                val = 0
+        #             self.distances.append(  val )
+        #     else:
+        #         maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
+        #         for j in range(0,currColumns - self.columns,step):
+        #             val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
+        #             self.distances.append(  val )
+        #     if self.logs:
+        #        self.logs.write("Done featureVector end")
+    

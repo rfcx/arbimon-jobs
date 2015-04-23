@@ -13,6 +13,7 @@ import numpy as np
 from a2pyutils.logger import Logger
 from scikits.samplerate import resample
 from pylab import *
+import numpy
 import math
 encodings = {
     "pcms8":8,
@@ -134,6 +135,8 @@ class Rec:
         self.status = 'HasAudioData'
     
     def resample(self):
+        if type(self.original) is list:
+            self.original = numpy.asarray(self.original)
         if self.logs :
             self.logs.write("Rec.py : resampling recording")      
        # a,b,c=mlab.specgram(self.original,NFFT=256,Fs=self.sample_rate)
