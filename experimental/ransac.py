@@ -47,14 +47,14 @@ def drawMatches(img1, kp1, img2, kp2, matches):
     cols1 = img1.shape[1]
     rows2 = img2.shape[0]
     cols2 = img2.shape[1]
-
-    out = np.zeros((max([rows1,rows2]),cols1+cols2,3), dtype='uint8')
+    emptySpace = 50
+    out = np.zeros((max([rows1,rows2]),cols1+cols2+emptySpace,3), dtype='uint8')
 
     # Place the first image to the left
     out[:rows1,:cols1,:] = np.dstack([img1, img1, img1])
 
     # Place the next image to the right of it
-    out[:rows2,cols1:cols1+cols2,:] = np.dstack([img2, img2, img2])
+    out[:rows2,cols1+emptySpace:cols1+cols2+emptySpace,:] = np.dstack([img2, img2, img2])
 
     # For each pair of points we have between both images
     # draw circles, then connect a line between them
@@ -74,7 +74,7 @@ def drawMatches(img1, kp1, img2, kp2, matches):
         # colour blue
         # thickness = 1
         cv2.circle(out, (int(x1),int(y1)), 4, (255, 0, 0), 1)   
-        cv2.circle(out, (int(x2)+cols1,int(y2)), 4, (255, 0, 0), 1)
+        cv2.circle(out, (int(x2)+cols1+emptySpace,int(y2)), 4, (255, 0, 0), 1)
 
         # Draw a line in between the two points
         # thickness = 1
@@ -176,13 +176,13 @@ if orb:
     # Show only the top 10 matches
     drawMatches(img1, kp1, img2, kp2, matches[:10])
 else:
-    #dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
+    dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
     
     #dect = cv2.FastFeatureDetector()
     #kp = dect.detect(img1,None)
     #brief = cv2.DescriptorExtractor_create("BRIEF")
     
-    dect = cv2.SURF(500, nOctaves=4, nOctaveLayers=2, extended=True, upright=False)
+    #dect = cv2.SURF(500, nOctaves=4, nOctaveLayers=2, extended=True, upright=False)
     
   # Initiate BRIEF extractor
     
@@ -194,16 +194,22 @@ else:
     kpss = []
     tt=specc.shape[1]/300
     ww = 0
-    for w in range(tt):
+    for w in range(0,specc.shape[1],int(float(img1.shape[1])/2.0)):
         good = []
         spec = numpy.copy(specc)
-        spec = spec[:,ww:(ww+300)]
-        img2 = spec.astype('uint8')  
+        spec = spec[:,w:(w+300)]
+        img2t = spec.astype('uint8')
+        
+        img2 = numpy.zeros(shape=specc.shape)
+        img2[:,w:(w+300)] = img2t
+        img2 = img2.astype('uint8')
+        #plots(img2)
         kp2, des2 = dect.detectAndCompute(img2,None)
         
         #kp2 = dect.detect(img2,None)
         #kp2, des2 = brief.compute(img2, kp2)
         img=cv2.drawKeypoints(img2,kp2)
+        #plots(img)
         #plots(img)
         FLANN_INDEX_KDTREE = 0
         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 20)
@@ -215,18 +221,20 @@ else:
         for m,n in matches:
             if m.distance < 0.9*n.distance:
                 good.append(m)
-        for kk in kp2:
-            kpss.append(kk)
-        src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-        dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-        try:
-            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-            h,w = img1.shape
-            pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-            dst = cv2.perspectiveTransform(pts,M)
-            img3 = drawMatches(img1,kp1,img2,kp2,good)
-        except:
-            """ """
+        print len(good)
+        if len(good)>4:
+            src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+            dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+            try:
+                M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+                h,w = img1.shape
+                pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+                dst = cv2.perspectiveTransform(pts,M)
+                img3 = drawMatches(img1,kp1,img2,kp2,good)
+            except:
+                """ """
+        else:
+            plots(img)
         del kp2
         del spec
         del img2

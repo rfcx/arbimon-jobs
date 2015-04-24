@@ -63,6 +63,7 @@ class Recanalizer:
         self.step = step
         self.oldModel = oldModel
         self.numsoffeats = numsoffeats
+        self.algo = 'sift'
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
@@ -238,7 +239,7 @@ class Recanalizer:
         
         #calculate decibeles in the passband
         while (i < len(freqs)) and (freqs[i] < self.high):
-            Pxx[i,:] =  10. * np.log10( Pxx[i,:].clip(min=0.0000000001))
+            Pxx[i,:] =  10. * np.log10( Pxx[i,:])
             i = i + 1
  
         if i >= dims[0]:
@@ -342,64 +343,89 @@ class Recanalizer:
         imshow(self.speciesSurface)
         show()
         close()
-        
+ 
+    def plots(self,s):
+       fig, ax = subplots(figsize=(25, 15))
+       ax.imshow(s,aspect='auto')
+       show()
+    
     def ransac(self):
-        print 'ransac it'
-         with warnings.catch_warnings():
-             warnings.simplefilter("ignore")
-             if self.logs:
-                self.logs.write("featureVector start")
-             if self.logs:
-                self.logs.write(self.uri)    
-             self.distances = []
-        #     currColumns = self.spec.shape[1]
-        #     step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
-        #     if self.oldModel:
-        #         if self.logs:
-        #             self.logs.write("Backward compatibility mode")  
-        #         freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
-        #         i = len(freqs44100) - 1
-        #         j = i
-        #         if self.logs:
-        #             self.logs.write('Searchjing frequencies')  
-        #         while freqs44100[i] > self.high and i>=0:
-        #             j = j -1
-        #             i = i -1
-        #         while freqs44100[j] > self.low and j>=0:
-        #             j = j -1
-        #         if self.logs:
-        #             self.logs.write('Search done')  
-        #         speclow = len(freqs44100) - j - 2
-        #         spechigh = len(freqs44100) - i - 2
-        #         if speclow >= len(freqs44100):
-        #             speclow = len(freqs44100)-1
-        #         if spechigh < 0:
-        #             spechigh = 0
-        #         self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
-        #     else:
-        #         self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        #     removeUnwanted = self.matrixSurfacComp == -10000
-        #     if len(removeUnwanted) > 0  :
-        #         self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
-        #     winSize = min(self.matrixSurfacComp.shape)
-        #     winSize = min(winSize,7)
-        #     if winSize %2 == 0:
-        #         winSize = winSize - 1
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+            self.distances = []
+            currColumns = self.spec.shape[1]
+            if self.oldModel:
+                if self.logs:
+                    self.logs.write("Backward compatibility mode")  
+                freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
+                i = len(freqs44100) - 1
+                j = i
+                if self.logs:
+                    self.logs.write('Searching frequencies')  
+                while freqs44100[i] > self.high and i>=0:
+                    j = j -1
+                    i = i -1
+                while freqs44100[j] > self.low and j>=0:
+                    j = j -1
+                if self.logs:
+                    self.logs.write('Search done')  
+                speclow = len(freqs44100) - j - 2
+                spechigh = len(freqs44100) - i - 2
+                if speclow >= len(freqs44100):
+                    speclow = len(freqs44100)-1
+                if spechigh < 0:
+                    spechigh = 0
+                self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
+            else:
+                self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            removeUnwanted = self.matrixSurfacComp == -10000
+            if len(removeUnwanted) > 0  :
+                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+
+            spec = self.spec
+            spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+            spec = spec.astype('uint8')
+            
+            dect = None
+            if self.algo == 'sift':
+                dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
+            
+            pat = self.matrixSurfacComp
+            pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+            pat = pat.astype('uint8')          
+            pat_kp, pat_des1 = dect.detectAndCompute(pat,None)
+            
+       
+            self.plots(pat)
+            self.plots(spec)
+            MIN_MATCHES = 4
+            for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+                specPiece = spec[:,j:(j+self.columns)]
+                self.plots(specPiece)
+                good = []
+                spec_kp2, spec_des2 = dect.detectAndCompute(spec,None)
+                FLANN_INDEX_KDTREE = 0
+                index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 20)
+                search_params = dict(checks = 200)
+                flann = cv2.FlannBasedMatcher(index_params, search_params)  
+                matches = flann.knnMatch(pat_des1,spec_des2,k=2)
+                for m,n in matches:
+                   if m.distance < 0.8*n.distance:
+                       good.append(m)
+                if len(good) >= MIN_MATCHES:
+                    print 'matches',len(good)
+                del matches
+                del spec_kp2
+                del spec_des2
+                del good
+                del specPiece
         #     spec = self.spec;
         #     self.currColumns = currColumns
         #     if self.logs:
         #         self.logs.write('Computing distances')
-        #     if self.ssim:
-        #         for j in range(0,currColumns - self.columns,step):
-        #             val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-        #             if val < 0:
-        #                val = 0
-        #             self.distances.append(  val )
-        #     else:
-        #         maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
-        #         for j in range(0,currColumns - self.columns,step):
-        #             val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
-        #             self.distances.append(  val )
-        #     if self.logs:
-        #        self.logs.write("Done featureVector end")
+
     

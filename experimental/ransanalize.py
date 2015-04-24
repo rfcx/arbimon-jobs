@@ -26,16 +26,12 @@ start_time = time.time()
 analyzer = Recanalizer('/tmp/', pp, float(fqs[210]), float(fqs[155]), '/tmp','none', logs=None,test=True,useSsim = True,step=1,oldModel =False,numsoffeats=41)
 print 'Recanalizer init',str(time.time() - start_time),'secs'
 
-inputAudio2 = '/home/rafa/Desktop/sp35/rec-2010-12-14_00-01.wav'
+inputAudio2 = '/home/rafa/Desktop/sp36/rec-2010-12-14_00-01.wav'
 fs2=None
 au2=None
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     fs2,au2 = scipy.io.wavfile.read(inputAudio2)
-sp,fqs,b = mlab.specgram(au2,NFFT=512,Fs=fs2,noverlap=256)
-pattern = numpy.flipud(10*numpy.log10(sp[1:,]))
-#imshow(pattern)
-#show()
 analyzer.insertRecAudio(au2,fs2)
 start_time = time.time()
 analyzer.spectrogram()
