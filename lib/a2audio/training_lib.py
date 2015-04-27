@@ -15,11 +15,14 @@ def cancelStatus(db,jobId,rmFolder=None,quitj=True):
         cursor.execute('select `cancel_requested` from`jobs`  where `job_id` = '+str(jobId))
         db.commit()
         status = cursor.fetchone()
-        if 'cancel_requested' in status:
-            status = status['cancel_requested']
+        if status:
+            if 'cancel_requested' in status:
+                status = status['cancel_requested']
+            else:
+                status  = status[0]
         else:
-            status  = status[0]
-        if int(status) > 0:
+            return False
+        if status and int(status) > 0:
             cursor.execute('update `jobs` set `state`="canceled" where `job_id` = '+str(jobId))
             db.commit()
             print 'job canceled'

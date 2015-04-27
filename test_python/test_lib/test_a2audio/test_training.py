@@ -146,18 +146,24 @@ class Test_training(unittest.TestCase):
                 self.assertEqual(writerMsgs[m],log_Writer.calls[m],msg="roigen incorrect order of logger writer calls")
         except:
             self.fail("incorrect number of logger calls")
-        dbMock_calls = [{'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}, {'f': 'cursor'}, {'f': 'close'}]
+        dbMock_calls = [{'f': 'cursor'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}]
         try:
             for m in  range(len(dbMock_calls)):
                 self.assertEqual(dbMock_calls[m],dbMock.calls[m],msg="roigen incorrect order of database calls")
         except:
             self.fail("incorrect number of db connection calls")
-        closeObjCalls = [{'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
-                        {'f': 'close'},
-                        {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1,1) ', 'f': 'execute'},
-                        {'f': 'close'},
-                        {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
-                        {'f': 'close'}]
+        closeObjCalls = [{'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'},
+            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
+            {'f': 'close'},
+            {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1,1) ', 'f': 'execute'},
+            {'f': 'close'},
+            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'},
+            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
+            {'f': 'close'}]
         try:
             for m in  range(len(closeObjCalls)):
                 self.assertEqual(closeObjCalls[m],close_obj_calls[m],msg="roigen incorrect order of database object calls")
@@ -195,15 +201,17 @@ class Test_training(unittest.TestCase):
         mysql_connect.return_value = dbMock
         recanalizer = MagicMock()
         mock_writerow = MagicMock()
+        cancelStatusM = MagicMock()
         with mock.patch('csv.writer',mock_writerow,create=False):
-            with mock.patch('a2audio.training_lib.Recanalizer', recanalizer, create=False):
-                with mock.patch('contextlib.closing', mock_closing , create=False):
-                    with mock.patch('boto.s3.connection.S3Connection', new_con , create=False):
-                        recanalizer.return_value = Status_mock('NoAudio')
-                        ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
-                        self.assertEqual(ret,'err',msg="recnilize should have returned err with noAudio")
-                        recanalizer.return_value = Status_mock('Processed')
-                        ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
+            with mock.patch('a2audio.training_lib.cancelStatus', cancelStatusM, create=False):
+                with mock.patch('a2audio.training_lib.Recanalizer', recanalizer, create=False):
+                    with mock.patch('contextlib.closing', mock_closing , create=False):
+                        with mock.patch('boto.s3.connection.S3Connection', new_con , create=False):
+                            recanalizer.return_value = Status_mock('NoAudio')
+                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
+                            self.assertEqual(ret,'err',msg="recnilize should have returned err with noAudio")
+                            recanalizer.return_value = Status_mock('Processed')
+                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
         connCalls = [{'a': 'key', 'b': 'secret', 'f': 'init'},
                         {'b': 'aws', 'f': 'get_bucket'},
                         {'a': 'key', 'b': 'secret', 'f': 'init'},
@@ -230,26 +238,26 @@ class Test_training(unittest.TestCase):
                 self.assertEqual(bucketCalls[i],bucket_mock_calls[i])
         except:
             self.fail("recnilize incorrect number of bucket calls")
-        dbCalls = [{'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-                    {'f': 'fetch_one'},
-                    {'f': 'close'},
-                    {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-                    {'f': 'fetch_one'},
-                    {'f': 'close'},
-                    {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-                    {'f': 'fetch_one'},
-                    {'f': 'close'}]
+        dbCalls = [{'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'}]
         try:
             for i in range(len(dbCalls)):
                 self.assertEqual(dbCalls[i],close_obj_calls[i])
         except:
-            self.fail("recnilize incorrect number of bucket calls")
+            self.fail("recnilize incorrect number of db calls")
         statusCalls = ['features', 'getVector']
         try:
             for i in range(len(statusCalls)):
                 self.assertEqual(statusCalls[i],status_mock_calls[i])
         except:
-            self.fail("recnilize incorrect number of bucket calls")      
+            self.fail("recnilize incorrect number of status calls")      
         self.assertEqual(len(mock_writerow.mock_calls),2,msg="recnilize incorrect number of open calls")
         mock_open.assert_any_call('/tmpuri', 'wb')
         recanalizer.assert_any_call('any/rec/uri',radnMatrx,2, 3, '/tmp', 'aws', None, False, False)
