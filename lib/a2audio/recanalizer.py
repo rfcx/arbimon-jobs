@@ -386,46 +386,216 @@ class Recanalizer:
             if len(removeUnwanted) > 0  :
                 self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
 
+
+            ############### PREPARE MATRICES
             spec = self.spec
             spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
             spec = spec.astype('uint8')
-            
-            dect = None
-            if self.algo == 'sift':
-                dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=15, sigma=1.6)
-            
+  
             pat = self.matrixSurfacComp
             pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
             pat = pat.astype('uint8')          
-            pat_kp, pat_des1 = dect.detectAndCompute(pat,None)
-            
-       
-            self.plots(pat)
-            self.plots(spec)
-            MIN_MATCHES = 4
-            for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
-                specPiece = spec[:,j:(j+self.columns)]
-                self.plots(specPiece)
-                good = []
-                spec_kp2, spec_des2 = dect.detectAndCompute(spec,None)
-                FLANN_INDEX_KDTREE = 0
-                index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 20)
-                search_params = dict(checks = 200)
-                flann = cv2.FlannBasedMatcher(index_params, search_params)  
-                matches = flann.knnMatch(pat_des1,spec_des2,k=2)
-                for m,n in matches:
-                   if m.distance < 0.8*n.distance:
-                       good.append(m)
-                if len(good) >= MIN_MATCHES:
-                    print 'matches',len(good)
-                del matches
-                del spec_kp2
-                del spec_des2
-                del good
-                del specPiece
-        #     spec = self.spec;
-        #     self.currColumns = currColumns
-        #     if self.logs:
-        #         self.logs.write('Computing distances')
+            #self.plots(cv2.drawKeypoints(pat,pat_kp))
+            #self.plots(spec)
+            self.MIN_MATCHES = 4
+            ###################################################
+               
+            ##algorithm
+            dect = None
+            self.algo = 'GFTT'
+            if self.algo == 'SIFT':
+                self.compute('SIFT',pat,spec,currColumns)
+            if self.algo == 'SURF':
+                self.compute('SURF',pat,spec,currColumns)
+            if self.algo == 'ORB':
+                self.computeORB(pat,spec,currColumns)
+            if self.algo == 'BRIEF':
+                self.computeBRIEF(pat,spec,currColumns)
+            if self.algo == 'FAST':
+                self.computeFAST(pat,spec,currColumns)
+            if self.algo == 'BRISK':
+                self.computeBRISK(pat,spec,currColumns)
+            if self.algo == 'GFTT':
+                self.computeGFTT(pat,spec,currColumns)
+            #corners = cv2.goodFeaturesToTrack(pat,25,0.01,10)
+            #corners = np.int0(corners)
 
+    def compute(self,algo,pat,spec,currColumns):
+
+        if algo == "SURF":
+            dect = cv2.SURF(500, nOctaves=4, nOctaveLayers=2, extended=True, upright=False)
+        if algo == "SIFT":
+            dect = cv2.SIFT(nfeatures=0, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6)
+           
+        FLANN_INDEX_KDTREE = 0
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 20)
+        search_params = dict(checks = 200)
+        matcher = cv2.FlannBasedMatcher(index_params, search_params)
+        
+        pat_kp, pat_des1 = dect.detectAndCompute(pat,None)
+        for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+            specPiece = spec[:,j:(j+self.columns)]
+            good = []
+            spec_kp2, spec_des2 = dect.detectAndCompute(specPiece,None)
+            matches = matcher.knnMatch(pat_des1,spec_des2,k=2)
+            for m,n in matches:
+               if m.distance < 0.8*n.distance:
+                   good.append(m)
+                   print m,dir(m)
+            if len(good) >= self.MIN_MATCHES:
+                print 'matches',len(good)
+            else:
+                print 'not enought matches'
+            del matches
+            del spec_kp2
+            del spec_des2
+            del good
+            del specPiece
+
+    def computeORB(self,pat,spec,currColumns):
+        
+        dect = cv2.ORB()
+        
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+        pat_kp, pat_des1 = dect.detectAndCompute(pat,None)
+        for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+            specPiece = spec[:,j:(j+self.columns)]
+            good = []
+            spec_kp2, spec_des2 = dect.detectAndCompute(specPiece,None)
+            matches = matcher.match(pat_des1,spec_des2)
+            matches = sorted(matches, key = lambda x:x.distance)
+            for i in range(len(matches)):
+                good.append(matches[i])
+            if len(good) >= self.MIN_MATCHES:
+                print 'matches',len(good)
+            else:
+                print 'not enought matches'
+            del matches
+            del spec_kp2
+            del spec_des2
+            del good
+            del specPiece
+
+    def computeBRIEF(self,pat,spec,currColumns):
+                
+        dect = cv2.FeatureDetector_create("STAR")
+        compute = cv2.DescriptorExtractor_create("BRIEF")
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+        pat_kp = dect.detect(pat,None)
+        pat_kp, pat_des1 = compute.compute(pat, pat_kp)
+        for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+            specPiece = spec[:,j:(j+self.columns)]
+            good = []
+            spec_kp2 = dect.detect(specPiece,None)
+            spec_kp2, spec_des2 = compute.compute(specPiece, spec_kp2)
+            matches = matcher.match(pat_des1,spec_des2)
+            matches = sorted(matches, key = lambda x:x.distance)
+            for i in range(len(matches)):
+                good.append(matches[i])
+            if len(good) >= self.MIN_MATCHES:
+                print 'matches',len(good)
+            else:
+                print 'not enought matches'
+            del matches
+            del spec_kp2
+            del spec_des2
+            del good
+            del specPiece
     
+    def computeFAST(self,pat,spec,currColumns):
+                
+        dect = cv2.FastFeatureDetector(threshold=75)
+        compute = cv2.DescriptorExtractor_create("SURF")
+        FLANN_INDEX_KDTREE = 0
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 20)
+        search_params = dict(checks = 200)
+        matcher = cv2.FlannBasedMatcher(index_params, search_params)
+
+        pat_kp = dect.detect(pat,None)
+        pat_kp, pat_des1 = compute.compute(pat, pat_kp)
+
+        for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+            specPiece = spec[:,j:(j+self.columns)]
+            good = []
+            spec_kp2 = dect.detect(specPiece,None)
+            spec_kp2, spec_des2 = compute.compute(specPiece, spec_kp2)
+            matches = matcher.knnMatch(pat_des1,spec_des2,k=2)
+            for i in range(len(matches)):
+                good.append(matches[i])
+            if len(good) >= self.MIN_MATCHES:
+                print 'matches',len(good)
+            else:
+                print 'not enought matches'
+            del matches
+            del spec_kp2
+            del spec_des2
+            del good
+            del specPiece
+            
+    def computeBRISK(self,pat,spec,currColumns):
+                
+        dect = cv2.BRISK()
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+        pat_kp = dect.detect(pat,None)
+        pat_kp, pat_des1 = dect.compute(pat, pat_kp)
+        for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+            specPiece = spec[:,j:(j+self.columns)]
+            good = []
+            spec_kp2 = dect.detect(specPiece,None)
+            spec_kp2, spec_des2 = dect.compute(specPiece, spec_kp2)
+            matches = matcher.match(pat_des1,spec_des2)
+            matches = sorted(matches, key = lambda x:x.distance)
+            for i in range(len(matches)):
+                good.append(matches[i])
+            if len(good) >= self.MIN_MATCHES:
+                print 'matches',len(good)
+            else:
+                print 'not enought matches'
+            del matches
+            del spec_kp2
+            del spec_des2
+            del good
+            del specPiece
+            
+    def computeGFTT(self,pat,spec,currColumns):
+        # CV_TM_SQDIFF CV_TM_SQDIFF_NORMED CV_TM_CCORR CV_TM_CCORR_NORMED CV_TM_CCOEFF CV_TM_CCOEFF_NORMED
+        img = np.copy(spec)
+        th, tw = pat.shape[:2]
+        print tw
+        result = cv2.matchTemplate(img, pat, cv2.TM_CCORR_NORMED)
+        threshold = 0.98
+        loc = numpy.where(result >= threshold)
+        img = np.dstack([img,img])
+        for pt in zip(*loc[::-1]):
+            print pt
+            imshow(img[:,pt[0]+tw])
+            show()
+            #cv2.rectangle(img, pt, (pt[0] + tw, pt[1] + th), 0)
+       # imshow(img)
+        #show()
+       # dect = cv2.FeatureDetector_create("AKAZE") 
+        #matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+        #pat_kp = dect.detect(pat,None)
+        #pat_kp, pat_des1 = dect.compute(pat, pat_kp)
+        # for j in range(0,currColumns - self.columns,int(float(self.columns)/2.0)):
+        #     specPiece = spec[:,j:(j+self.columns)]
+        #     good = []
+        #     spec_kp2 = dect.detect(specPiece,None)
+        #     spec_kp2, spec_des2 = dect.compute(specPiece, spec_kp2)
+        #     matches = matcher.match(pat_des1,spec_des2)
+        #     matches = sorted(matches, key = lambda x:x.distance)
+        #     for i in range(len(matches)):
+        #         good.append(matches[i])
+        #     if len(good) >= self.MIN_MATCHES:
+        #         print 'matches',len(good)
+        #     else:
+        #         print 'not enought matches'
+        #     del matches
+        #     del spec_kp2
+        #     del spec_des2
+        #     del good
+        #     del specPiece
