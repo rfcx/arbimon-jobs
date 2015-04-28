@@ -121,14 +121,21 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         quit()
     recAnalized = None
     clfFeatsN = mod[0].n_features_
+    log.write('classify_rec try')
     try:
         useSsim = True
         oldModel = False
+        useRansac = False
+        bIndex = 0
+        if len(mod) > 7:
+            bIndex  =  mod[7]
+        if len(mod) > 6:
+            useRansac =  mod[6]
         if len(mod) > 5:
             useSsim =  mod[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim,16,oldModel,clfFeatsN )
+        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim,16,oldModel,clfFeatsN,useRansac,bIndex )
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
@@ -138,6 +145,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
             db.commit()       
     except:
         errorProcessing = True
+    log.write('rec analyzed')
     featvector = None
     fets = None
     if recAnalized.status == 'Processed':
@@ -149,7 +157,8 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
     else:
         errorProcessing = True
     res = None
-    if featvector:
+    log.write('FEATS COMPUTED')
+    if featvector is not None:
         try:
             clf = mod[0]
             res = clf.predict(fets)
@@ -162,6 +171,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         db.close()
         return None
     else:
+        log.write('done processing this rec')
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
         
@@ -279,11 +289,13 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
         if classificationCanceled:
             log.write('job cancelled')
         return False
+    log.write('done parallel execution.')
     cancelStatus(db,jobId,workingFolder)
     try:
         jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype)
     except:
         return False
+    log.write('computed stats.')
     shutil.rmtree(workingFolder)
     if jsonStats['t'] < 1:
         exit_error('no recordings processed.')
@@ -324,7 +336,7 @@ def run_classification(jobId):
         log.write('model params fetched.')
     except:
         return False
-    if model_type_id in [1,2]:
+    if model_type_id in [1,2,3]:
         retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         db.close()
         return retValue

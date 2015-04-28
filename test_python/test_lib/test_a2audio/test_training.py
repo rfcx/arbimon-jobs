@@ -124,17 +124,17 @@ class Test_training(unittest.TestCase):
             with mock.patch('a2audio.training_lib.Logger', logger, create=False):
                 with mock.patch('a2audio.training_lib.Roizer', roizer, create=False):
                     roizer.return_value = Status_mock('NoAudio')
-                    ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False)
+                    ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False,1)
                     self.assertEqual(ret,'err',msg="roigen should have returned error")
                     roi_with_Data = Status_mock('HasData')
                     roizer.return_value = roi_with_Data
-                    ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False)
+                    ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False,1)
                     self.assertEqual(ret[0],roi_with_Data,msg="roigen should have returned a ROI object and the class")
                     self.assertEqual(ret[1],'2_3',msg="roigen should have returned a ROI object and the class")
         
         logger.assert_any_call(1, 'training.py', 'roigen')
         mysql_connect.assert_any_call(passwd='pass', host='host', db='db', user='user')
-        roizer.assert_any_call('any/rec/uri', '/any/temp/folder', 'aws', 1.5, 2.5, 1000.5, 2000.5, log_Writer, False)
+        roizer.assert_any_call('any/rec/uri', '/any/temp/folder', 'aws', 1.5, 2.5, 1000.5, 2000.5, log_Writer, False,1)
         writerMsgs = ['roigen: processing any/rec/uri',
                       'roigen: cutting at 1.5 to 2.5 and filtering from 1000.5 to 2000.5',
                       'roigen: no audio err any/rec/uri',
@@ -194,7 +194,7 @@ class Test_training(unittest.TestCase):
         mysql_connect.return_value = dbMock
         with mock.patch('contextlib.closing', mock_closing , create=False):
             with mock.patch('boto.s3.connection.S3Connection', new_con , create=False):
-                ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
+                ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
                 self.assertEqual(ret,'err',msg="recnilize should have returned err")
         del dbMock
         dbMock = db_mock([1])
@@ -208,10 +208,10 @@ class Test_training(unittest.TestCase):
                     with mock.patch('contextlib.closing', mock_closing , create=False):
                         with mock.patch('boto.s3.connection.S3Connection', new_con , create=False):
                             recanalizer.return_value = Status_mock('NoAudio')
-                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
+                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
                             self.assertEqual(ret,'err',msg="recnilize should have returned err with noAudio")
                             recanalizer.return_value = Status_mock('Processed')
-                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False)
+                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
         connCalls = [{'a': 'key', 'b': 'secret', 'f': 'init'},
                         {'b': 'aws', 'f': 'get_bucket'},
                         {'a': 'key', 'b': 'secret', 'f': 'init'},
@@ -260,7 +260,7 @@ class Test_training(unittest.TestCase):
             self.fail("recnilize incorrect number of status calls")      
         self.assertEqual(len(mock_writerow.mock_calls),2,msg="recnilize incorrect number of open calls")
         mock_open.assert_any_call('/tmpuri', 'wb')
-        recanalizer.assert_any_call('any/rec/uri',radnMatrx,2, 3, '/tmp', 'aws', None, False, False)
+        recanalizer.assert_any_call('any/rec/uri',radnMatrx, 2, 3, '/tmp', 'aws', None, False, False, bIndex=1, step=16, numsoffeats=41, ransakit=False, oldModel=False)
         mysql_connect.assert_any_call(passwd='pass', host='host', db='db', user='user')
         del dbMock
         

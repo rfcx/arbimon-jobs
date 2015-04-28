@@ -88,12 +88,12 @@ class Roiset:
     def getSurface(self):
         return self.meanSurface
     
-    def alignSamples(self):
+    def alignSamples(self,bIndex=0):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if self.logs:
                 self.logs.write("Roiset.py: set sample rate = "+str(self.setSampleRate))
-            freqs = [i for i in reversed(get_freqs())]
+            freqs = [i for i in reversed(get_freqs(bIndex))]
             self.rows = len(freqs)
             big_high_index = 0
             big_low_index = 0
@@ -183,6 +183,7 @@ class Roiset:
             self.meanSurface[lowcut:(self.meanSurface.shape[0]-1),:] = -10000 
             self.maxColumns = self.meanSurface.shape[1]
             self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
+            self.meanSurface[numpy.isinf(self.meanSurface)]   = -10000
             #imshow(self.meanSurface[big_high_index:big_low_index,:])
             #show()
             if self.logs:

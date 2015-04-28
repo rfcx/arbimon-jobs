@@ -159,7 +159,7 @@ class Rec:
         start_time = time.time()
         f = None
         if self.logs :
-            self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri)
+            self.logs.write('Rec.py : https://s3.amazonaws.com/'+self.bucket+'/'+self.uri)
         try:
             f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :

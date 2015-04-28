@@ -36,8 +36,7 @@ def cancelStatus(db,jobId,rmFolder=None,quitj=True):
         else:
             return False
         
-def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
-    
+def roigen(line,config,tempFolder,currDir ,jobId,useSsim,bIndex):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
@@ -57,7 +56,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
     recuri = line[7]
     log.write("roigen: processing "+recuri)
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log,useSsim)
+    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
         db.commit()
@@ -73,7 +72,9 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim):
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim):
+def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,log=None,bIndex=0):
+    if log:
+        log.write('analyzing one recording')
     if len(config) < 7:
         return 'err'
     bucketName = config[4]
@@ -103,7 +104,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim):
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
     try:
-        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim)
+        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
     except:
         return 'err'
     if recAnalized.status == 'Processed':

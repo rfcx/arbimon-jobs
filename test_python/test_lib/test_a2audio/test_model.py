@@ -250,7 +250,7 @@ class Test_model(unittest.TestCase):
                 mod1.validate()
         
                 saveFileName = "/tmp/test.model.pickle"
-                mod1.save(saveFileName,1.1,100.1,10000.1,True)
+                mod1.save(saveFileName,1.1,100.1,10000.1,True,1,2)
                 self.assertTrue(m.called,msg="Rec.model cannot open file")
                 self.assertIsNone( m.assert_called_once_with(saveFileName , 'wb'),  msg="Rec.model cannot write file")                
                 writtenData =  mock_pickle.mock_calls[0]

@@ -13,6 +13,7 @@ import json
 from boto.s3.connection import S3Connection
 from contextlib import closing
 from a2audio.training_lib import *
+from a2audio.samplerates import band2index
 from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 import multiprocessing
@@ -81,7 +82,8 @@ with closing(db.cursor()) as cursor:
             JP.use_in_validation_notpresent,
             JP.name,
             MT.usesSsim,
-            J.ncpu
+            J.ncpu,
+            MT.usesRansac
         FROM `jobs` J
         JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
         WHERE J.`job_id` = %s and MT.`model_type_id` =  JP.`model_type_id`
@@ -102,7 +104,8 @@ if not row:
     use_in_validation_notpresent,
     name,
     ssim_flag,
-    ncpu
+    ncpu,
+    ransac_flag
 ) = row
     
 num_cores = multiprocessing.cpu_count()
@@ -112,13 +115,17 @@ if int(ncpu) > 0:
 modelName = name
 tempFolders = tempfile.gettempdir()
 # select the model_type by its id
-if model_type_id in [1,2]:
+if model_type_id in [1,2,3]:
     """Pattern Matching (modified Alvarez thesis)"""
     useSsim = bool(int(ssim_flag))
-    if useSsim:
-        log.write("Pattern Matching (modified Alvarez thesis) with ssim")
+    useRansac = ransac_flag
+    if useRansac:
+        log.write("Search and Pattern Matching (modified Alvarez thesis) with ssim")
     else:
-        log.write("Pattern Matching (modified Alvarez thesis) without ssim")
+        if useSsim:
+            log.write("Pattern Matching (modified Alvarez thesis) with ssim")
+        else:
+            log.write("Pattern Matching (modified Alvarez thesis) without ssim")
     progress_steps = 0
     # creating a temporary folder
     workingFolder = tempFolders+"/training_"+str(jobId)+"/"
@@ -156,7 +163,8 @@ if model_type_id in [1,2]:
                     banwds.append(float(rowTraining[6])-float(rowTraining[5]))
                     trainingData.append(rowTraining)
                     spamwriter.writerow(rowTraining[0:7+1] + (jobId,))
-            meanBand = numpy.mean(banwds) 
+            meanBand = numpy.mean(banwds)
+            maxBand = numpy.max(banwds)
             cursor.execute("""
                 SELECT DISTINCT `recording_id`
                 FROM `training_set_roi_set_data`
@@ -265,12 +273,14 @@ if model_type_id in [1,2]:
         exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
  
     classes = {}
-   
+    
+    bIndex = band2index(maxBand)
+    log.write('Max bandwidth '+str(maxBand)+' index '+ str(bIndex))
     rois = None
     """Roigenerator"""
     try:
         #roigen defined in a2audio.training
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,useSsim) for line in trainingData)
+        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,useSsim,bIndex) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'roigenerator failed')
         
@@ -299,10 +309,10 @@ if model_type_id in [1,2]:
                     classes[classid] = Roiset(classid,float(sample_rate) ,logRoiset, (not useSsim))
                     classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
         for i in classes:
-            classes[i].alignSamples()
+            classes[i].alignSamples(bIndex)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot align rois')
+            exit_error(db,workingFolder,log,jobId,'cannot align rois')
 
     cancelStatus(db,jobId,workingFolder)
     
@@ -311,14 +321,16 @@ if model_type_id in [1,2]:
         
     results = None
     """Recnilize"""
+    log.write("analizing recordings")
+    
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),useSsim) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex) for line in validationData)
     except:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
 
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
-    
+    log.write("recs analized")
     cancelStatus(db,jobId,workingFolder)
     
     presentsCount = 0
@@ -397,7 +409,7 @@ if model_type_id in [1,2]:
     cancelStatus(db,jobId,workingFolder)
     
     savedModel = False
-
+    log.write("creating model")
     """ Create and save model """
     for i in models:
         resultSplit = False
@@ -423,7 +435,7 @@ if model_type_id in [1,2]:
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
         try:
-            models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4],useSsim)
+            models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4],useSsim,useRansac,bIndex)
         except:
             exit_error(db,workingFolder,log,jobId,'error saving model file to local storage')
             
@@ -433,25 +445,25 @@ if model_type_id in [1,2]:
         except :
             exit_error(db,workingFolder,log,jobId,'cannot get stats from model')       
         pngKey = None
-        try:       
-            pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
-            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
-            specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
-            rowsInSpec = modelStats[4].shape[0]
-            spec = modelStats[4]
-            if len(spec == -10000)>0:
-                spec[spec == -10000] = float('nan')
-            for j in range(0,rowsInSpec):
-                if abs(sum(spec[j,:])) > 0.0:
-                    specToShow = numpy.vstack((specToShow,spec[j,:]))
-            if len(specToShow[:,:]==0)>0:
-                specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
-            smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
-            smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
-            x = 255*(1-((specToShow - smin)/(smax-smin)))
-            png.from_array(x, 'L;8').save(pngFilename)
-        except:
-            exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
+        #try:       
+        pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
+        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
+        specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
+        rowsInSpec = modelStats[4].shape[0]
+        spec = modelStats[4]
+        if len(spec == -10000)>0:
+            spec[spec == -10000] = numpy.nan
+        for j in range(0,rowsInSpec):
+            if abs(sum(spec[j,:])) > 0.0:
+                specToShow = numpy.vstack((specToShow,spec[j,:]))
+        if len(specToShow[:,:]==0)>0:
+            specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
+        smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
+        smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
+        x = 255*(1-((specToShow - smin)/(smax-smin)))
+        png.from_array(x, 'L;8').save(pngFilename)
+        #except:
+            #exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
         modKey = None
         
         cancelStatus(db,jobId,workingFolder)
@@ -530,7 +542,7 @@ if model_type_id in [1,2]:
         log.write("model saved")
     else:
         exit_error(db,workingFolder,log,jobId,'error saving model')
-       
+    shutil.rmtree(tempFolders+"/training_"+str(jobId))
 else:
     log.write("Unkown model type requested")
 
@@ -542,6 +554,5 @@ with closing(db.cursor()) as cursor:
     """, [jobId])
     db.commit()
 
-shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")

@@ -8,7 +8,7 @@ import time
 
 from a2audio.recanalizer import Recanalizer
 
-inputAudio = '/home/rafa/Desktop/sp40/rec-2010-12-14_00-00.wav'
+inputAudio = '/home/rafa/Desktop/sp35/rec-2010-12-14_00-00.wav'
 fs=None
 au=None
 with warnings.catch_warnings():
@@ -16,8 +16,8 @@ with warnings.catch_warnings():
     fs,au = scipy.io.wavfile.read(inputAudio)
 
 sp,fqs,b = mlab.specgram(au,NFFT=512,Fs=fs,noverlap=256)
-#pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[:,350:520]
-pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[:,215:300]
+pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[:,350:520]
+#pattern = numpy.flipud(10*numpy.log10(sp[1:,]))[:,215:300]
 
 pp = numpy.zeros(shape=(1116,pattern.shape[1]))
 pp[(pp.shape[0]-pattern.shape[0]):,] = pattern
@@ -25,12 +25,12 @@ fqs = fqs[::-1]
 
 start_time = time.time()
 start_time_all = time.time()
-analyzer = Recanalizer('/tmp/', pp, float(fqs[218]), float(fqs[146]), '/tmp','none', logs=None,test=True,useSsim = True,step=1,oldModel =False,numsoffeats=41)
+#analyzer = Recanalizer('/tmp/', pp, float(fqs[218]), float(fqs[146]), '/tmp','none', logs=None,test=True,useSsim = True,step=1,oldModel =False,numsoffeats=41)
 
-#analyzer = Recanalizer('/tmp/', pp, float(fqs[210]), float(fqs[155]), '/tmp','none', logs=None,test=True,useSsim = True,step=1,oldModel =False,numsoffeats=41)
+analyzer = Recanalizer('/tmp/', pp, float(fqs[210]), float(fqs[155]), '/tmp','none', logs=None,test=True,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=True)
 print 'Recanalizer init',str(time.time() - start_time),'secs'
 
-inputAudio2 = '/home/rafa/Desktop/sp40/rec-2010-12-14_00-01.wav'
+inputAudio2 = '/home/rafa/Desktop/sp35/rec-2010-12-14_00-03.wav'
 fs2=None
 au2=None
 with warnings.catch_warnings():
@@ -38,12 +38,7 @@ with warnings.catch_warnings():
     fs2,au2 = scipy.io.wavfile.read(inputAudio2)
 analyzer.insertRecAudio(au2,fs2)
 start_time = time.time()
-analyzer.spectrogram()
-print 'spectrogram',str(time.time() - start_time),'secs'
-#analyzer.showspectrogram()
-start_time = time.time()
-analyzer.ransac()
-print 'ransac',str(time.time() - start_time),'secs'
-print 'all',str(time.time() - start_time_all),'secs'
+analyzer.process()
+print 'all',str(time.time() - start_time),'secs'
 #featureVector step=1 13.151278019 secs, step=2 7.39018201828 secs, step=4 3.19879317284 secs, step=8 1.47710108757 secs , step=16 0.854254007339 secs
-#analyzer.showVectAndSpec()
+analyzer.showVectAndSpec()

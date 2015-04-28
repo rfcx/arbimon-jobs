@@ -10,7 +10,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True):
+    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True,bIndex=0):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -38,6 +38,7 @@ class Roizer:
         recording = Rec(uri,tempFolder,bucketName,logs)
         self.logs = logs
         self.ssim = useSsim
+        self.bIndex = bIndex
         if self.logs:
             logs.write("Roizer: "+str(uri))
         if  'HasAudioData' in recording.status:
@@ -99,9 +100,9 @@ class Roizer:
             self.logs.write("Roizer.py: sampleRate "+str(self.sample_rate))
             self.logs.write("Roizer.py: Init time: "+str(self.iniT)+" = "+str(initSample)+ " sample ")
             self.logs.write("Roizer.py: End time: "+str(self.endT)+" = "+str(endSample)+ " sample ")
-        freqsFull = get_freqs()
+        freqsFull = get_freqs(self.bIndex)
         maxHertzInRec = float(self.sample_rate)/2.0
-        nfft = get_nfft(self.sample_rate)
+        nfft = get_nfft(self.sample_rate,self.bIndex)
         real_sample_Rate = self.sample_rate
         
         targetrows = len(freqsFull)

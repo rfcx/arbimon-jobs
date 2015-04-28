@@ -128,10 +128,10 @@ class Model:
     def modelStats(self):
         return [self.accuracy_score,self.precision_score,self.sensitivity_score,self.obbScore,self.speciesSpec,self.specificity_score ,self.tp,self.fp,self.tn,self.fn,self.minv,self.maxv]
     
-    def save(self,filename,l,h,c,usesSsim):
+    def save(self,filename,l,h,c,usesSsim,usesRansac,bIndex):
         with open(filename, 'wb') as output:
             pickler = pickle.Pickler(output, -1)
-            pickle.dump([self.clf,self.speciesSpec,l,h,c,usesSsim], output, -1)
+            pickle.dump([self.clf,self.speciesSpec,l,h,c,usesSsim,usesRansac,bIndex], output, -1)
             
     def getSpec(self):
         return self.speciesSpec
