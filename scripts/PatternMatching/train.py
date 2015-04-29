@@ -445,25 +445,25 @@ if model_type_id in [1,2,3]:
         except :
             exit_error(db,workingFolder,log,jobId,'cannot get stats from model')       
         pngKey = None
-        #try:       
-        pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
-        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
-        specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
-        rowsInSpec = modelStats[4].shape[0]
-        spec = modelStats[4]
-        if len(spec == -10000)>0:
-            spec[spec == -10000] = numpy.nan
-        for j in range(0,rowsInSpec):
-            if abs(sum(spec[j,:])) > 0.0:
-                specToShow = numpy.vstack((specToShow,spec[j,:]))
-        if len(specToShow[:,:]==0)>0:
-            specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
-        smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
-        smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
-        x = 255*(1-((specToShow - smin)/(smax-smin)))
-        png.from_array(x, 'L;8').save(pngFilename)
-        #except:
-            #exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
+        try:       
+            pngFilename = modelFilesLocation+'job_'+str(jobId)+'_'+str(i)+'.png'
+            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
+            specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
+            rowsInSpec = modelStats[4].shape[0]
+            spec = modelStats[4]
+            if len(spec == -10000)>0:
+                spec[spec == -10000] = numpy.nan
+            for j in range(0,rowsInSpec):
+                if abs(sum(spec[j,:])) > 0.0:
+                    specToShow = numpy.vstack((specToShow,spec[j,:]))
+            if len(specToShow[:,:]==0)>0:
+                specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
+            smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
+            smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
+            x = 255*(1-((specToShow - smin)/(smax-smin)))
+            png.from_array(x, 'L;8').save(pngFilename)
+        except:
+            exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
         modKey = None
         
         cancelStatus(db,jobId,workingFolder)
