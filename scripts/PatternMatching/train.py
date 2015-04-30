@@ -421,17 +421,17 @@ if model_type_id in [1,2,3]:
             continue
         validationsKey =  'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv'
         validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'
-        #try:
-        models[i].train()
-        #except:
-            #exit_error(db,workingFolder,log,jobId,'error training model')
+        try:
+            models[i].train()
+        except:
+            exit_error(db,workingFolder,log,jobId,'error training model')
 
         if useValidationPresent > 0:
-            try:
-                models[i].validate()
-                models[i].saveValidations(validationsLocalFile)
-            except:
-               exit_error(db,workingFolder,log,jobId,'error validating model')
+            #try:
+            models[i].validate()
+            models[i].saveValidations(validationsLocalFile)
+            #except:
+               #exit_error(db,workingFolder,log,jobId,'error validating model')
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
         try:
