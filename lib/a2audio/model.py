@@ -69,6 +69,7 @@ class Model:
         classSubset = [self.classes[i] for i in self.trainDataIndices]
         data = self.data[self.trainDataIndices]
         data[numpy.isnan(data)] = 0
+        data[numpy.isinf(data)] = 0
         self.clf.fit(data, classSubset)
         self.obbScore = self.clf.oob_score_
         
@@ -79,11 +80,16 @@ class Model:
         self.outClassesTraining = classSubsetTraining
         self.outuris = [self.uris[i] for i in self.validationDataIndices]
         self.outurisTraining = [self.uris[i] for i in self.trainDataIndices]
-        predictions = self.clf.predict(self.data[self.validationDataIndices])
+        data = self.data[self.trainDataIndices]
+        data[numpy.isnan(data)] = 0
+        data[numpy.isinf(data)] = 0
+        predictions = self.clf.predict(data)
         self.validationpredictions = predictions;
         presentIndeces = [i for i, j in zip(count(), classSubset) if j == '1' or j == 1] 
         notPresentIndices = [i for i, j in zip(count(), classSubset) if j == '0' or j == 0]
         minamxdata = self.data[self.validationDataIndices]
+        minamxdata [numpy.isnan(minamxdata )] = 0
+        minamxdata [numpy.isinf(minamxdata )] = 0
         minv = 99999999
         maxv = -99999999
         for row in minamxdata:
