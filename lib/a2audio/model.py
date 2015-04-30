@@ -67,7 +67,9 @@ class Model:
     def train(self):
         self.clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1,oob_score=True)
         classSubset = [self.classes[i] for i in self.trainDataIndices]
-        self.clf.fit(self.data[self.trainDataIndices], classSubset)
+        data = self.data[self.trainDataIndices]
+        data[numpy.isnan(data)] = 0
+        self.clf.fit(data, classSubset)
         self.obbScore = self.clf.oob_score_
         
     def validate(self):
