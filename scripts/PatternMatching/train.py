@@ -427,11 +427,11 @@ if model_type_id in [1,2,3]:
             exit_error(db,workingFolder,log,jobId,'error training model')
 
         if useValidationPresent > 0:
-            #try:
-            models[i].validate()
-            models[i].saveValidations(validationsLocalFile)
-            #except:
-               #exit_error(db,workingFolder,log,jobId,'error validating model')
+            try:
+                models[i].validate()
+                models[i].saveValidations(validationsLocalFile)
+            except:
+               exit_error(db,workingFolder,log,jobId,'error validating model')
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
         try:
