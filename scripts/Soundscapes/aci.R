@@ -1,31 +1,49 @@
 args = commandArgs(TRUE)
 suppressMessages(suppressWarnings(library(seewave)))
 suppressMessages(suppressWarnings(library(tuneR)))
-archivo<- readWave(args[1])
-AmplPeaks = c()
-if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
+work_aci = function(argss)
 {
-    value = FALSE
+    archivo = FALSE
     tryCatch(
         {
-            value = ACI(archivo)
+           archivo<- readWave(argss)
         }
         ,
         error = function(e)
         {
-            cat ('err1')
-            quit()
-        }
+            return ('err0')
+        }   
     );
-    
-    if(!value)
+    AmplPeaks = c()
+    if(class(archivo) == 'Wave')
     {
-        cat('err2')
-    }
-    else
-    {
-        cat(value)
-    }
-    
-}else cat ('err3')
-
+        if(length(archivo@left)>archivo@samp.rate)# at least one second of audio
+        {
+            value = FALSE
+            tryCatch(
+                {
+                    value = ACI(archivo)
+                }
+                ,
+                error = function(e)
+                {
+                    return ('err1')
+                }
+            );
+            
+            if(!value)
+            {
+                return('err2')
+            }
+            else
+            {
+                return(value)
+            }
+            
+        }else return ('err4')
+    }else return ('err3')
+}
+if(length(args) >=1)
+{
+    cat(work_aci(args[1]))
+}

@@ -20,21 +20,20 @@ class Model:
         
         self.classid = classid
         self.speciesSpec = speciesSpec
-        self.data  = numpy.zeros(shape=(0,6))
+        self.data  = numpy.zeros(shape=(0,41),dtype=numpy.dtype('float64'))
         self.classes = []
         self.uris = []
         self.minv = 9999999
         self.maxv = -9999999
         self.jobId = jobid
         
-    def addSample(self,present,meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,uri):
-        self.classes.append(str(present))
+    def addSample(self,present,row,uri):
+        self.classes.append(present)
         self.uris.append(uri)
-        if self.minv > minfeat:
-            self.minv = minfeat
-        if self.maxv < maxfeat:
-            self.maxv = maxfeat
-        row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat]
+        if self.minv >  row[3]:
+            self.minv =  row[3]
+        if self.maxv < row[2]:
+            self.maxv = row[2]
         self.data = numpy.vstack((self.data,row))
     
     def getDataIndices(self):
@@ -129,10 +128,10 @@ class Model:
     def modelStats(self):
         return [self.accuracy_score,self.precision_score,self.sensitivity_score,self.obbScore,self.speciesSpec,self.specificity_score ,self.tp,self.fp,self.tn,self.fn,self.minv,self.maxv]
     
-    def save(self,filename,l,h,c):
+    def save(self,filename,l,h,c,usesSsim,usesRansac,bIndex):
         with open(filename, 'wb') as output:
             pickler = pickle.Pickler(output, -1)
-            pickle.dump([self.clf,self.speciesSpec,l,h,c], output, -1)
+            pickle.dump([self.clf,self.speciesSpec,l,h,c,usesSsim,usesRansac,bIndex], output, -1)
             
     def getSpec(self):
         return self.speciesSpec

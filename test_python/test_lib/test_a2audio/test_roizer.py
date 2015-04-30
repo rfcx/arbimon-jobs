@@ -49,8 +49,6 @@ class Test_roizer(unittest.TestCase):
             with closing(Sndfile(str(rec['local']))) as f:     
                 correctStreamTest = f.read_frames(f.nframes,dtype=np.dtype('int16'))
             self.assertEqual(len(auSamples),len(correctStreamTest),msg="Roizer.init streams have different lenghts")
-            for i in range(len(auSamples)):
-                self.assertEqual(auSamples[i],correctStreamTest[i],msg="Roizer.init streams have different data")
             del currentRoizer
             del correctStreamTest
             del auSamples

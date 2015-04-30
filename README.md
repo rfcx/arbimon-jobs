@@ -80,12 +80,11 @@ Bio-Acoustic Analyzer - JOBS
    sudo apt-get install libsndfile-dev
    ```
    
+ - OpenCV for python (cv2)
+   ```
+   sudo apt-get install python-opencv
+   ```
    
- - node global dependencies(`sudo npm install -g <package>`):
-  - bower
-  - grunt-cli
-  
-  
  - individual python dependencies (`sudo pip install`):
     - numpy 
     - scipy

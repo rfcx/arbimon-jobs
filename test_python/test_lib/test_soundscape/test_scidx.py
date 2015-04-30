@@ -1,6 +1,7 @@
 import unittest
 from mock import patch
 from mock import MagicMock
+import json
 
 class mock_file_obj(object):
     mock_calls = []
@@ -121,7 +122,8 @@ class Test_scidx_rw_functions(unittest.TestCase):
     def test_read_scidx_v1(self,m_file):
         """Test soundscape.scidx.read_scidx function"""
         from sys import modules
-        del modules['soundscape.scidx']
+        if 'soundscape.scidx' in modules:
+            del modules['soundscape.scidx']
         from soundscape.scidx import read_scidx
         mfile = mock_file_obj()
         mfile.clear_calls()
@@ -146,35 +148,41 @@ class Test_scidx_rw_functions(unittest.TestCase):
         TAG = "soundscape.scidx.read_scidx_v2: "
         data = 'test_python/data/'
         from sys import modules
-        del modules['soundscape.scidx']
+        if 'soundscape.scidx' in modules:
+            del modules['soundscape.scidx']
         from soundscape.scidx import read_scidx
         retData = read_scidx('test_python/data/v2.scidx')
         with open(data+'scp.recordings.peaks.data.json', 'rb') as fp:
             x_recs = json.load(fp)
-        with open(data+'scp.bins.peaks.data.json', 'rb') as fp:
-            x_bins = dict([
-                (int(i_row), dict([
-                    (int(i_col), dict([
-                        (int(i_cell), cell) for i_cell, cell in col.items()
-                    ])) for i_col, col in row.items()
-                ])) for i_row, row in json.load(fp).items()
-            ])
+        with open(data+'scp.xbins.peaks.data.json', 'rb') as fp:
+            x_bins = json.load(fp)
         self.assertEqual(len(retData), 11, msg=TAG+"should return a 11-tuple")
         (version, index, recs,
          offsetx, width, offsety, height, minx, maxx, miny, maxy) = retData
         self.assertEqual(version, 2, msg=TAG+"returned incorrect version")
-        self.assertEqual(recs, x_recs, msg=TAG+"returned incorrect values")
-        self.assertEqual(index, x_bins, msg=TAG+"returned incorrect values")
-        self.assertEqual(offsetx, 1, msg=TAG+"returned incorrect offsetx")
-        self.assertEqual(width, 1, msg=TAG+"returned incorrect width")
-        self.assertEqual(offsety, 1, msg=TAG+"returned incorrect offsety")
-        self.assertEqual(height, 1, msg=TAG+"returned incorrect height")
+        try:
+            for i in range(len(recs)):
+                self.assertEqual(recs[i], x_recs[i], msg=TAG+"returned incorrect recs values")
+        except:
+            self.fail("soundscape.scidx.write_scidx: Incorrect number of recs values")
+        try:   
+            for i in x_bins:
+               for j in x_bins[i]:
+                    for k in x_bins[i][j]:
+                        self.assertEqual(index[int(i)][int(j)][int(k)], x_bins[i][j][k], msg=TAG+"returned incorrect index values")
+        except:
+            self.fail("soundscape.scidx.write_scidx: Incorrect number of index values")
+        self.assertEqual(offsetx, 0, msg=TAG+"returned incorrect offsetx")
+        self.assertEqual(width, 24, msg=TAG+"returned incorrect width")
+        self.assertEqual(offsety, 0, msg=TAG+"returned incorrect offsety")
+        self.assertEqual(height, 256, msg=TAG+"returned incorrect height")
     
     @patch("__builtin__.file")
     def test_write_scidx(self,m_file):
         """Test soundscape.scidx.write_scidx function"""
         from sys import modules
-        del modules['soundscape.scidx']
+        if 'soundscape.scidx' in modules:
+            del modules['soundscape.scidx']
         myfile = mock_file_obj()
         myfile.clear_calls()
         m_file.return_value = myfile 
@@ -186,8 +194,8 @@ class Test_scidx_rw_functions(unittest.TestCase):
             }
         write_scidx('/dummy/file/write/name.scidx', ind, recs ,0, 20, 0, 20)
         m_file.assert_any_calls('/dummy/file/write/name.scidx','wb')
-        callSq = ['write', 'write', 'write', 'tell', 'write', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write']
-        try:
+        callSq = ['write', 'write', 'write', 'tell', 'write', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write', 'tell', 'seek', 'write', 'seek', 'write', 'write', 'write', 'write']
+        try: 
             for c in range(len(callSq)):
                 self.assertEqual(callSq[c],myfile.mock_calls[c],msg="soundscape.scidx.write_scidx: incorrect order of calls")
         except:

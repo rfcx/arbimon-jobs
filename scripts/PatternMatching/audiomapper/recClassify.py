@@ -89,8 +89,6 @@ missedRecs = 0
 log.write(
     'start processing cycle. configuration took:' +
     str(time.time()-start_time_all))
-# for line in sys.stdin:
-
 
 def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     global jobId
@@ -98,7 +96,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     log = Logger(int(jobId), 'recClassify.py', 'worker-thread', logWorkers)
 
     log.write('worker-thread started')
-
+    #print 'try db'
     try:
         db = MySQLdb.connect(
             host=config[0], user=config[1], passwd=config[2], db=config[3])
@@ -108,6 +106,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     # remove white space
     line = line.strip(' ')
     line = line.strip('\n')
+    #print 'db ok'
     # split the line into variables
     recUri, modelUri, recId, jobId, species, songtype = line.split(',')
     recId = int(recId.strip())
@@ -118,8 +117,9 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     # get rec from URI and compute feature vector using the spec vocalization
     start_time = time.time()
     log.write(str(type(bucket)))
+    #print 'try analyze'
     recAnalized = Recanalizer(
-        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log)
+        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log,False,mod[5])
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
@@ -128,8 +128,9 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
             WHERE `job_id` = %s
         """, [jobId])
         db.commit()
-
+    #print 'it was analized'
     if recAnalized.status == 'Processed':
+        #print 'was processed'
         log.write('rec processed')
         featvector = recAnalized.getVector()
         recName = recUri.split('/')
@@ -142,6 +143,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
         myfileWrite.close()
         log.time_delta("wrote vector file", start_time)
         if not os.path.isfile(vectorLocal):
+            #print 'no vector local'
             log.write('error writing: '+vectorLocal)
             with closing(db.cursor()) as cursor:
                 cursor.execute("""
@@ -156,6 +158,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
             vectorUri = '{}/classification_{}_{}.vector'.format(
                 modelUri.replace('.mod', ''), jobId, recName
             )
+            #print 'vector file exists'
             log.write(str(type(bucket)))
             k = bucket.new_key(vectorUri)
             k.set_contents_from_filename(vectorLocal)
@@ -173,6 +176,8 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
                     """, [recId, jobId])
                     db.commit()
                 noErrorFlag = False
+            #print 'prediction done'
+            log.time_delta("prediction", start_time)
             if noErrorFlag:
                 clf = mod[0]
                 log.time_delta("uploaded vector file", start_time)
@@ -191,17 +196,20 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
                     noErrorFlag = False
                 log.time_delta("prediction", start_time)
             if noErrorFlag:
+                #print 'noerrorflag'
                 print recId, ";", res[0], ";", jobId, ";", species, ";",
                 print songtype, ";", min(featvector), ";", max(featvector)
                 sys.stdout.flush()
                 log.time_delta("function exec", start_time_all)
                 return 1
             else:
+                #print 'error'
                 log.write('error return 0')
                 insert_rec_error(db, recId, jobId)
                 log.time_delta("function exec", start_time_all)
                 return 0
     else:
+        #print 'cannot process recording',recAnalized.status
         log.write('error processing recording: '+recUri)
         log.time_delta("function exec", start_time_all)
         insert_rec_error(db, recId, jobId)
@@ -216,7 +224,10 @@ def insert_rec_error(db, recId, jobId):
         """, [recId, jobId])
         db.commit()
 
-
+#for line in sys.stdin:
+#    print 'sent',line
+#    processLine(line, bucket, mod, config, logWorkers)    
+    
 resultsParallel = Parallel(n_jobs=num_cores)(
     delayed(processLine)(line, bucket, mod, config, logWorkers,bucketName)
     for line in sys.stdin

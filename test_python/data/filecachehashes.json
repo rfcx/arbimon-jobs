@@ -1,0 +1,8 @@
+[{"key":"this/is/a/test.txt","hash":"7857951942d9f9d5ec2c0ba33dd9c2e3a0506c8f839dfb731607b5e8d155b7f7.txt"},
+{"key":"this/is/an/other/test.txt","hash":"c7a7c625af1ad53348d7b634ca63fca1a1600d6a2a45ac805f3444785e5a2955.txt"},
+{"key":"this/is/an/other/test.bmp","hash":"c7a7c625af1ad53348d7b634ca63fca1a1600d6a2a45ac805f3444785e5a2955.bmp"},
+{"key":"","hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+{"key":"this/is/a/test.txt.bmp","hash":"7857951942d9f9d5ec2c0ba33dd9c2e3a0506c8f839dfb731607b5e8d155b7f7.txt.bmp"},
+{"key":"this/is/an/other/test.txt.wav","hash":"c7a7c625af1ad53348d7b634ca63fca1a1600d6a2a45ac805f3444785e5a2955.txt.wav"},
+{"key":"this/is/an/other/test.bmp.scaled-25.png","hash":"c7a7c625af1ad53348d7b634ca63fca1a1600d6a2a45ac805f3444785e5a2955.bmp.scaled-25.png"},
+{"key":"a.txt.bmp.wav.zip.tar.gz.7z.exe.qt.prog.data.txt","hash":"ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb.txt.bmp.wav.zip.tar.gz.7z.exe.qt.prog.data.txt"}]

@@ -19,13 +19,12 @@ from indices import indices
 from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 from a2audio.rec import Rec
+from a2audio.training_lib import cancelStatus
 from a2pyutils import palette
 from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
 from soundscape.set_visual_scale_lib import get_norm_vector
 from soundscape.set_visual_scale_lib import get_sc_data
-
-num_cores = multiprocessing.cpu_count()
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
 USAGE = """
@@ -95,12 +94,16 @@ if not job:
 
 (
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
-    threshold, pid, uid, name, frequency , normalized ,ncpu
+    threshold, pid, uid, name, frequency , normalized , ncpu
 ) = job
+
 num_cores = multiprocessing.cpu_count()
 if int(ncpu) > 0:
     num_cores = int(ncpu)
+log.write("running job with "+str(num_cores)+" cpus")
 aggregation = soundscape.aggregations.get(agr_ident)
+
+cancelStatus(db,job_id,workingFolder)
 
 if not aggregation:
     print "# Wrong agregation."
@@ -164,6 +167,8 @@ try:
             db.commit()
         log.close()
         sys.exit(-1)
+        
+    cancelStatus(db,job_id,workingFolder)
 
     log.write(
         'init indices calculation with aggregation: '+str(aggregation)
@@ -178,15 +183,8 @@ try:
     log.write("start parallel... ")
     
 #------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
-
+    cancelStatusFlag = False
     def processRec(rec, config):
-        logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
-
-        id = rec['id']
-        logofthread.write(
-            '------------------START WORKER THREAD LOG (id:'+str(id) +
-            ')------------------'
-        )
         try:
             db1 = MySQLdb.connect(
                 host=config[0], user=config[1], passwd=config[2], db=config[3]
@@ -195,6 +193,20 @@ try:
             logofthread.write('worker id'+str(id)+' log: worker cannot \
                 connect \to db')
             return None
+        global cancelStatusFlag
+        if cancelStatusFlag:
+            return None
+        cancelStatusFlag  = cancelStatus(db1,job_id,workingFolder,False)
+        if cancelStatusFlag :
+            return None
+        logofthread = Logger(job_id, 'playlist2soundscape.py', 'thread')
+
+        id = rec['id']
+        logofthread.write(
+            '------------------START WORKER THREAD LOG (id:'+str(id) +
+            ')------------------'
+        )
+
         logofthread.write('worker id'+str(id)+' log: connected to db')
         with closing(db1.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \
@@ -324,15 +336,27 @@ try:
             )
             return None
 #finish function
+
+    cancelStatus(db,job_id,workingFolder)
+
 #------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
-    resultsParallel = Parallel(n_jobs=num_cores)(
-        delayed(processRec)(recordingi, config) for recordingi in recsToProcess
-    )
+    resultsParallel = None
+    try:
+        resultsParallel = Parallel(n_jobs=num_cores)(
+            delayed(processRec)(recordingi, config) for recordingi in recsToProcess
+        )
+    except:
+        if cancelStatus(db,job_id,workingFolder,False):
+            log.write('job cancelled')    
+            quit()
+    
+    cancelStatus(db,job_id,workingFolder)
+
 #----------------------------END PARALLEL --------------------------------------------------------------------------------------------------------------------
 # process result
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
-    if len(resultsParallel) > 0:
+    if resultsParallel and len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="processing", \
@@ -405,6 +429,31 @@ try:
             cursor.execute(query, query_data)
             db.commit()
             scpId = cursor.lastrowid
+        log.write('inserted soundscape into database')
+        soundscapeId = scpId
+        start_time_all = time.time()
+                
+        norm_vector = get_norm_vector(db, get_sc_data(db,soundscapeId)) if normalized else None
+        if norm_vector is not None:
+            scp.norm_vector = norm_vector
+            
+        scp.write_image(workingFolder + imgout, palette.get_palette())
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `state`="processing", \
+                `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+            db.commit()
+        log.write("writing image:" + str(time.time() - start_time_all))
+        uriBase = 'project_'+str(pid)+'/soundscapes/'+str(soundscapeId)
+        imageUri = uriBase + '/image.png'
+        indexUri = uriBase + '/index.scidx'
+        peaknumbersUri = uriBase + '/peaknumbers.json'
+        hUri = uriBase + '/h.json'
+        aciUri = uriBase + '/aci.json'
+        
+        log.write('tring connection to bucket')
+        start_time = time.time()
+        bucket = None
+        conn = S3Connection(awsKeyId, awsKeySecret)
         try:
             log.write('inserted soundscape into database')
             soundscapeId = scpId
@@ -479,13 +528,13 @@ try:
                     where `job_id` = '+str(job_id))
                 db.commit()            
     else:
-        print 'no results from playlist id:'+playlist_id
+        print 'no results from playlist'
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="error", \
                 `completed` = -1,`remarks` = \'Error: No results found.\' \
                 where `job_id` = '+str(job_id))
             db.commit()
-        log.write('no results from playlist id:'+playlist_id)
+        log.write('no results from playlist')
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set \
                 `progress` = `progress` + 4 where `job_id` = '+str(job_id))
