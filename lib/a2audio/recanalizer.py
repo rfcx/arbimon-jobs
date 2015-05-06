@@ -93,16 +93,21 @@ class Recanalizer:
                 else:
                     start_time = time.time()
                     self.spectrogram()
-                    if self.logs:
-                        self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
-                    start_time = time.time()
-                    if self.useRansac:
-                        self.ransac()
+                    if self.spec.shape[1] < 2*self.speciesSurface.shape[1]:
+                        self.status = 'AudioIsShort'
+                        if self.logs:
+                           self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                     else:
-                        self.featureVector()
-                    if self.logs:
-                        self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
-                    self.status = 'Processed'
+                        if self.logs:
+                            self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
+                        start_time = time.time()
+                        if self.useRansac:
+                            self.ransac()
+                        else:
+                            self.featureVector()
+                        if self.logs:
+                            self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
+                        self.status = 'Processed'
         else:
             self.status = 'NoData'
 
