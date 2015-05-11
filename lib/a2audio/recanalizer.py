@@ -115,7 +115,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,False,False,not self.oldModel)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,True,False,not self.oldModel)
         self.hasrec = True
         
     def getVector(self ):
