@@ -520,6 +520,7 @@ try:
             k.set_contents_from_filename(aciFile+'.json')
             k.set_acl('public-read')
         except:
+            log.write('error uploading to bucket')
             with closing(db.cursor()) as cursor:
                 cursor.execute('delete from soundscapes where soundscape_id ='+str(scpId))
                 db.commit()
@@ -550,7 +551,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()
