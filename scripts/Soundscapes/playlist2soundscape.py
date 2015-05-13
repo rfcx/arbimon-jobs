@@ -433,7 +433,7 @@ try:
         soundscapeId = scpId
         start_time_all = time.time()
                 
-        norm_vector = get_norm_vector(db, get_sc_data(db, soundscape_id)) if normalized else None
+        norm_vector = get_norm_vector(db, get_sc_data(db, soundscapeId)) if normalized else None
         if norm_vector is not None:
             scp.norm_vector = norm_vector
             
