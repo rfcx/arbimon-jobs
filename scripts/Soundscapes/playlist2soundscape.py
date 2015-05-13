@@ -433,7 +433,7 @@ try:
         soundscapeId = scpId
         start_time_all = time.time()
                 
-        norm_vector = get_norm_vector(db, get_sc_data(db,soundscapeId)) if normalized else None
+        norm_vector = get_norm_vector(db, get_sc_data(db, soundscape_id)) if normalized else None
         if norm_vector is not None:
             scp.norm_vector = norm_vector
             
@@ -450,19 +450,13 @@ try:
         hUri = uriBase + '/h.json'
         aciUri = uriBase + '/aci.json'
         
-        log.write('tring connection to bucket')
+        log.write('tring s3 connection')
         start_time = time.time()
         bucket = None
         conn = S3Connection(awsKeyId, awsKeySecret)
         try:
-            log.write('inserted soundscape into database')
             soundscapeId = scpId
-            start_time_all = time.time()
-            nv= get_norm_vector(dbDict,{"aggregation":agr_ident,'playlist_id':playlist_id})
-            norm_vector = nv if normalized else None
-            if norm_vector is not None:
-                scp.norm_vector = norm_vector
-                
+            start_time_all = time.time()                
             scp.write_image(workingFolder + imgout, palette.get_palette())
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set `state`="processing", \

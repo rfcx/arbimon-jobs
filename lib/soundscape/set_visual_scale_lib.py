@@ -49,7 +49,7 @@ def get_sc_data(db, soundscape_id):
 
 
 def get_norm_vector(db, sc_data):
-    aggregation = soundscape.aggregations[int(sc_data['aggregation'])]
+    aggregation = soundscape.aggregations[sc_data['aggregation']]
     norm_vector = {}
     date_parts = [
         'DATE_FORMAT(R.datetime, "{}")'.format(dp)
