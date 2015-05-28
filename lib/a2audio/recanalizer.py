@@ -58,7 +58,7 @@ class Recanalizer:
         self.bucketName = bucketName
         self.tempFolder = tempFolder
         self.rec = None
-        self.status = 'NoData'
+        self.status = 'InitNoData'
         self.ssim = useSsim
         self.step = step
         self.oldModel = oldModel

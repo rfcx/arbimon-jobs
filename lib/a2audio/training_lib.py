@@ -76,6 +76,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
     if log:
         log.write('analyzing one recording')
     if len(config) < 7:
+        log.write('error analyzing: config is wrong')
         return 'err'
     bucketName = config[4]
     awsKeyId = config[5]
@@ -88,6 +89,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
         bucket = conn.get_bucket(bucketName)
     except:
+        log.write('error analyzing: db or conn are wrong')
         return 'err'
     pid = None
     cancelStatus(db,jobId,workingFolder)
@@ -100,12 +102,14 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         except:
             pid = None
     if pid is None:
+        log.write('error analyzing: pid is wrong')
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
     try:
-        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
+        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
     except:
+        log.write('error analyzing: Recanalizer is wrong')
         return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
@@ -132,5 +136,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         db.close()
         return {"fets":fets,"info":infos}
     else:
+        log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
+        log.write(line[0])
         db.close()
         return 'err'

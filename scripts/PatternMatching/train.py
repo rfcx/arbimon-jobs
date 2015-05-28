@@ -313,7 +313,6 @@ if model_type_id in [1,2,3]:
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
             exit_error(db,workingFolder,log,jobId,'cannot align rois')
-
     cancelStatus(db,jobId,workingFolder)
     
     if len(patternSurfaces) == 0 :
@@ -451,11 +450,14 @@ if model_type_id in [1,2,3]:
             specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
             rowsInSpec = modelStats[4].shape[0]
             spec = modelStats[4]
+            specspec = numpy.copy(spec)
             if len(spec == -10000)>0:
                 spec[spec == -10000] = numpy.nan
             for j in range(0,rowsInSpec):
-                if abs(sum(spec[j,:])) > 0.0:
+                if abs(numpy.nansum(spec[j,:])) > 0.0:
                     specToShow = numpy.vstack((specToShow,spec[j,:]))
+            if len(numpy.isnan(specToShow))>0:
+                specToShow[numpy.isnan(specToShow)] = numpy.nanmin(numpy.nanmin(specToShow))
             if len(specToShow[:,:]==0)>0:
                 specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
             smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])

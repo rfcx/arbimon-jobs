@@ -108,8 +108,8 @@ class Roiset:
                 big_low_index  = big_low_index  + 1
             if self.logs:
                 self.logs.write("Roiset.py: freqs searched")
-            big_low_index  = big_low_index -1
-            big_high_index = big_high_index + 2
+            big_low_index  = big_low_index #-1
+            big_high_index = big_high_index #+ 2
             if self.logs:
                 self.logs.write("Roiset.py: creating temp computation space ")
             surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
@@ -144,8 +144,8 @@ class Roiset:
                         low_index  = low_index  + 1
                     while float(freqs[low_index ]) >=  float(roi.lowFreq):
                         low_index  = low_index  + 1
-                    low_index  = low_index  - 1
-                    high_index = high_index + 2
+                    low_index  = low_index  #- 1
+                    high_index = high_index #+ 2
                     distances = []
                     currColumns = roi.spec.shape[1]
                     compareArea = roi.spec[high_index:low_index,:]
@@ -179,13 +179,11 @@ class Roiset:
                     weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
                 index = index + 1
             self.meanSurface = numpy.divide(surface[:,minj:(maxj)],weights[:,minj:(maxj)])
-            self.meanSurface[0:highcut,:] = -10000
-            self.meanSurface[lowcut:(self.meanSurface.shape[0]-1),:] = -10000 
+            self.meanSurface[0:big_high_index,:] = -10000
+            self.meanSurface[big_low_index:(self.meanSurface.shape[0]-1),:] = -10000 
             self.maxColumns = self.meanSurface.shape[1]
             self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
             self.meanSurface[numpy.isinf(self.meanSurface)]   = -10000
-            #imshow(self.meanSurface[big_high_index:big_low_index,:])
-            #show()
             if self.logs:
                 self.logs.write("Roiset.py: aligned "+str(len(self.roi))+" rois")
     
