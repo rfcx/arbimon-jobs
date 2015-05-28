@@ -92,7 +92,7 @@ def set_progress_params(db,progress_steps, jobId):
                 UPDATE `jobs`
                 SET `progress_steps`=%s, progress=0, state="processing"
                 WHERE `job_id` = %s
-            """, [progress_steps+3, jobId])
+            """, [progress_steps*2+5, jobId])
             db.commit()
     except:
         exit_error("Could not set progress params")
@@ -235,13 +235,20 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
     except:
         exit_error('cannot insert results to database.')
         
-def processResults(res,workingFolder,config,modelUri,jobId,species,songtype):
+def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
     minVectorVal = 9999999.0
     maxVectorVal = -9999999.0
     processed = 0
     try:
         for r in res:
-            if 'id' in r:
+            with closing(db.cursor()) as cursor:
+                cursor.execute("""
+                    UPDATE `jobs`
+                    SET `progress` = `progress` + 1
+                    WHERE `job_id` = %s
+                """, [jobId])
+                db.commit()   
+            if r and 'id' in r:
                 processed = processed + 1
                 recName = r['uri'].split('/')
                 recName = recName[len(recName)-1]
@@ -292,7 +299,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
     log.write('done parallel execution.')
     cancelStatus(db,jobId,workingFolder)
     try:
-        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype)
+        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db)
     except:
         return False
     log.write('computed stats.')

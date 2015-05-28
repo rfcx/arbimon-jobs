@@ -350,12 +350,13 @@ if model_type_id in [1,2,3]:
     models = {}
     try:
         for res in results:
-            classid = res['info'][0]
-            if classid in models:
-                models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
-            else:
-                models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
-                models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
+            if 'err' not in res:
+                classid = res['info'][0]
+                if classid in models:
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
+                else:
+                    models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
     

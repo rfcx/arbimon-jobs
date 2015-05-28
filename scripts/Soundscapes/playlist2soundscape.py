@@ -25,6 +25,7 @@ from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
 from soundscape.set_visual_scale_lib import get_norm_vector
 from soundscape.set_visual_scale_lib import get_sc_data
+from soundscape.set_visual_scale_lib import get_db
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
 USAGE = """
@@ -432,8 +433,10 @@ try:
         log.write('inserted soundscape into database')
         soundscapeId = scpId
         start_time_all = time.time()
-                
-        norm_vector = get_norm_vector(db, get_sc_data(db,soundscapeId)) if normalized else None
+        db1 = get_db(config)
+        scData = get_sc_data(db1, soundscapeId)
+        norm_vector = get_norm_vector(db1, scData) if normalized else None
+        db1.close()
         if norm_vector is not None:
             scp.norm_vector = norm_vector
             
@@ -450,19 +453,13 @@ try:
         hUri = uriBase + '/h.json'
         aciUri = uriBase + '/aci.json'
         
-        log.write('tring connection to bucket')
+        log.write('tring s3 connection')
         start_time = time.time()
         bucket = None
         conn = S3Connection(awsKeyId, awsKeySecret)
         try:
-            log.write('inserted soundscape into database')
             soundscapeId = scpId
-            start_time_all = time.time()
-            nv= get_norm_vector(dbDict,{"aggregation":agr_ident,'playlist_id':playlist_id})
-            norm_vector = nv if normalized else None
-            if norm_vector is not None:
-                scp.norm_vector = norm_vector
-                
+            start_time_all = time.time()                
             scp.write_image(workingFolder + imgout, palette.get_palette())
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set `state`="processing", \
@@ -520,6 +517,7 @@ try:
             k.set_contents_from_filename(aciFile+'.json')
             k.set_acl('public-read')
         except:
+            log.write('error uploading to bucket')
             with closing(db.cursor()) as cursor:
                 cursor.execute('delete from soundscapes where soundscape_id ='+str(scpId))
                 db.commit()
@@ -550,7 +548,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()
