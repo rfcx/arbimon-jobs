@@ -71,6 +71,12 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim,bIndex):
         log.write("roigen: done")
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
+
+def insertRecError(db,jobId,recId):
+    with closing(db.cursor()) as cursor:
+        cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
+        db.commit()
+    db.close()
     
 def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,log=None,bIndex=0):
     if log:
@@ -78,6 +84,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
     if len(config) < 7:
         log.write('error analyzing: config is wrong')
         return 'err'
+    recId = int(line[5])
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
@@ -102,6 +109,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         except:
             pid = None
     if pid is None:
+        insertRecError(db,jobId,recId)
         log.write('error analyzing: pid is wrong')
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
@@ -110,6 +118,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
     except:
         log.write('error analyzing: Recanalizer is wrong')
+        insertRecError(db,jobId,recId)
         return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
@@ -137,6 +146,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         return {"fets":fets,"info":infos}
     else:
         log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
+        insertRecError(db,jobId,recId)
         log.write(line[0])
         db.close()
         return 'err'

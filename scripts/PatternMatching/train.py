@@ -205,7 +205,7 @@ if model_type_id in [1,2,3]:
                 spst = speciesSongtype[x]
                 with closing(db.cursor()) as cursor:
                     cursor.execute("""
-                        SELECT r.`uri` , `species_id` , `songtype_id` , `present`
+                        SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
                         FROM `recording_validations` rv, `recordings` r
                         WHERE r.`recording_id` = rv.`recording_id`
                           AND rv.`project_id` = %s
@@ -222,8 +222,8 @@ if model_type_id in [1,2,3]:
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
-                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
 
         # get Amazon S3 bucket
         conn = S3Connection(awsKeyId, awsKeySecret)
@@ -408,6 +408,20 @@ if model_type_id in [1,2,3]:
 
     cancelStatus(db,jobId,workingFolder)
     
+    if (useTrainingPresent+useValidationPresent) > presentsCount:
+        if presentsCount <= useTrainingPresent:
+            useTrainingPresent = presentsCount - 1
+            useValidationPresent = 1
+        else:
+            useValidationPresent = presentsCount - useTrainingPresent
+
+    if (useTrainingNotPresent + useValidationNotPresent)  > ausenceCount:
+        if ausenceCount <= useTrainingNotPresent:
+            useTrainingNotPresent = ausenceCount - 1
+            useValidationNotPresent = 1
+        else:
+            useValidationNotPresent = ausenceCount  - useTrainingNotPresent
+
     savedModel = False
     log.write("creating model")
     """ Create and save model """
