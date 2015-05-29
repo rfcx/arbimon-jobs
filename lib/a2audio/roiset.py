@@ -155,7 +155,7 @@ class Roiset:
                         winSize = winSize - 1
                     if winSize < 1:
                         winSize = 1
-                    if self.useDynamicRanging:
+                    if False:#self.useDynamicRanging:
                         for jj in range((self.maxColumns*2) -currColumns ): 
                             subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
                             distances.append(ssim(subMatrix ,compareArea , win_size=winSize, gradient=False  , dynamic_range=dm) )

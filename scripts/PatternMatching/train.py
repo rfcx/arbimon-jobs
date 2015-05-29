@@ -464,17 +464,14 @@ if model_type_id in [1,2,3]:
             pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.png'
             specToShow = numpy.zeros(shape=(0,int(modelStats[4].shape[1])))
             rowsInSpec = modelStats[4].shape[0]
-            spec = modelStats[4]
-            specspec = numpy.copy(spec)
-            if len(spec == -10000)>0:
+            spec = numpy.copy(modelStats[4])
+            if sum(spec == -10000)>0:
                 spec[spec == -10000] = numpy.nan
             for j in range(0,rowsInSpec):
                 if abs(numpy.nansum(spec[j,:])) > 0.0:
-                    specToShow = numpy.vstack((specToShow,spec[j,:]))
-            if len(numpy.isnan(specToShow))>0:
-                specToShow[numpy.isnan(specToShow)] = numpy.nanmin(numpy.nanmin(specToShow))
-            if len(specToShow[:,:]==0)>0:
-                specToShow[specToShow[:,:]==0] = numpy.min(numpy.min(specToShow))
+                    specToShow = numpy.vstack((specToShow,numpy.copy(spec[j,:])))
+            if sum(numpy.isnan(specToShow))>0:
+                specToShow[numpy.isnan(specToShow)] = numpy.nanmean(numpy.nanmean(specToShow))
             smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
             smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
             x = 255*(1-((specToShow - smin)/(smax-smin)))
