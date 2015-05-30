@@ -368,19 +368,19 @@ if model_type_id == 1:
     except:
         exit_error(db,workingFolder,log,jobId,'error querying database')
 
-    if (useTrainingPresent+useValidationPresent) > presentsCount:
-        if presentsCount <= useTrainingPresent:
-            useTrainingPresent = presentsCount - 1
-            useValidationPresent = 1
-        else:
-            useValidationPresent = presentsCount - useTrainingPresent
-    
-    if (useTrainingNotPresent + useValidationNotPresent) > ausenceCount:
-        if ausenceCount <= useTrainingNotPresent:
-            useTrainingNotPresent = ausenceCount - 1
-            useValidationNotPresent = 1
-        else:
-            useValidationNotPresent = ausenceCount - useTrainingNotPresent
+    #if (useTrainingPresent+useValidationPresent) > presentsCount:
+    #    if presentsCount <= useTrainingPresent:
+    #        useTrainingPresent = presentsCount - 1
+    #        useValidationPresent = 1
+    #    else:
+    #        useValidationPresent = presentsCount - useTrainingPresent
+    #
+    #if (useTrainingNotPresent + useValidationNotPresent) > ausenceCount:
+    #    if ausenceCount <= useTrainingNotPresent:
+    #        useTrainingNotPresent = ausenceCount - 1
+    #        useValidationNotPresent = 1
+    #    else:
+    #        useValidationNotPresent = ausenceCount - useTrainingNotPresent
 
     savedModel = False
 
