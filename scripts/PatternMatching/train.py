@@ -314,12 +314,13 @@ if model_type_id == 1:
     models = {}
     try:
         for res in results:
-            classid = res[6]
-            if classid in models:
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
-            else:
-                models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+            if 'err' not in res:
+                classid = res[6]
+                if classid in models:
+                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                else:
+                    models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
+                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
         
@@ -366,6 +367,20 @@ if model_type_id == 1:
             valiId = row[1]
     except:
         exit_error(db,workingFolder,log,jobId,'error querying database')
+
+    if (useTrainingPresent+useValidationPresent) > presentsCount:
+        if presentsCount <= useTrainingPresent:
+            useTrainingPresent = presentsCount - 1
+            useValidationPresent = 1
+        else:
+            useValidationPresent = presentsCount - useTrainingPresent
+    
+    if (useTrainingNotPresent + useValidationNotPresent) > ausenceCount:
+        if ausenceCount <= useTrainingNotPresent:
+            useTrainingNotPresent = ausenceCount - 1
+            useValidationNotPresent = 1
+        else:
+            useValidationNotPresent = ausenceCount - useTrainingNotPresent
 
     savedModel = False
 
@@ -509,6 +524,6 @@ with closing(db.cursor()) as cursor:
     """, [jobId])
     db.commit()
 
-#shutil.rmtree(tempFolders+"/training_"+str(jobId))
+shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")
