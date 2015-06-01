@@ -53,15 +53,16 @@ except MySQLdb.Error as e:
     log.write("fatal error cannot connect to database.")
     sys.exit(-1)
 
+
 def exit_error(db,workingFolder,log,jobId,msg):
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
-        db.commit() 
+        db.commit()
     log.write(msg)
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
     sys.exit(-1)
-        
+
 currDir = os.path.dirname(os.path.abspath(__file__))
 currPython = sys.executable
 
@@ -199,8 +200,8 @@ if model_type_id == 1:
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
-                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
 
         # get Amazon S3 bucket
         conn = S3Connection(awsKeyId, awsKeySecret)
@@ -303,10 +304,12 @@ if model_type_id == 1:
             if int(res[7]) == 0:
                 ausenceCount = ausenceCount + 1
             if int(res[7]) == 1:
-                presentsCount = presentsCount + 1            
+                presentsCount = presentsCount + 1
             if presentsCount >= 2 and ausenceCount >= 2:
                 break
-            
+        else:
+            log.write(res)
+
     if presentsCount < 2 and ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
 

@@ -5,7 +5,8 @@ from boto.s3.connection import S3Connection
 from a2audio.recanalizer import Recanalizer
 import csv
 
-def roigen(line,config,tempFolder,currDir ,jobId):
+
+def roigen(line, config, tempFolder, currDir, jobId):
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     if len(line) < 8:
         db.close()
@@ -33,12 +34,13 @@ def roigen(line,config,tempFolder,currDir ,jobId):
     else:            
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
-    
-def recnilize(line,config,workingFolder,currDir,jobId,pattern):
+
+
+def recnilize(line, config, workingFolder, currDir, jobId, pattern):
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
-    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
+    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2], db=config[3])
     conn = S3Connection(awsKeyId, awsKeySecret)
     bucket = conn.get_bucket(bucketName)
     pid = None
@@ -48,20 +50,20 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern):
         rowpid = cursor.fetchone()
         pid = rowpid[0]
     if pid is None:
-        return 'err'
+        return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), None)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
-        vectorUri = bucketBase+recName 
+        vectorUri = bucketBase+recName
         fets = recAnalized.features()
         vector = recAnalized.getVector()
         vectorFile = workingFolder+recName
         myfileWrite = open(vectorFile, 'wb')
         wr = csv.writer(myfileWrite)
         wr.writerow(vector)
-        myfileWrite.close()       
+        myfileWrite.close()
         k = bucket.new_key(vectorUri)
         k.set_contents_from_filename(vectorFile)
         k.set_acl('public-read')
@@ -76,4 +78,4 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern):
         return fets
     else:
         db.close()
-        return 'err'
+        return 'err ' + recAnalized.status
