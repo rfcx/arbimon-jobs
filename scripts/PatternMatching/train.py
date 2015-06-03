@@ -163,7 +163,7 @@ if model_type_id == 1:
                 WHERE `training_set_id` = %s
             """, [training_set_id])
             db.commit()
-    
+             
             numSpeciesSongtype = int(cursor.rowcount)
             speciesSongtype = []
             for x in range(0, numSpeciesSongtype):
@@ -171,7 +171,23 @@ if model_type_id == 1:
                 speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create training csvs files or access training data from db')
-
+    log.write('training data retrieved')
+    useTrainingPresent = None
+    useTrainingNotPresent = None
+    useValidationPresent = None
+    useValidationNotPresent = None   
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute("SELECT * FROM `job_params_training` WHERE `job_id` = "+str(jobId))
+            db.commit()
+            row = cursor.fetchone()
+            useTrainingPresent = row[5]
+            useTrainingNotPresent = row[6]
+            useValidationPresent = row[7]
+            useValidationNotPresent = row[8]
+    except:
+        exit_error(db,workingFolder,log,jobId,'cannot retrieve training data from db')
+        
     validationData = []
     """ Validation file creation """
     try:
@@ -182,13 +198,27 @@ if model_type_id == 1:
                 spst = speciesSongtype[x]
                 with closing(db.cursor()) as cursor:
                     cursor.execute("""
-                        SELECT r.`uri` , `species_id` , `songtype_id` , `present`
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present`
                         FROM `recording_validations` rv, `recordings` r
                         WHERE r.`recording_id` = rv.`recording_id`
                           AND rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
-                    """, [project_id, spst[0], spst[1]])
+                          AND `present` = 1
+                          ORDER BY rand()
+                          LIMIT %s)
+                          UNION
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present`
+                        FROM `recording_validations` rv, `recordings` r
+                        WHERE r.`recording_id` = rv.`recording_id`
+                          AND rv.`project_id` = %s
+                          AND `species_id` = %s
+                          AND `songtype_id` = %s
+                          AND `present` = 0
+                          ORDER BY rand()
+                          LIMIT %s)
+                    """, [project_id, spst[0], spst[1] , (int(useTrainingPresent)+int(useValidationPresent )) ,
+                          project_id, spst[0], spst[1] , (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
     
                     db.commit()
     
@@ -210,7 +240,7 @@ if model_type_id == 1:
         # save validation file to bucket
         k = bucket.new_key(valiKey)
         k.set_contents_from_filename(validationFile)
-    
+        k.set_acl('public-read')
         # save validation to DB
         progress_steps = progress_steps + 15
         with closing(db.cursor()) as cursor:
@@ -243,7 +273,7 @@ if model_type_id == 1:
             db.commit()
     except:
         exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
-        
+    log.write('validation data retrieved')    
     if len(trainingData) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
  
@@ -253,13 +283,13 @@ if model_type_id == 1:
     """Roigenerator"""
     try:
         #roigen defined in a2audio.training
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId) for line in trainingData)
+        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'roigenerator failed')
     
     if rois is None or len(rois) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
-        
+    log.write('rois created')    
     patternSurfaces = {}    
     """Align rois"""
     try:
@@ -285,44 +315,52 @@ if model_type_id == 1:
    
     if len(patternSurfaces) == 0 :
         exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
-    
+    log.write('rois aligned, pattern surface created')
     results = None
     """Recnilize"""
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]])) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log) for line in validationData)
     except:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
-    
+    log.write('validation recordings analyzed')
     presentsCount = 0
     ausenceCount = 0
+    processed_count = 0
     for res in results:
         if 'err' not in res:
             if int(res[7]) == 0:
                 ausenceCount = ausenceCount + 1
             if int(res[7]) == 1:
                 presentsCount = presentsCount + 1            
-            if presentsCount >= 2 and ausenceCount >= 2:
-                break
+
             
     if presentsCount < 2 and ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
-
+    
     """Add samples to model"""
     models = {}
+    log.write('total results '+str(len(results)))
+    no_errors = 0
+    errors_count = 0
     try:
         for res in results:
-            classid = res[6]
-            if classid in models:
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+            if 'err' not in res:
+                no_errors = no_errors + 1                               
+                classid = res[6]
+                if classid in models:
+                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                else:
+                    models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
+                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
             else:
-                models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
-                models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                errors_count = errors_count + 1
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
-        
+    log.write('errors : '+str(errors_count)+" processed: "+ str(no_errors))
+    log.write('model trained')    
     modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
     project_id = None
     user_id = None
@@ -366,7 +404,8 @@ if model_type_id == 1:
             valiId = row[1]
     except:
         exit_error(db,workingFolder,log,jobId,'error querying database')
-
+    log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
+    log.write('available validations : presents: '+str(presentsCount)+' ausents: '+str(ausenceCount) )
     savedModel = False
 
     """ Create and save model """
@@ -433,6 +472,7 @@ if model_type_id == 1:
             #save validations results to bucket
             k = bucket.new_key(validationsKey)
             k.set_contents_from_filename(validationsLocalFile)
+            k.set_acl('public-read')
             #save vocalization surface png to bucket
             k = bucket.new_key(pngKey)
             k.set_contents_from_filename(pngFilename)

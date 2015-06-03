@@ -11,6 +11,7 @@ import math
 from a2pyutils.logger import Logger
 import os
 import json
+import warnings
 
 class Recanalizer:
     
@@ -76,7 +77,7 @@ class Recanalizer:
                     self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
                 self.status = 'Processed'
         else:
-            self.status = 'NoData'
+            self.status = self.rec.status
 
     def getRec(self):
         return self.rec
@@ -93,30 +94,32 @@ class Recanalizer:
                 , numpy.std(self.distances) , numpy.median(self.distances)]
         
     def featureVector(self):
-        if self.logs:
-           self.logs.write("featureVector start")
-        if self.logs:
-           self.logs.write(self.uri)    
-        pieces = self.uri.split('/')
-        self.distances = []
-        currColumns = self.spec.shape[1]
-        step = 16
-        if self.logs:
-           self.logs.write("featureVector start")
-        self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-        self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
-        winSize = min(self.matrixSurfacComp.shape)
-        winSize = min(winSize,7)
-        if winSize %2 == 0:
-            winSize = winSize - 1
-        spec = self.spec;
-        for j in range(0,currColumns - self.columns,step):
-            val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-            if val < 0:
-               val = 0
-            self.distances.append(  val   )
-        if self.logs:
-           self.logs.write("featureVector end")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+            pieces = self.uri.split('/')
+            self.distances = []
+            currColumns = self.spec.shape[1]
+            step = 16
+            if self.logs:
+               self.logs.write("featureVector start")
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            winSize = min(self.matrixSurfacComp.shape)
+            winSize = min(winSize,7)
+            if winSize %2 == 0:
+                winSize = winSize - 1
+            spec = self.spec;
+            for j in range(0,currColumns - self.columns,step):
+                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                if val < 0:
+                   val = 0
+                self.distances.append(  val   )
+            if self.logs:
+               self.logs.write("featureVector end")
     
     def getSpec(self):
         return self.spec

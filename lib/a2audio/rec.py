@@ -113,7 +113,7 @@ class Rec:
             return None
  
         if self.samples != len(self.original):
-            self.status = 'CorruptedFile'
+            self.status = 'CorruptedFileLength'
             return None
                     
         self.status = 'HasAudioData'

@@ -47,7 +47,7 @@ class Roizer:
             self.highF = highFreq 
             self.uri = uri
         else:
-            self.status = "NoAudio"
+            self.status = recording.status
             return None
         dur = float(self.samples)/float(self.sample_rate)
         if dur < endiSecs:
