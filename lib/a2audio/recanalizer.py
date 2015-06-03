@@ -15,7 +15,7 @@ import warnings
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,ssim=True):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -36,7 +36,7 @@ class Recanalizer:
             raise ValueError("bucketName must be a string")
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
-        
+        self.ssim = ssim
         start_time = time.time()
         self.low = float(low)
         self.high = float(high)
@@ -118,11 +118,17 @@ class Recanalizer:
             if winSize %2 == 0:
                 winSize = winSize - 1
             spec = self.spec;
-            for j in range(0,currColumns - self.columns,step):
-                val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-                if val < 0:
-                   val = 0
-                self.distances.append(  val   )
+            if self.ssim:
+                for j in range(0,currColumns - self.columns,step):
+                    val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                    if val < 0:
+                       val = 0
+                    self.distances.append(  val   )
+            else:
+                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
+                for j in range(0,currColumns - self.columns,step):
+                    val = numpy.linalg.norm(  numpy.copy(spec[: , j:(j+self.columns)]) -  self.matrixSurfacComp  )/maxnormforsize
+                    self.distances.append(  val )
             if self.logs:
                self.logs.write("featureVector end")
     

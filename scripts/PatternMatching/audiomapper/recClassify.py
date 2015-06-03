@@ -24,10 +24,18 @@ num_cores = multiprocessing.cpu_count()
 
 jobId = int(sys.argv[1].strip("'").strip(" "))
 modelUri = sys.argv[2].strip("'").strip(" ")
+ssim = False
+if sys.argv[3].strip("'").strip(" ") == 'True':
+    ssim = True
 
 log = Logger(int(jobId), 'recClassify.py', 'worker')
 log.write('script started')
 
+if ssim:
+    log.write('using ssim '+str(ssim)+str(sys.argv[3].strip("'").strip(" ")))
+else:
+    log.write('not using ssim '+str(ssim))
+    
 models = {}
 tempFolders = tempfile.gettempdir()
 currDir = os.path.dirname(os.path.abspath(__file__))
@@ -92,7 +100,7 @@ log.write(
 # for line in sys.stdin:
 
 
-def processLine(line, bucket, mod, config, logWorkers,bucketNam):
+def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
     global jobId
     start_time_all = time.time()
     log = Logger(int(jobId), 'recClassify.py', 'worker-thread', logWorkers)
@@ -119,12 +127,12 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam):
     start_time = time.time()
     log.write(str(type(bucket)))
     recAnalized = Recanalizer(
-        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log)
+        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log ,False, ssimFlag)
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
             UPDATE `jobs`
-            SET `progress` = `progress` + 1
+            SET `progress` = `progress` + 1 ,last_update = now()
             WHERE `job_id` = %s
         """, [jobId])
         db.commit()
@@ -218,7 +226,7 @@ def insert_rec_error(db, recId, jobId):
 
 
 resultsParallel = Parallel(n_jobs=num_cores)(
-    delayed(processLine)(line, bucket, mod, config, logWorkers,bucketName)
+    delayed(processLine)(line, bucket, mod, config, logWorkers,bucketName,ssim)
     for line in sys.stdin
 )
 log.write('this worker processed '+str(sum(resultsParallel))+' recordings')

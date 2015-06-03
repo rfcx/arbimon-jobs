@@ -105,9 +105,12 @@ if not row:
 modelName = name
 tempFolders = tempfile.gettempdir()
 # select the model_type by its id
-if model_type_id == 1:
+if model_type_id in [1,2]:
     """Pattern Matching (modified Alvarez thesis)"""
-    
+    ssim = True
+    if model_type_id == 2:
+        model_type_id = False
+        
     log.write("Pattern Matching (modified Alvarez thesis)")
     progress_steps = 0
     # creating a temporary folder
@@ -320,7 +323,7 @@ if model_type_id == 1:
     results = None
     """Recnilize"""
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim) for line in validationData)
     except:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     

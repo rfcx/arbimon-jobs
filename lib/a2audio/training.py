@@ -25,7 +25,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,log=None):
     roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq)
     
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 ,last_update = now() where `job_id` = '+str(jobId))
         db.commit()
         
     if 'HasAudioData' not in roi.status:
@@ -43,7 +43,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,log=None):
             log.write('done roizing : '+line[7])
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
+def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True):
     if log is not None:
         log.write('analizing recording: '+line[0])
     bucketName = config[4]
@@ -54,7 +54,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
     bucket = conn.get_bucket(bucketName)
     pid = None
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 ,last_update = now() where `job_id` = '+str(jobId))
         db.commit()
     with closing(db.cursor()) as cursor:
         cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
@@ -66,7 +66,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
             log.write('cannot analize '+line[0])
         return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), None)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), None,False,ssim)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
