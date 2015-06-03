@@ -77,6 +77,7 @@ def insertRecError(db,jobId,recId):
         cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
         db.commit()
     db.close()
+    db = None
     
 def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,log=None,bIndex=0):
     if log:
@@ -91,13 +92,16 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
     db = None
     conn = None
     bucket = None
-    try:
-        db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
-        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
-    except:
-        log.write('error analyzing: db or conn are wrong')
-        return 'err'
+    #try:
+    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
+    conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
+    bucket = conn.get_bucket(bucketName)
+    #except:
+        #log.write('error analyzing: db or conn are wrong')
+        #return 'err'
+    with closing(db.cursor()) as cursor:
+        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        db.commit()
     pid = None
     cancelStatus(db,jobId,workingFolder)
     with closing(db.cursor()) as cursor:
@@ -114,12 +118,12 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
-    try:
-        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
-    except:
-        log.write('error analyzing: Recanalizer is wrong')
-        insertRecError(db,jobId,recId)
-        return 'err'
+   # try:
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
+    #except:
+        #log.write('error analyzing: Recanalizer is wrong')
+        #insertRecError(db,jobId,recId)
+        #return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
@@ -148,5 +152,4 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
         log.write(line[0])
-        db.close()
         return 'err'

@@ -148,7 +148,7 @@ class Recanalizer:
         acf = acf/(N - numpy.arange(N))
         
         xf = abs(numpy.fft.fft(self.distances))
-        skew(xf)
+
         fs = [ numpy.mean(xf), (max(xf)-min(xf)),
                 max(xf), min(xf)
                 , numpy.std(xf) , numpy.median(xf),skew(xf),
@@ -230,7 +230,7 @@ class Recanalizer:
                     self.distances[j+self.columns/2]=val
                     #self.distances.append(  val )
             if self.logs:
-               self.logs.write("Done featureVector end")
+               self.logs.write("--------------------------Done featureVector end--------------------------")
     
     def getSpec(self):
         return self.spec

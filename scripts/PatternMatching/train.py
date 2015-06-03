@@ -195,46 +195,40 @@ if model_type_id in [1,2,3]:
         
     cancelStatus(db,jobId,workingFolder)
     
-    validationData = []
-    """ Validation file creation """
-    try:
-        validationFile = workingFolder+'/validation_'+str(jobId)+'.csv'
-        with open(validationFile, 'wb') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter=',')
-            for x in range(0, numSpeciesSongtype):
-                spst = speciesSongtype[x]
-                with closing(db.cursor()) as cursor:
-                    cursor.execute("""
-                        SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
-                        FROM `recording_validations` rv, `recordings` r
-                        WHERE r.`recording_id` = rv.`recording_id`
-                          AND rv.`project_id` = %s
-                          AND `species_id` = %s
-                          AND `songtype_id` = %s
-                    """, [project_id, spst[0], spst[1]])
+    modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
+    project_id = None
+    user_id = None
+    modelname = None
+    valiId = None
+    model_type_id = None	
+    training_set_id = None
+    useTrainingPresent = None
+    useTrainingNotPresent = None
+    useValidationPresent = None
+    useValidationNotPresent = None
+    """Get params from database"""
     
-                    db.commit()
     
-                    numValidationRows = int(cursor.rowcount)
-    
-                    progress_steps = progress_steps + numValidationRows
-    
-                    for x in range(0, numValidationRows):
-                        rowValidation = cursor.fetchone()
-                        cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
-                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+   # try:
+    with closing(db.cursor()) as cursor:
+           # save validation to DB
 
-        # get Amazon S3 bucket
-        conn = S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
+        cursor.execute("SELECT `project_id`,`user_id` FROM `jobs` WHERE `job_id` = "+str(jobId))
+        db.commit()
+        row = cursor.fetchone()
+        project_id = row[0]	
+        user_id = row[1] 	
         valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
-    
-        # save validation file to bucket
-        k = bucket.new_key(valiKey)
-        k.set_contents_from_filename(validationFile)
-    
-        # save validation to DB
+        cursor.execute("SELECT * FROM `job_params_training` WHERE `job_id` = "+str(jobId))
+        db.commit()
+        row = cursor.fetchone()
+        model_type_id = row[1]	
+        training_set_id = row[2]
+        useTrainingPresent = row[5]
+        useTrainingNotPresent = row[6]
+        useValidationPresent = row[7]
+        useValidationNotPresent = row[8]                  
+        modelname = row[9]
         progress_steps = progress_steps + 15
         with closing(db.cursor()) as cursor:
             cursor.execute("""
@@ -250,23 +244,95 @@ if model_type_id in [1,2,3]:
                 jobId
             ])
             db.commit()
-    
+            valiId = cursor.lastrowid
             cursor.execute("""
                 UPDATE `job_params_training`
                 SET `validation_set_id` = %s
                 WHERE `job_id` = %s
             """, [cursor.lastrowid, jobId])
             db.commit()
+                
+    #except:
+        #exit_error(db,workingFolder,log,jobId,'error querying database')
+
+    cancelStatus(db,jobId,workingFolder)
+
+    validationData = []
+    """ Validation file creation """
+    if (1):#try:
+        validationFile = workingFolder+'/validation_'+str(jobId)+'.csv'
+        with open(validationFile, 'wb') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',')
+            for x in range(0, numSpeciesSongtype):
+                spst = speciesSongtype[x]
+                with closing(db.cursor()) as cursor:
+                    cursor.execute("""
+                        SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
+                        FROM `recording_validations` rv, `recordings` r
+                        WHERE r.`recording_id` = rv.`recording_id`
+                          AND rv.`project_id` = %s
+                          AND `species_id` = %s
+                          AND `songtype_id` = %s
+                          AND present = 1
+                          ORDER BY RAND()
+                          LIMIT %s
+                    """, [project_id, spst[0], spst[1] , (int(useTrainingPresent)+int(useValidationPresent))])
     
-            cursor.execute("""
-                UPDATE `jobs`
-                SET `progress_steps` = %s, progress=0, state="processing"
-                WHERE `job_id` = %s
-            """, [progress_steps, jobId])
-            db.commit()
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
-        
+                    db.commit()
+    
+                    numValidationRows = int(cursor.rowcount)
+
+                    progress_steps = progress_steps + numValidationRows
+    
+                    for x in range(0, numValidationRows):
+                        rowValidation = cursor.fetchone()
+                        cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+                        
+                with closing(db.cursor()) as cursor:
+                    cursor.execute("""
+                        SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
+                        FROM `recording_validations` rv, `recordings` r
+                        WHERE r.`recording_id` = rv.`recording_id`
+                          AND rv.`project_id` = %s
+                          AND `species_id` = %s
+                          AND `songtype_id` = %s
+                          AND present = 0
+                          ORDER BY RAND()
+                          LIMIT %s
+                    """, [project_id, spst[0], spst[1] , (int(useTrainingNotPresent)+int(useValidationNotPresent))])
+    
+                    db.commit()
+    
+                    numValidationRows = int(cursor.rowcount)
+
+                    progress_steps = progress_steps + numValidationRows
+
+                    for x in range(0, numValidationRows):
+                        rowValidation = cursor.fetchone()
+                        cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+   
+                    cursor.execute("""
+                       UPDATE `jobs`
+                       SET `progress_steps` = %s, progress=0, state="processing"
+                       WHERE `job_id` = %s
+                        """, [progress_steps, jobId])
+                    db.commit()
+                    
+        # get Amazon S3 bucket
+        conn = S3Connection(awsKeyId, awsKeySecret)
+        bucket = conn.get_bucket(bucketName)
+
+        # save validation file to bucket
+        k = bucket.new_key(valiKey)
+        k.set_contents_from_filename(validationFile)
+    
+    #except:
+        #exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
+    
     cancelStatus(db,jobId,workingFolder)
     
     if len(trainingData) == 0 :
@@ -334,7 +400,10 @@ if model_type_id in [1,2,3]:
     
     presentsCount = 0
     ausenceCount = 0
+    c = 1
     for res in results:
+        print c,':', res
+        c = c  +1
         if 'err' not in res:
             if int(res['info'][1]) == 0:
                 ausenceCount = ausenceCount + 1
@@ -361,66 +430,24 @@ if model_type_id in [1,2,3]:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
     
     cancelStatus(db,jobId,workingFolder)
-    
-    modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
-    project_id = None
-    user_id = None
-    modelname = None
-    valiId = None
-    model_type_id = None	
-    training_set_id = None
-    useTrainingPresent = None
-    useTrainingNotPresent = None
-    useValidationPresent = None
-    useValidationNotPresent = None
-    """Get params from database"""
-    try:
-        with closing(db.cursor()) as cursor:
-        
-            cursor.execute("SELECT `project_id`,`user_id` FROM `jobs` WHERE `job_id` = "+str(jobId))
-            db.commit()
-            row = cursor.fetchone()
-            project_id = row[0]	
-            user_id = row[1] 	
-        
-            cursor.execute("SELECT * FROM `job_params_training` WHERE `job_id` = "+str(jobId))
-            db.commit()
-            row = cursor.fetchone()
-            model_type_id = row[1]	
-            training_set_id = row[2]
-            useTrainingPresent = row[5]
-            useTrainingNotPresent = row[6]
-            useValidationPresent = row[7]
-            useValidationNotPresent = row[8]
-        
-            cursor.execute("SELECT `params`,`validation_set_id` FROM `validation_set` WHERE `job_id` = "+str(jobId))
-            db.commit()
-            row = cursor.fetchone()
-            
-            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
-            db.commit()
-            
-            decoded = json.loads(row[0])
-            modelname = decoded['name']
-            valiId = row[1]
-    except:
-        exit_error(db,workingFolder,log,jobId,'error querying database')
 
-    cancelStatus(db,jobId,workingFolder)
-    
     if (useTrainingPresent+useValidationPresent) > presentsCount:
         if presentsCount <= useTrainingPresent:
-            useTrainingPresent = presentsCount - 1
-            useValidationPresent = 1
+            print 'presents if presentsCount <= useTrainingPresent ' , presentsCount ,"?", useTrainingPresent
+            #useTrainingPresent = presentsCount - 1
+            #useValidationPresent = 1
         else:
-            useValidationPresent = presentsCount - useTrainingPresent
+            print 'presents else presentsCount <= useTrainingPresent ' , presentsCount ,"?", useTrainingPresent
+            #useValidationPresent = presentsCount - useTrainingPresent
 
     if (useTrainingNotPresent + useValidationNotPresent)  > ausenceCount:
         if ausenceCount <= useTrainingNotPresent:
-            useTrainingNotPresent = ausenceCount - 1
-            useValidationNotPresent = 1
+            print 'ausence if ausenceCount <= useTrainingNotPresent' , ausenceCount ,"?", useTrainingNotPresent
+            #useTrainingNotPresent = ausenceCount - 1
+            #useValidationNotPresent = 1
         else:
-            useValidationNotPresent = ausenceCount  - useTrainingNotPresent
+            print 'ausence else ausenceCount <= useTrainingNotPresent' , ausenceCount ,"?", useTrainingNotPresent
+            #useValidationNotPresent = ausenceCount  - useTrainingNotPresent
 
     savedModel = False
     log.write("creating model")
