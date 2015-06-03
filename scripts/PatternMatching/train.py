@@ -53,15 +53,16 @@ except MySQLdb.Error as e:
     log.write("fatal error cannot connect to database.")
     sys.exit(-1)
 
+
 def exit_error(db,workingFolder,log,jobId,msg):
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
-        db.commit() 
+        db.commit()
     log.write(msg)
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
     sys.exit(-1)
-        
+
 currDir = os.path.dirname(os.path.abspath(__file__))
 currPython = sys.executable
 
@@ -229,8 +230,8 @@ if model_type_id == 1:
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
-                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ])
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
 
         # get Amazon S3 bucket
         conn = S3Connection(awsKeyId, awsKeySecret)
@@ -283,7 +284,7 @@ if model_type_id == 1:
     """Roigenerator"""
     try:
         #roigen defined in a2audio.training
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
+        rois = Parallel(n_jobs=1)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
     except:
         exit_error(db,workingFolder,log,jobId,'roigenerator failed')
     
@@ -335,8 +336,9 @@ if model_type_id == 1:
                 ausenceCount = ausenceCount + 1
             if int(res[7]) == 1:
                 presentsCount = presentsCount + 1            
+        else:
+            log.write(res)
 
-            
     if presentsCount < 2 and ausenceCount < 2:
         exit_error(db,workingFolder,log,jobId,'not enough validations to create model')
     
@@ -357,6 +359,7 @@ if model_type_id == 1:
                     models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
             else:
                 errors_count = errors_count + 1
+
     except:
         exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
     log.write('errors : '+str(errors_count)+" processed: "+ str(no_errors))
@@ -404,8 +407,24 @@ if model_type_id == 1:
             valiId = row[1]
     except:
         exit_error(db,workingFolder,log,jobId,'error querying database')
+
     log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
     log.write('available validations : presents: '+str(presentsCount)+' ausents: '+str(ausenceCount) )
+    if (useTrainingPresent+useValidationPresent) > presentsCount:
+       if presentsCount <= useTrainingPresent:
+           useTrainingPresent = presentsCount - 1
+           useValidationPresent = 1
+       else:
+           useValidationPresent = presentsCount - useTrainingPresent
+    
+    if (useTrainingNotPresent + useValidationNotPresent) > ausenceCount:
+       if ausenceCount <= useTrainingNotPresent:
+           useTrainingNotPresent = ausenceCount - 1
+           useValidationNotPresent = 1
+       else:
+           useValidationNotPresent = ausenceCount - useTrainingNotPresent
+    log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
+
     savedModel = False
 
     """ Create and save model """
@@ -549,6 +568,6 @@ with closing(db.cursor()) as cursor:
     """, [jobId])
     db.commit()
 
-#shutil.rmtree(tempFolders+"/training_"+str(jobId))
+shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")

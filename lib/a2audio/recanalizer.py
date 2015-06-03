@@ -69,13 +69,18 @@ class Recanalizer:
             else:
                 start_time = time.time()
                 self.spectrogram()
-                if self.logs:
-                    self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
-                start_time = time.time()
-                self.featureVector()
-                if self.logs:
-                    self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
-                self.status = 'Processed'
+                if self.spec.shape[1] < 2*self.speciesSurface.shape[1]:
+                    self.status = 'AudioIsShort'
+                    if self.logs:
+                        self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
+                else:
+                    if self.logs:
+                        self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
+                    start_time = time.time()
+                    self.featureVector()
+                    if self.logs:
+                        self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
+                    self.status = 'Processed'
         else:
             self.status = self.rec.status
 
@@ -103,7 +108,7 @@ class Recanalizer:
             pieces = self.uri.split('/')
             self.distances = []
             currColumns = self.spec.shape[1]
-            step = 16
+            step = 32
             if self.logs:
                self.logs.write("featureVector start")
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])

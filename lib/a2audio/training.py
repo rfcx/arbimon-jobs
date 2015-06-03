@@ -49,7 +49,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
-    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
+    db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2], db=config[3])
     conn = S3Connection(awsKeyId, awsKeySecret)
     bucket = conn.get_bucket(bucketName)
     pid = None
@@ -64,20 +64,20 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
     if pid is None:
         if log is not None:
             log.write('cannot analize '+line[0])
-        return 'err'
+        return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),None)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), None)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
-        vectorUri = bucketBase+recName 
+        vectorUri = bucketBase+recName
         fets = recAnalized.features()
         vector = recAnalized.getVector()
         vectorFile = workingFolder+recName
         myfileWrite = open(vectorFile, 'wb')
         wr = csv.writer(myfileWrite)
         wr.writerow(vector)
-        myfileWrite.close()       
+        myfileWrite.close()
         k = bucket.new_key(vectorUri)
         k.set_contents_from_filename(vectorFile)
         k.set_acl('public-read')
@@ -97,4 +97,4 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None):
             log.write('cannot analize '+line[0])
             log.write(recAnalized.status)
         db.close()
-        return 'err'
+        return 'err ' + recAnalized.status

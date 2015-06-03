@@ -24,6 +24,7 @@ from a2pyutils.news import insertNews
 from boto.s3.connection import S3Connection
 from soundscape.set_visual_scale_lib import get_norm_vector
 from soundscape.set_visual_scale_lib import get_sc_data
+from soundscape.set_visual_scale_lib import get_db
 
 num_cores = multiprocessing.cpu_count()
 
@@ -409,8 +410,11 @@ try:
             log.write('inserted soundscape into database')
             soundscapeId = scpId
             start_time_all = time.time()
-            nv= get_norm_vector(dbDict,{"aggregation":agr_ident,'playlist_id':playlist_id})
-            norm_vector = nv if normalized else None
+            
+            db1 = get_db(config)
+            scData = get_sc_data(db1, soundscapeId)
+            norm_vector = get_norm_vector(db1, scData) if normalized else None
+            db1.close()
             if norm_vector is not None:
                 scp.norm_vector = norm_vector
                 
