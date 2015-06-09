@@ -40,6 +40,7 @@ class Recanalizer:
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
         self.ssim = ssim
+        self.step = 32
         start_time = time.time()
         self.low = float(low)
         self.high = float(high)
@@ -111,7 +112,7 @@ class Recanalizer:
             pieces = self.uri.split('/')
             self.distances = []
             currColumns = self.spec.shape[1]
-            step = 32
+            step = self.step
             if self.logs:
                self.logs.write("featureVector start")
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
@@ -175,10 +176,9 @@ class Recanalizer:
                self.logs.write(str(loc))
         for pt in zip(*loc[::-1]):
             self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
-        numMax = numpy.max(self.distances)
-        if numMax <=0:
-            numMax = 0.3
-        self.distances[maxLoc[0]:(maxLoc[0]+pat.shape[1])] = numMax
+        for j in range(maxLoc[0]-pat.shape[1],maxLoc[0]+(pat.shape[1]*2),step):
+            self.distances[j+tw/2] = ssim( numpy.copy(spec[:,j:(j+tw)]) , pat, win_size=winSize)
+        self.distances[maxLoc[0]+tw/2] = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
         
     def getSpec(self):
         return self.spec
