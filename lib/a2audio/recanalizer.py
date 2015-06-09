@@ -170,6 +170,7 @@ class Recanalizer:
         loc = numpy.where(result >= threshold)
         winSize = min(pat.shape)
         winSize = min(winSize,7)
+        step = self.step
         if winSize %2 == 0:
             winSize = winSize - 1
         if self.logs:
