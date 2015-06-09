@@ -149,6 +149,7 @@ class Recanalizer:
                self.logs.write("featureVector end")
  
     def computeGFTT(self,pat,spec,currColumns):
+        currColumns = self.spec.shape[1]
         spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
         spec = spec.astype('uint8')
         self.distances = numpy.zeros(spec.shape[1])
@@ -176,9 +177,10 @@ class Recanalizer:
                self.logs.write(str(loc))
         for pt in zip(*loc[::-1]):
             self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
-        for j in range(maxLoc[0]-pat.shape[1],maxLoc[0]+(pat.shape[1]*2),step):
+        for j in range(maxLoc[0]-pat.shape[1],min(currColumns - self.columns,maxLoc[0]+(pat.shape[1]*2)),step):
             self.distances[j+tw/2] = ssim( numpy.copy(spec[:,j:(j+tw)]) , pat, win_size=winSize)
-        self.distances[maxLoc[0]+tw/2] = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
+        if maxLoc[0]+tw<=self.columns:
+            self.distances[maxLoc[0]+tw/2] = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
         
     def getSpec(self):
         return self.spec
