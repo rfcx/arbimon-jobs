@@ -332,10 +332,13 @@ if model_type_id in [1,2,3]:
     log.write('rois aligned, pattern surface created')
     results = None
     """Recnilize"""
-    try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) for line in validationData)
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+    for line in validationData:
+        recnilize(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) 
+
+    #try:
+    #    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) for line in validationData)
+    #except:
+        e#xit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
