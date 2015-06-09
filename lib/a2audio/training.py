@@ -43,7 +43,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,log=None):
             log.write('done roizing : '+line[7])
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True):
+def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True,searchMatch=False):
     if log is not None:
         log.write('analizing recording: '+line[0])
     bucketName = config[4]
@@ -66,7 +66,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
             log.write('cannot analize '+line[0])
         return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim,searchMatch)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]

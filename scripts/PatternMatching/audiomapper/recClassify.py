@@ -25,17 +25,24 @@ num_cores = multiprocessing.cpu_count()
 jobId = int(sys.argv[1].strip("'").strip(" "))
 modelUri = sys.argv[2].strip("'").strip(" ")
 ssim = False
+searchMatch = False
 if sys.argv[3].strip("'").strip(" ") == 'True':
     ssim = True
+    
+if sys.argv[4].strip("'").strip(" ") == 'True':
+    searchMatch = True
 
 log = Logger(int(jobId), 'recClassify.py', 'worker')
 log.write('script started')
 
-if ssim:
-    log.write('using ssim '+str(ssim)+str(sys.argv[3].strip("'").strip(" ")))
+if searchMatch:
+    log.write('using search match')
 else:
-    log.write('not using ssim '+str(ssim))
-    
+    if ssim:
+        log.write('using ssim '+str(ssim)+str(sys.argv[3].strip("'").strip(" ")))
+    else:
+        log.write('not using ssim '+str(ssim))
+        
 models = {}
 tempFolders = tempfile.gettempdir()
 currDir = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +134,7 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
     start_time = time.time()
     log.write(str(type(bucket)))
     recAnalized = Recanalizer(
-        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log ,False, ssimFlag)
+        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log ,False, ssimFlag,searchMatch)
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""

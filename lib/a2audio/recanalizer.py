@@ -13,10 +13,12 @@ import os
 import json
 import warnings
 from a2audio.thresholder import Thresholder
+import cv2
+from cv import *
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,ssim=True):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,ssim=True,searchMatch=False):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -49,7 +51,7 @@ class Recanalizer:
         self.tempFolder = tempFolder
         self.rec = None
         self.status = 'NoData'
-        
+        self.searchMatch = searchMatch
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
@@ -119,27 +121,65 @@ class Recanalizer:
             if winSize %2 == 0:
                 winSize = winSize - 1
             spec = self.spec;
-            if self.ssim:
+            if self.searchMatch:
                 if self.logs:
-                    self.logs.write("using ssim")
-                for j in range(0,currColumns - self.columns,step):
-                    val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-                    if val < 0:
-                       val = 0
-                    self.distances.append(  val   )
+                    self.logs.write("using search match")
+                self.computeGFTT(numpy.copy(self.matrixSurfacComp),numpy.copy(spec),currColumns)
             else:
-                if self.logs:
-                    self.logs.write("not using ssim")
-                threshold = Thresholder()
-                matrixSurfacCompCopy = threshold.apply(numpy.copy(self.matrixSurfacComp))
-                specCopy = threshold.apply(numpy.copy(spec))
-                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=matrixSurfacCompCopy.shape) )
-                for j in range(0,currColumns - self.columns,step):
-                    val = numpy.linalg.norm( numpy.multiply ( (specCopy[: , j:(j+self.columns)]), matrixSurfacCompCopy ) )/maxnormforsize
-                    self.distances.append(  val )
+                if self.ssim:
+                    if self.logs:
+                        self.logs.write("using ssim")
+                    for j in range(0,currColumns - self.columns,step):
+                        val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                        if val < 0:
+                           val = 0
+                        self.distances.append(  val   )
+                else:
+                    if self.logs:
+                        self.logs.write("not using ssim")
+                    threshold = Thresholder()
+                    matrixSurfacCompCopy = threshold.apply(numpy.copy(self.matrixSurfacComp))
+                    specCopy = threshold.apply(numpy.copy(spec))
+                    maxnormforsize = numpy.linalg.norm( numpy.ones(shape=matrixSurfacCompCopy.shape) )
+                    for j in range(0,currColumns - self.columns,step):
+                        val = numpy.linalg.norm( numpy.multiply ( (specCopy[: , j:(j+self.columns)]), matrixSurfacCompCopy ) )/maxnormforsize
+                        self.distances.append(  val )
             if self.logs:
                self.logs.write("featureVector end")
-    
+ 
+    def computeGFTT(self,pat,spec,currColumns):
+        spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+        spec = spec.astype('uint8')
+        self.distances = numpy.zeros(spec.shape[1])
+        pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+        pat = pat.astype('uint8')
+        self.logs.write("shape:"+str(spec.shape)+' '+str(self.distances.shape))
+        th, tw = pat.shape[:2]
+        result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
+        self.logs.write(str(result))
+        self.logs.write(str(len(result)))
+        self.logs.write(str(len(result[0])))
+        self.logs.write(str(numpy.max(result)))
+        self.logs.write(str(numpy.mean(result)))
+        self.logs.write(str(numpy.min(result)))
+        (_, _, minLoc, maxLoc) = cv2.minMaxLoc(result)
+        self.logs.write(str(minLoc)+' '+str(maxLoc))
+        threshold = numpy.percentile(result,99.5)
+        loc = numpy.where(result >= threshold)
+        winSize = min(pat.shape)
+        winSize = min(winSize,7)
+        if winSize %2 == 0:
+            winSize = winSize - 1
+        if self.logs:
+               self.logs.write("searching locations : "+str(len(loc[0])))
+               self.logs.write(str(loc))
+        for pt in zip(*loc[::-1]):
+            self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
+        numMax = numpy.max(self.distances)
+        if numMax <=0:
+            numMax = 0.3
+        self.distances[maxLoc[0]:(maxLoc[0]+pat.shape[1])] = numMax
+        
     def getSpec(self):
         return self.spec
     

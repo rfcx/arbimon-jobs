@@ -110,14 +110,16 @@ log.write('job species and songtype: '+str(species)+" "+str(songtype))
 tempFolders = tempfile.gettempdir()
 
 # select the model_type by its id
-if model_type_id in [1,2]:  # Pattern Matching (modified Alvarez thesis)
+if model_type_id in [1,2,3]:  # Pattern Matching (modified Alvarez thesis)
     log.write(
         'using Pattern Matching algorithm (model_type_id: ' +
         str(model_type_id)+')')
     ssim = True
     if model_type_id == 2:
         ssim = False
-        
+    searchMatch = False
+    if model_type_id == 3:
+        searchMatch = True
     log.write('using ssim '+str(ssim))
     # creating a temporary folder
     workingFolder = tempFolders+"/classification_"+str(jobId)
@@ -220,7 +222,7 @@ if model_type_id in [1,2]:  # Pattern Matching (modified Alvarez thesis)
     log.write('calling audiomapper/recClassify.py')
     p3 = subprocess.Popen([
         currPython, currDir+'/audiomapper/recClassify.py',
-        str(jobId), model_uri , str(ssim)
+        str(jobId), model_uri , str(ssim) , str(searchMatch)
     ], stdin=p2.stdout, stdout=subprocess.PIPE)
     log.write('calling audiomapper/classificationresults.py')
     p4 = subprocess.Popen([
