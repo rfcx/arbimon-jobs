@@ -139,76 +139,83 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
 
     if recAnalized.status == 'Processed':
         log.write('rec processed')
-        featvector = recAnalized.getVector()
-        recName = recUri.split('/')
-        recName = recName[len(recName)-1]
-        vectorLocal = tempFolder+recName+'.vector'
-        start_time = time.time()
-        myfileWrite = open(vectorLocal, 'wb')
-        wr = csv.writer(myfileWrite)
-        wr.writerow(featvector)
-        myfileWrite.close()
-        log.time_delta("wrote vector file", start_time)
-        if not os.path.isfile(vectorLocal):
-            log.write('error writing: '+vectorLocal)
+        noErrorFlag = True
+        fets = None
+        try:
+            fets = recAnalized.features()
+        except:
+            log.write('error predicting on recording: '+recUri)
             with closing(db.cursor()) as cursor:
                 cursor.execute("""
-                    INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
+                    INSERT INTO `recordings_errors`
+                        (`recording_id`, `job_id`)
                     VALUES (%s, %s)
                 """, [recId, jobId])
                 db.commit()
-            log.time_delta("function exec", start_time_all)
-            return 0
-        else:
+            noErrorFlag = False
+        if noErrorFlag:
+            featvector = recAnalized.getVector()
+            recName = recUri.split('/')
+            recName = recName[len(recName)-1]
+            vectorLocal = tempFolder+recName+'.vector'
             start_time = time.time()
-            vectorUri = '{}/classification_{}_{}.vector'.format(
-                modelUri.replace('.mod', ''), jobId, recName
-            )
-            log.write(str(type(bucket)))
-            k = bucket.new_key(vectorUri)
-            k.set_contents_from_filename(vectorLocal)
-            k.set_acl('public-read')
-            noErrorFlag = True
-            try:
-                fets = recAnalized.features()
-            except:
-                log.write('error predicting on recording: '+recUri)
+            myfileWrite = open(vectorLocal, 'wb')
+            wr = csv.writer(myfileWrite)
+            wr.writerow(featvector)
+            myfileWrite.close()
+            log.time_delta("wrote vector file", start_time)
+            if not os.path.isfile(vectorLocal):
+                log.write('error writing: '+vectorLocal)
                 with closing(db.cursor()) as cursor:
                     cursor.execute("""
-                        INSERT INTO `recordings_errors`
-                            (`recording_id`, `job_id`)
+                        INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
                         VALUES (%s, %s)
                     """, [recId, jobId])
                     db.commit()
-                noErrorFlag = False
-            if noErrorFlag:
-                clf = mod[0]
-                log.time_delta("uploaded vector file", start_time)
-                start_time = time.time()
-                try:
-                    res = clf.predict(fets)
-                except:
-                    log.write('error predicting on recording: '+recUri)
-                    with closing(db.cursor()) as cursor:
-                        cursor.execute("""
-                            INSERT INTO `recordings_errors`
-                                (`recording_id`, `job_id`)
-                            VALUES (%s, %s)
-                        """, [recId, jobId])
-                        db.commit()
-                    noErrorFlag = False
-                log.time_delta("prediction", start_time)
-            if noErrorFlag:
-                print recId, ";", res[0], ";", jobId, ";", species, ";",
-                print songtype, ";", min(featvector), ";", max(featvector)
-                sys.stdout.flush()
-                log.time_delta("function exec", start_time_all)
-                return 1
-            else:
-                log.write('error return 0')
-                insert_rec_error(db, recId, jobId)
                 log.time_delta("function exec", start_time_all)
                 return 0
+            else:
+                start_time = time.time()
+                vectorUri = '{}/classification_{}_{}.vector'.format(
+                    modelUri.replace('.mod', ''), jobId, recName
+                )
+                log.write(str(type(bucket)))
+                k = bucket.new_key(vectorUri)
+                k.set_contents_from_filename(vectorLocal)
+                k.set_acl('public-read')
+                if noErrorFlag:
+                    clf = mod[0]
+                    log.time_delta("uploaded vector file", start_time)
+                    start_time = time.time()
+                    try:
+                        res = clf.predict([float(fets[0]),float(fets[1]),float(fets[2]),float(fets[3]),float(fets[4]),float(fets[5])])
+                    except:
+                        log.write('error predicting on recording: '+recUri)
+                        with closing(db.cursor()) as cursor:
+                            cursor.execute("""
+                                INSERT INTO `recordings_errors`
+                                    (`recording_id`, `job_id`)
+                                VALUES (%s, %s)
+                            """, [recId, jobId])
+                            db.commit()
+                        noErrorFlag = False
+                    log.time_delta("prediction", start_time)
+                if noErrorFlag:
+                    print recId, ";", res[0], ";", jobId, ";", species, ";",
+                    print songtype, ";", min(featvector), ";", max(featvector)
+                    sys.stdout.flush()
+                    log.time_delta("function exec", start_time_all)
+                    return 1
+                else:
+                    log.write('error clf.predict(fets) failed')
+                    insert_rec_error(db, recId, jobId)
+                    log.time_delta("function exec", start_time_all)
+                    return 0
+        else:
+            log.write('error recAnalized.features failed')
+            insert_rec_error(db, recId, jobId)
+            log.time_delta("function exec", start_time_all)
+            return 0
     else:
         log.write('error processing recording: '+recUri)
         log.time_delta("function exec", start_time_all)

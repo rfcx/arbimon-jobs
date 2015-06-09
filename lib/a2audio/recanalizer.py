@@ -12,6 +12,7 @@ from a2pyutils.logger import Logger
 import os
 import json
 import warnings
+from a2audio.thresholder import Thresholder
 
 class Recanalizer:
     
@@ -119,15 +120,22 @@ class Recanalizer:
                 winSize = winSize - 1
             spec = self.spec;
             if self.ssim:
+                if self.logs:
+                    self.logs.write("using ssim")
                 for j in range(0,currColumns - self.columns,step):
                     val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
                     if val < 0:
                        val = 0
                     self.distances.append(  val   )
             else:
-                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
+                if self.logs:
+                    self.logs.write("not using ssim")
+                threshold = Thresholder()
+                matrixSurfacCompCopy = threshold.apply(numpy.copy(self.matrixSurfacComp))
+                specCopy = threshold.apply(numpy.copy(spec))
+                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=matrixSurfacCompCopy.shape) )
                 for j in range(0,currColumns - self.columns,step):
-                    val = numpy.linalg.norm(  numpy.copy(spec[: , j:(j+self.columns)]) -  self.matrixSurfacComp  )/maxnormforsize
+                    val = numpy.linalg.norm( numpy.multiply ( (specCopy[: , j:(j+self.columns)]), matrixSurfacCompCopy ) )/maxnormforsize
                     self.distances.append(  val )
             if self.logs:
                self.logs.write("featureVector end")

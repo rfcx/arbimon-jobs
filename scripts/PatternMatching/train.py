@@ -109,9 +109,13 @@ if model_type_id in [1,2]:
     """Pattern Matching (modified Alvarez thesis)"""
     ssim = True
     if model_type_id == 2:
-        model_type_id = False
-        
+        ssim = False
+
     log.write("Pattern Matching (modified Alvarez thesis)")
+    if ssim:
+        log.write("using ssim")
+    else:
+        log.write("not using ssim")
     progress_steps = 0
     # creating a temporary folder
     workingFolder = tempFolders+"/training_"+str(jobId)+"/"

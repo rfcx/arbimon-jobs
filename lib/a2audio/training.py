@@ -66,7 +66,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
             log.write('cannot analize '+line[0])
         return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), None,False,ssim)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
