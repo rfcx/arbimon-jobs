@@ -176,7 +176,8 @@ class Recanalizer:
                self.logs.write("searching locations : "+str(len(loc[0])))
                self.logs.write(str(loc))
         for pt in zip(*loc[::-1]):
-            self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
+            if pt[0]+tw<=self.columns:
+                self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
         for j in range(maxLoc[0]-pat.shape[1],min(currColumns - self.columns,maxLoc[0]+(pat.shape[1]*2)),step):
             self.distances[j+tw/2] = ssim( numpy.copy(spec[:,j:(j+tw)]) , pat, win_size=winSize)
         if maxLoc[0]+tw<=self.columns:
