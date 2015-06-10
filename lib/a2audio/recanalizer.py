@@ -15,6 +15,7 @@ import warnings
 from a2audio.thresholder import Thresholder
 import cv2
 from cv import *
+import random
 
 class Recanalizer:
     
@@ -155,34 +156,58 @@ class Recanalizer:
         self.distances = numpy.zeros(spec.shape[1])
         pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
         pat = pat.astype('uint8')
-        self.logs.write("shape:"+str(spec.shape)+' '+str(self.distances.shape))
+        #self.logs.write("shape:"+str(spec.shape)+' '+str(self.distances.shape))
         th, tw = pat.shape[:2]
         result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
-        self.logs.write(str(result))
-        self.logs.write(str(len(result)))
-        self.logs.write(str(len(result[0])))
-        self.logs.write(str(numpy.max(result)))
-        self.logs.write(str(numpy.mean(result)))
-        self.logs.write(str(numpy.min(result)))
+        #self.logs.write(str(result))
+        #self.logs.write(str(len(result)))
+        #self.logs.write(str(len(result[0])))
+        #self.logs.write(str(numpy.max(result)))
+        #self.logs.write(str(numpy.mean(result)))
+        #self.logs.write(str(numpy.min(result)))
         (_, _, minLoc, maxLoc) = cv2.minMaxLoc(result)
-        self.logs.write(str(minLoc)+' '+str(maxLoc))
-        threshold = numpy.percentile(result,99.5)
+        #self.logs.write(str(minLoc)+' '+str(maxLoc))
+        threshold = numpy.percentile(result,98.5)
         loc = numpy.where(result >= threshold)
         winSize = min(pat.shape)
         winSize = min(winSize,7)
-        step = self.step
+        step = 16
         if winSize %2 == 0:
             winSize = winSize - 1
-        if self.logs:
-               self.logs.write("searching locations : "+str(len(loc[0])))
-               self.logs.write(str(loc))
+        ssimCalls = 0
+        #if self.logs:
+               #self.logs.write("searching locations : "+str(len(loc[0])))
+               #self.logs.write(str(loc))
+        xs = []
+        s = -999
         for pt in zip(*loc[::-1]):
-            if pt[0]+tw<=self.columns:
-                self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
-        for j in range(max(0,maxLoc[0]-pat.shape[1]),min(currColumns - self.columns,maxLoc[0]+(pat.shape[1]*2)),step):
-            self.distances[j+tw/2] = ssim( numpy.copy(spec[:,j:(j+tw)]) , pat, win_size=winSize)
-        if maxLoc[0]+tw<=self.columns:
-            self.distances[maxLoc[0]+tw/2] = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
+            if abs(pt[0] - s)>step/2 :
+                xs.append(pt[0])
+            s = pt[0]
+        self.logs.write(str(xs))
+        xs_smpl = [ xs[i] for i in sorted(random.sample(xrange(len(xs)), min(4,len(xs)))) ]
+        self.logs.write(str(xs_smpl))
+        for pts in xs_smpl:
+            if pts+math.floor((pat.shape[1]*1.33))<=currColumns:
+                for pt in range(max(0,pts-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,pts+int(math.floor((pat.shape[1]*1.33)))),step):
+                    ssimCalls = ssimCalls + 1
+                    val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+                    if val < 0:
+                        val = 0
+                    self.distances[pt+tw/2] = val
+        # for pt in range(max(0,maxLoc[0]-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,maxLoc[0]+int(math.floor((pat.shape[1]*1.33)))),step):
+        #     ssimCalls = ssimCalls + 1
+        #     val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+        #     if val < 0:
+        #         val = 0
+        #     self.distances[pt+tw/2] = val
+        if maxLoc[0]+tw<=currColumns:
+            ssimCalls = ssimCalls + 1
+            val = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
+            if val < 0:
+                val=0
+            self.distances[maxLoc[0]+tw/2] = val
+        self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
         
     def getSpec(self):
         return self.spec
