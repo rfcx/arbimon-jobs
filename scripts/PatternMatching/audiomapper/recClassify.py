@@ -28,7 +28,7 @@ ssim = False
 searchMatch = False
 if sys.argv[3].strip("'").strip(" ") == 'True':
     ssim = True
-    
+
 if sys.argv[4].strip("'").strip(" ") == 'True':
     searchMatch = True
 
@@ -42,14 +42,15 @@ else:
         log.write('using ssim '+str(ssim)+str(sys.argv[3].strip("'").strip(" ")))
     else:
         log.write('not using ssim '+str(ssim))
-        
-models = {}
-tempFolders = tempfile.gettempdir()
-currDir = os.path.dirname(os.path.abspath(__file__))
 
 configuration = Config()
 config = configuration.data()
 log.write('configuration loaded')
+
+models = {}
+tempFolders = configuration.pathConfig['tempDir']
+currDir = os.path.dirname(os.path.abspath(__file__))
+
 log.write('trying database connection')
 db = None
 try:
@@ -67,8 +68,9 @@ log.write('tring connection to bucket')
 start_time = time.time()
 
 conn = S3Connection(awsKeyId, awsKeySecret)
+
 try:
-    bucket = conn.get_bucket(bucketName )
+    bucket = conn.get_bucket(bucketName)
 except Exception, ex:
     log.write('fatal error cannot connect to bucket ')
     with closing(db.cursor()) as cursor:
@@ -107,7 +109,7 @@ log.write(
 # for line in sys.stdin:
 
 
-def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
+def processLine(line, bucket, mod, config, logWorkers, bucketNam, ssimFlag):
     global jobId
     start_time_all = time.time()
     log = Logger(int(jobId), 'recClassify.py', 'worker-thread', logWorkers)
@@ -116,25 +118,39 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
 
     try:
         db = MySQLdb.connect(
-            host=config[0], user=config[1], passwd=config[2], db=config[3])
+            host=config[0], user=config[1], passwd=config[2], db=config[3]
+        )
     except MySQLdb.Error as e:
         log.write('fatal error cannot connect to database.')
         return 0
+
     # remove white space
     line = line.strip(' ')
     line = line.strip('\n')
+
     # split the line into variables
     recUri, modelUri, recId, jobId, species, songtype = line.split(',')
     recId = int(recId.strip())
     log.write('new subprocess:'+recUri)
-    tempFolders = tempfile.gettempdir()
+    tempFolders = configuration.pathConfig['tempDir']
     tempFolder = tempFolders+"/classification_"+str(jobId)+"/"
 
     # get rec from URI and compute feature vector using the spec vocalization
     start_time = time.time()
     log.write(str(type(bucket)))
+
     recAnalized = Recanalizer(
-        recUri, mod[1], float(mod[2]), float(mod[3]), tempFolder,str(bucketNam) ,log ,False, ssimFlag,searchMatch)
+        recUri,
+        mod[1],
+        float(mod[2]),
+        float(mod[3]),
+        tempFolder,
+        str(bucketNam),
+        log, False,
+        ssimFlag,
+        searchMatch
+    )
+
     log.time_delta("recAnalized", start_time)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
@@ -195,7 +211,14 @@ def processLine(line, bucket, mod, config, logWorkers,bucketNam,ssimFlag):
                     log.time_delta("uploaded vector file", start_time)
                     start_time = time.time()
                     try:
-                        res = clf.predict([float(fets[0]),float(fets[1]),float(fets[2]),float(fets[3]),float(fets[4]),float(fets[5])])
+                        res = clf.predict([
+                            float(fets[0]),
+                            float(fets[1]),
+                            float(fets[2]),
+                            float(fets[3]),
+                            float(fets[4]),
+                            float(fets[5])
+                        ])
                     except:
                         log.write('error predicting on recording: '+recUri)
                         with closing(db.cursor()) as cursor:
@@ -240,7 +263,7 @@ def insert_rec_error(db, recId, jobId):
 
 
 resultsParallel = Parallel(n_jobs=num_cores)(
-    delayed(processLine)(line, bucket, mod, config, logWorkers,bucketName,ssim)
+    delayed(processLine)(line, bucket, mod, config, logWorkers, bucketName, ssim)
     for line in sys.stdin
 )
 log.write('this worker processed '+str(sum(resultsParallel))+' recordings')

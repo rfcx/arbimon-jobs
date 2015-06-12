@@ -107,10 +107,10 @@ with closing(db.cursor()) as cursor:
 log.write('using model uri: '+model_uri)
 log.write('job species and songtype: '+str(species)+" "+str(songtype))
 
-tempFolders = tempfile.gettempdir()
+tempFolders = configuration.pathConfig['tempDir']
 
 # select the model_type by its id
-if model_type_id in [1,2,3]:  # Pattern Matching (modified Alvarez thesis)
+if model_type_id in [1, 2, 3]:  # Pattern Matching (modified Alvarez thesis)
     log.write(
         'using Pattern Matching algorithm (model_type_id: ' +
         str(model_type_id)+')')
@@ -121,6 +121,7 @@ if model_type_id in [1,2,3]:  # Pattern Matching (modified Alvarez thesis)
     if model_type_id == 3:
         searchMatch = True
     log.write('using ssim '+str(ssim))
+
     # creating a temporary folder
     workingFolder = tempFolders+"/classification_"+str(jobId)
     if os.path.exists(workingFolder):
@@ -208,27 +209,32 @@ if model_type_id in [1,2,3]:  # Pattern Matching (modified Alvarez thesis)
         )
         quit()
 
-    print 'started pipe , ssim flag:',str(ssim)
+    print 'started pipe , ssim flag:', str(ssim)
     log.write('start classification pipe')
     sys.stdout.flush()
     log.write('starting cat of '+classificationFileName)
+
     p1 = subprocess.Popen(
         ['/bin/cat', classificationFileName], stdout=subprocess.PIPE)
     log.write('calling audiomapper/classifyMap.py')
+
     p2 = subprocess.Popen([
         currPython, currDir+'/audiomapper/classifyMap.py',
         str(jobId), str(linesInCsvFile)
     ], stdin=p1.stdout, stdout=subprocess.PIPE)
     log.write('calling audiomapper/recClassify.py')
+
     p3 = subprocess.Popen([
         currPython, currDir+'/audiomapper/recClassify.py',
-        str(jobId), model_uri , str(ssim) , str(searchMatch)
+        str(jobId), model_uri, str(ssim), str(searchMatch)
     ], stdin=p2.stdout, stdout=subprocess.PIPE)
     log.write('calling audiomapper/classificationresults.py')
+
     p4 = subprocess.Popen([
         currPython, currDir+'/audiomapper/classificationresults.py',
         str(jobId), str(linesInCsvFile)
     ], stdin=p3.stdout, stdout=subprocess.PIPE)
+
     log.write('waiting for pipe to end')
     jOutput = p4.communicate()[0].strip('\n')
     # log.write('job output: '+jOutput)

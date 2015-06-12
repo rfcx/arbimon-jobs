@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-#roi generator
-#second step in training pipe (next: align.py)
-#recieves recording info and roi info from stdin
-#downloads recording from amazon bucket
-#computes and extract the ROI
-#prints to stdout roi info as well as roi spectrogram
+# roi generator
+# second step in training pipe (next: align.py)
+# recieves recording info and roi info from stdin
+# downloads recording from amazon bucket
+# computes and extract the ROI
+# prints to stdout roi info as well as roi spectrogram
 
 import sys
 from a2audio.roizer import Roizer
@@ -15,21 +15,24 @@ import os
 from contextlib import closing
 import MySQLdb
 from a2pyutils.config import Config
-tempFolders = tempfile.gettempdir()
-currDir = os.path.dirname(os.path.abspath(__file__))
 import multiprocessing
 from joblib import Parallel, delayed
+
 num_cores = multiprocessing.cpu_count()
 
 configuration = Config()
 config = configuration.data()
 
+tempFolders = configuration.pathConfig['tempDir']
+currDir = os.path.dirname(os.path.abspath(__file__))
 
 jobId = -1
-#for line in sys.stdin:
-def processLine(line,config,tempFolders,currDir ):
+# for line in sys.stdin:
+
+
+def processLine(line, config, tempFolders, currDir):
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
-    #line has recId,speciesId,songtypeId,iniTime,endTime,lowFreq,highFreq,recuri,jobid
+    # line has recId,speciesId,songtypeId,iniTime,endTime,lowFreq,highFreq,recuri,jobid
     line = line.strip()
     line = line.strip('\n')
     lineArgs = line.split(",")
@@ -38,7 +41,7 @@ def processLine(line,config,tempFolders,currDir ):
         return 'err'
     recId = int(lineArgs[0])
     roispeciesId = int(lineArgs[1])
-    roisongtypeId= int(lineArgs[2])
+    roisongtypeId = int(lineArgs[2])
     initTime = float(lineArgs[3])
     endingTime = float(lineArgs[4])
     lowFreq = float(lineArgs[5])

@@ -5,7 +5,10 @@ from a2audio.roiset import Roiset
 import numpy
 import csv
 import tempfile
-tempFolders = tempfile.gettempdir()
+from a2pyutils.config import Config
+
+configuration = Config()
+tempFolders = configuration.pathConfig['tempDir']
 
 classes = {}
 validations = {}
@@ -14,9 +17,9 @@ jId = -1
 for line in sys.stdin:
     line = line.strip(' ')
     classid, numberOfSamples,lowFreq,highFreq,sample_rate,spectro,rows,columns,jobId = line.split(';')
-    spectro  = spectro.strip(' ')
-    spectro  = spectro.strip('\n')
-    spectro  = spectro.split('*')
+    spectro = spectro.strip(' ')
+    spectro = spectro.strip('\n')
+    spectro = spectro.split('*')
     rows = rows.strip(' ')
     rows = int(rows.strip('\n'))
     columns = columns.strip(' ')
@@ -69,4 +72,3 @@ with open(validationFile, 'rb') as csvfile:
         spectrogram =  '*'.join( str(x) for x in ss )
 
         print "%s;%s;%s;%s;%s;%s;%s;%d;%d" %(recUri,classs,present,low,high,columns,spectrogram,jId,sRate)
-

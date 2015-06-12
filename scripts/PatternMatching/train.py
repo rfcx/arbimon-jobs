@@ -54,10 +54,20 @@ except MySQLdb.Error as e:
     sys.exit(-1)
 
 
-def exit_error(db,workingFolder,log,jobId,msg):
+def exit_error(db, workingFolder, log, jobId, msg):
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+        query = """
+            UPDATE `jobs`
+            SET `remarks` = "Error: '+str(msg)+'",
+                `state`="error",
+                `progress` = `progress_steps`,
+                `completed` = 1 ,
+                `last_update` = now()
+            WHERE `job_id` = '+str(jobId)
+        """
+        cursor.execute(query)
         db.commit()
+
     log.write(msg)
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
@@ -103,9 +113,9 @@ if not row:
     name
 ) = row
 modelName = name
-tempFolders = tempfile.gettempdir()
+tempFolders = configuration.pathConfig['tempDir']
 # select the model_type by its id
-if model_type_id in [1,2,3]:
+if model_type_id in [1, 2, 3]:
     """Pattern Matching (modified Alvarez thesis)"""
     ssim = True
     if model_type_id == 2:
@@ -113,7 +123,7 @@ if model_type_id in [1,2,3]:
     searchMatch = False
     if model_type_id == 3:
         searchMatch = True
-        
+
     log.write("Pattern Matching (modified Alvarez thesis)")
     if searchMatch:
         log.write("using search match")
@@ -129,9 +139,9 @@ if model_type_id in [1,2,3]:
         shutil.rmtree(workingFolder)
     os.makedirs(workingFolder)
     if not os.path.exists(workingFolder):
-        exit_error(db,workingFolder,log,jobId,'cannot create temporary directory')
+        exit_error(db, workingFolder, log, jobId, 'cannot create temporary directory')
     trainingData = []
-    
+
     """ Training data file creation """
     try:
         with closing(db.cursor()) as cursor:
@@ -157,39 +167,41 @@ if model_type_id in [1,2,3]:
                     rowTraining = cursor.fetchone()
                     trainingData.append(rowTraining)
                     spamwriter.writerow(rowTraining[0:7+1] + (jobId,))
-    
+
             cursor.execute("""
                 SELECT DISTINCT `recording_id`
                 FROM `training_set_roi_set_data`
                 where `training_set_id` = %s
             """, [training_set_id])
             db.commit()
-    
+
             numrecordingsIds = int(cursor.rowcount)
             recordingsIds = []
             for x in range(0, numrecordingsIds):
                 rowRec = cursor.fetchone()
                 recordingsIds.append(rowRec[0])
-    
+
             cursor.execute("""
                 SELECT DISTINCT `species_id`, `songtype_id`
                 FROM `training_set_roi_set_data`
                 WHERE `training_set_id` = %s
             """, [training_set_id])
             db.commit()
-             
+
             numSpeciesSongtype = int(cursor.rowcount)
             speciesSongtype = []
             for x in range(0, numSpeciesSongtype):
                 rowSpecies = cursor.fetchone()
                 speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot create training csvs files or access training data from db')
+        exit_error(db, workingFolder, log, jobId, 'cannot create training csvs files or access training data from db')
+
     log.write('training data retrieved')
     useTrainingPresent = None
     useTrainingNotPresent = None
     useValidationPresent = None
-    useValidationNotPresent = None   
+    useValidationNotPresent = None
+
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute("SELECT * FROM `job_params_training` WHERE `job_id` = "+str(jobId))
@@ -231,15 +243,15 @@ if model_type_id in [1,2,3]:
                           AND `present` = 0
                           ORDER BY rand()
                           LIMIT %s)
-                    """, [project_id, spst[0], spst[1] , (int(useTrainingPresent)+int(useValidationPresent )) ,
-                          project_id, spst[0], spst[1] , (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
-    
+                    """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
+                          project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
+
                     db.commit()
-    
+
                     numValidationRows = int(cursor.rowcount)
-    
+
                     progress_steps = progress_steps + numValidationRows
-    
+
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
@@ -250,7 +262,7 @@ if model_type_id in [1,2,3]:
         conn = S3Connection(awsKeyId, awsKeySecret)
         bucket = conn.get_bucket(bucketName)
         valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
-    
+
         # save validation file to bucket
         k = bucket.new_key(valiKey)
         k.set_contents_from_filename(validationFile)
@@ -260,8 +272,13 @@ if model_type_id in [1,2,3]:
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `validation_set`(
-                    `validation_set_id`, `project_id`, `user_id`, `name`, `uri`,
-                    `params`, `job_id`
+                    `validation_set_id`,
+                    `project_id`,
+                    `user_id`,
+                    `name`,
+                    `uri`,
+                    `params`,
+                    `job_id`
                 ) VALUES (
                     NULL, %s, %s, %s, %s, %s, %s
                 )
@@ -271,14 +288,14 @@ if model_type_id in [1,2,3]:
                 jobId
             ])
             db.commit()
-    
+
             cursor.execute("""
                 UPDATE `job_params_training`
                 SET `validation_set_id` = %s
                 WHERE `job_id` = %s
             """, [cursor.lastrowid, jobId])
             db.commit()
-    
+
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress_steps` = %s, progress=0, state="processing"
@@ -286,25 +303,28 @@ if model_type_id in [1,2,3]:
             """, [progress_steps, jobId])
             db.commit()
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
-    log.write('validation data retrieved')    
-    if len(trainingData) == 0 :
-        exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
- 
+        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db')
+
+    log.write('validation data retrieved')
+    if len(trainingData) == 0:
+        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db')
+
     classes = {}
-   
     rois = None
+
     """Roigenerator"""
     try:
-        #roigen defined in a2audio.training
+        # roigen defined in a2audio.training
         rois = Parallel(n_jobs=1)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
     except:
-        exit_error(db,workingFolder,log,jobId,'roigenerator failed')
-    
-    if rois is None or len(rois) == 0 :
+        exit_error(db, workingFolder, log, jobId, 'roigenerator failed')
+
+    if rois is None or len(rois) == 0:
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
-    log.write('rois created')    
-    patternSurfaces = {}    
+
+    log.write('rois created')
+    patternSurfaces = {}
+
     """Align rois"""
     try:
         for roi in rois:
@@ -317,18 +337,39 @@ if model_type_id in [1,2,3]:
                 rows = spec.shape[0]
                 columns = spec.shape[1]
                 if classid in classes:
-                    classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
+                    classes[classid].addRoi(
+                        float(lowFreq),
+                        float(highFreq),
+                        float(sample_rate),
+                        spec,
+                        rows,
+                        columns
+                    )
                 else:
-                    classes[classid] = Roiset(classid,float(sample_rate) )
-                    classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
+                    classes[classid] = Roiset(classid, float(sample_rate))
+                    classes[classid].addRoi(
+                        float(lowFreq),
+                        float(highFreq),
+                        float(sample_rate),
+                        spec,
+                        rows,
+                        columns
+                    )
+
         for i in classes:
             classes[i].alignSamples()
-            patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
+            patternSurfaces[i] = [
+                classes[i].getSurface(),
+                classes[i].setSampleRate,
+                classes[i].lowestFreq,
+                classes[i].highestFreq,
+                classes[i].maxColumns
+            ]
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot align rois')
-   
-    if len(patternSurfaces) == 0 :
-        exit_error(db,workingFolder,log,jobId,'cannot create pattern surface from rois')
+        exit_error(db, workingFolder, log, jobId, 'cannot align rois')
+
+    if len(patternSurfaces) == 0:
+        exit_error(db, workingFolder, log, jobId, 'cannot create pattern surface from rois')
     log.write('rois aligned, pattern surface created')
     results = None
     """Recnilize"""

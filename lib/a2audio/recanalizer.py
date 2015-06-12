@@ -5,7 +5,7 @@ import time
 from skimage.measure import structural_similarity as ssim
 from scipy.stats import pearsonr as prs
 from scipy.stats import kendalltau as ktau
-from  scipy.spatial.distance import cityblock as ct
+from scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
 from a2pyutils.logger import Logger
@@ -18,7 +18,6 @@ from cv import *
 import random
 
 class Recanalizer:
-    
     def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,ssim=True,searchMatch=False):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")

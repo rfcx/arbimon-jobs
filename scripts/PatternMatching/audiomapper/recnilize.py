@@ -14,10 +14,10 @@ import csv
 import multiprocessing
 from joblib import Parallel, delayed
 
-tempFolders = tempfile.gettempdir()
-currDir = os.path.dirname(os.path.abspath(__file__))
 configuration = Config()
 config = configuration.data()
+tempFolders = configuration.pathConfig['tempDir']
+currDir = os.path.dirname(os.path.abspath(__file__))
 num_cores = multiprocessing.cpu_count()
 
 #reads lines from stdin

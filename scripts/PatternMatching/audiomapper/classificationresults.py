@@ -29,7 +29,7 @@ except MySQLdb.Error as e:
     quit()
 log.write('database connection succesful')
 
-tempFolders = tempfile.gettempdir()
+tempFolders = configuration.pathConfig['tempDir']
 minVectorVal = 9999999.0
 maxVectorVal = -9999999.0
 print 'results'
@@ -84,7 +84,7 @@ with closing(db.cursor()) as cursor:
 
 db.close()
 log.write('removing working folder')
-#shutil.rmtree(tempFolders+"/classification_"+str(jobId))
+shutil.rmtree(tempFolders+"/classification_"+str(jobId))
 print 'ended'
 
 log.close()

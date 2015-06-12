@@ -14,9 +14,9 @@ import png
 from boto.s3.connection import S3Connection
 from a2pyutils.config import Config
 
-tempFolders = tempfile.gettempdir()
-currDir = os.path.dirname(os.path.abspath(__file__))
 configuration = Config()
+tempFolders = configuration.pathConfig['tempDir']
+currDir = os.path.dirname(os.path.abspath(__file__))
 config = configuration.data()
 bucketName = config[4]
 awsKeyId = config[5]

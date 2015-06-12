@@ -19,6 +19,7 @@ from indices import indices
 from a2audio.rec import Rec
 from a2pyutils import palette
 from a2pyutils.news import insertNews
+from a2pyutils.config import Config
 from boto.s3.connection import S3Connection
 
 num_cores = multiprocessing.cpu_count()
@@ -32,13 +33,14 @@ if len(sys.argv) < 2:
     print USAGE
     sys.exit(-1)
 
-tempFolders = tempfile.gettempdir()
+configuration = Config()
+tempFolders = configuration.pathConfig['tempDir']
 workingFolder = tempFolders+"/soundscape_folder/"
 if os.path.exists(workingFolder):
     shutil.rmtree(workingFolder)
 os.makedirs(workingFolder)
 
-folder  = sys.argv[1]
+folder = sys.argv[1]
 
 agr_ident = 'time_of_day'
 if len(sys.argv) > 2:
@@ -53,35 +55,36 @@ imgout = 'image.png'
 scidxout = 'index.scidx'
 threshold = 0
 frequency = 0
-bin_size =  86
+bin_size = 86
 if bin_size < 0:
     print "# Bin size must be a positive number. Input was: " + str(bin_size)
     print USAGE
     sys.exit(-1)
 
-#try:
+# try:
 
 recsToProcess = os.listdir(folder)
 if len(recsToProcess) < 1:
     print "no recordings on folder."
     sys.exit(-1)
 
-peaknumbers  = indices.Indices(aggregation)
+peaknumbers = indices.Indices(aggregation)
 
 hIndex = indices.Indices(aggregation)
 
 aciIndex = indices.Indices(aggregation)
 
 def processRec(rec):
-    #if not ".flac" in rec:
-        #return None
+    # if not ".flac" in rec:
+        # return None
     id = 1
     rec_wav = rec.replace(".flac",".wav")
     rec_date = rec.replace("t1-","").replace(".wav","")
     date = datetime.strptime(rec_date, '%Y-%m-%d_%H-%M')
     if not os.path.isfile(rec_wav):
         proc = subprocess.Popen([
-           '/usr/bin/flac', '-d',
+           '/usr/bin/flac',
+           '-d',
            folder+"/"+rec
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
@@ -192,5 +195,3 @@ else:
     #shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 #except Exception, e:
     #print 'error'
-
-

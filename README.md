@@ -8,7 +8,7 @@ Bio-Acoustic Analyzer - JOBS
  - All dependencies  in one line
    ```
    sudo apt-get install -y python-pip libmysqlclient-dev python-dev gfortran libopenblas-dev liblapack-dev  libpng12-dev libfreetype6-dev libsndfile1 libsndfile-dev libsamplerate-dev
- python-virtualenv r-base r-base-dev libfftw3-3 libfftw3-dev r-cran-rgl bwidget
+   python-virtualenv r-base r-base-dev libfftw3-3 libfftw3-dev r-cran-rgl bwidget
    ```
    
    
@@ -103,4 +103,3 @@ Bio-Acoustic Analyzer - JOBS
     - networkx
     - scikit-image
     - scikits.samplerate
-

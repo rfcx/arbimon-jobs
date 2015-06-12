@@ -27,6 +27,7 @@ from soundscape.set_visual_scale_lib import get_sc_data
 from soundscape.set_visual_scale_lib import get_db
 
 num_cores = multiprocessing.cpu_count()
+configuration = Config()
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
 USAGE = """
@@ -41,7 +42,7 @@ if len(sys.argv) < 2:
 
 job_id = int(sys.argv[1].strip("'"))
 
-tempFolders = tempfile.gettempdir()
+tempFolders = configuration.pathConfig['tempDir']
 workingFolder = tempFolders+"/soundscape_"+str(job_id)+"/"
 if os.path.exists(workingFolder):
     shutil.rmtree(workingFolder)
@@ -51,8 +52,6 @@ log = Logger(job_id, 'playlist2soundscape.py', 'main')
 log.also_print = True
 log.write('script started')
 
-
-configuration = Config()
 config = configuration.data()
 log.write('configuration loaded')
 log.write('trying database connection')
