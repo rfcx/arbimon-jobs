@@ -42,7 +42,7 @@ if len(sys.argv) < 2:
 
 job_id = int(sys.argv[1].strip("'"))
 
-tempFolders = configuration.pathConfig['tempDir']
+tempFolders = str(configuration.pathConfig['tempDir'])
 workingFolder = tempFolders+"/soundscape_"+str(job_id)+"/"
 if os.path.exists(workingFolder):
     shutil.rmtree(workingFolder)

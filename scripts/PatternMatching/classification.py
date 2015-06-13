@@ -107,7 +107,7 @@ with closing(db.cursor()) as cursor:
 log.write('using model uri: '+model_uri)
 log.write('job species and songtype: '+str(species)+" "+str(songtype))
 
-tempFolders = configuration.pathConfig['tempDir']
+tempFolders = str(configuration.pathConfig['tempDir'])
 
 # select the model_type by its id
 if model_type_id in [1, 2, 3]:  # Pattern Matching (modified Alvarez thesis)

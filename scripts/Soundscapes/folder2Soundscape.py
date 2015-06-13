@@ -34,7 +34,7 @@ if len(sys.argv) < 2:
     sys.exit(-1)
 
 configuration = Config()
-tempFolders = configuration.pathConfig['tempDir']
+tempFolders = str(configuration.pathConfig['tempDir'])
 workingFolder = tempFolders+"/soundscape_folder/"
 if os.path.exists(workingFolder):
     shutil.rmtree(workingFolder)

@@ -17,17 +17,18 @@ import cv2
 from cv import *
 import random
 
+
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,ssim=True,searchMatch=False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
             raise ValueError("speciesSurface must be a numpy.ndarray. Input was a "+str(type(speciesSurface)))
-        if type(low) is not int and  type(low) is not float:
+        if type(low) is not int and type(low) is not float:
             raise ValueError("low must be a number")
-        if type(high) is not int and  type(high) is not float:
+        if type(high) is not int and type(high) is not float:
             raise ValueError("high must be a number")
-        if low>=high :
+        if low >= high :
             raise ValueError("low must be less than high")
         if type(tempFolder) is not str:
             raise ValueError("invalid tempFolder")
@@ -37,7 +38,7 @@ class Recanalizer:
             raise ValueError("invalid tempFolder")
         if type(bucketName) is not str:
             raise ValueError("bucketName must be a string")
-        if logs is not None and not isinstance(logs,Logger):
+        if logs is not None and not isinstance(logs, Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
         self.ssim = ssim
         self.step = 32
