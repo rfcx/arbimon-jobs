@@ -7,7 +7,7 @@ from a2pyutils import tempfilecache
 import a2pyutils.palette
 import soundscape
 import sys
-import boto.s3.connection
+import a2pyutils.storage
 
 
 def exit_error(msg, code=-1, log=None):
@@ -79,35 +79,14 @@ def get_norm_vector(db, sc_data):
     return norm_vector
 
 
-def get_bucket(config):
-    bucketName = config[4]
-    awsKeyId = config[5]
-    awsKeySecret = config[6]
-    conn = None
-    bucket = None
-    try:
-        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
-    except:
-        exit_error('cannot not connect to aws.')
-    if not conn:
-        exit_error('cannot not connect to aws.')
-    else:
-        try:
-            bucket = conn.get_bucket(bucketName, validate=False)
-        except Exception, ex:
-            exit_error('cannot not connect to bucket.')
-        if not bucket:
-            exit_error('cannot not connect to bucket.')
-    return bucket
-
-
-def get_scidx_file(scidx_uri, file_cache, bucket):
+def get_scidx_file(scidx_uri, file_cache, storage):
     scidx_file = None
     try:
         scidx_file = file_cache.fetch(scidx_uri)
         if isinstance(scidx_file, tempfilecache.CacheMiss):
-            k = bucket.get_key(scidx_uri, validate=False)
-            k.get_contents_to_filename(scidx_file.file)
+            finp = storage.get_file(scidx_uri)
+            with open(scidx_file.file, 'rb') as fout:
+                fout.write(finp.read())
             scidx_file = scidx_file.retry_get()
     except:
         exit_error('cannot not retrieve scidx_file.')
@@ -128,11 +107,10 @@ def write_image(img_file, scidx_file, clip_max, palette_id, norm_vector=None):
         exit_error('cannot write image file.')
 
 
-def upload_image(img_uri, img_file, bucket):
+def upload_image(img_uri, img_file, storage):
     try:
-        k = bucket.new_key(img_uri)
-        k.set_contents_from_filename(img_file)
-        k.set_acl('public-read')
+        with open(img_file, 'rb') as finp:
+            storage.put_file(img_uri, finp.read(), acl='public-read')
     except:
         exit_error('cannot upload image file.')
 
@@ -162,17 +140,17 @@ def run(soundscape_id, clip_max, palette_id, normalized=0):
     sc_data = get_sc_data(db, soundscape_id)
     norm_vector = get_norm_vector(db, sc_data) if normalized else None
 
-    bucket = get_bucket(config)
+    storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
 
     img_uri = sc_data['uri']
     scidx_uri = sc_data['uri'].replace('image.png', 'index.scidx')
-    scidx_file = get_scidx_file(scidx_uri, file_cache, bucket)
+    scidx_file = get_scidx_file(scidx_uri, file_cache, storage)
 
     img_file = file_cache.key2File(img_uri)
 
     write_image(img_file, scidx_file, clip_max, palette_id, norm_vector)
 
-    upload_image(img_uri, img_file, bucket)
+    upload_image(img_uri, img_file, storage)
 
     update_db(db, clip_max, palette_id, soundscape_id, normalized)
 

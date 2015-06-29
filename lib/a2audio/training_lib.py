@@ -7,6 +7,7 @@ import csv
 from a2pyutils.logger import Logger
 import os
 import shutil
+import a2pyutils.storage
 
 
 def cancelStatus(db,jobId,rmFolder=None,quitj=True):
@@ -40,6 +41,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim,bIndex):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
+    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     if len(line) < 8:
         db.close()
@@ -56,7 +58,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,useSsim,bIndex):
     recuri = line[7]
     log.write("roigen: processing "+recuri)
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
+    roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
         db.commit()
@@ -86,16 +88,11 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         log.write('error analyzing: config is wrong')
         return 'err'
     recId = int(line[5])
-    bucketName = config[4]
-    awsKeyId = config[5]
-    awsKeySecret = config[6]
+    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = None
     conn = None
-    bucket = None
     #try:
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
-    conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
-    bucket = conn.get_bucket(bucketName)
     #except:
         #log.write('error analyzing: db or conn are wrong')
         #return 'err'
@@ -114,12 +111,13 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
             pid = None
     if pid is None:
         insertRecError(db,jobId,recId)
-        log.write('error analyzing: pid is wrong')
+        if log:
+            log.write('error analyzing: pid is wrong')
         return 'err'
-    bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
+    key_prefix = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
    # try:
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
     #except:
         #log.write('error analyzing: Recanalizer is wrong')
         #insertRecError(db,jobId,recId)
@@ -127,17 +125,13 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
-        vectorUri = bucketBase+recName 
+        vectorUri = key_prefix + recName 
         fets = recAnalized.features()
         vector = recAnalized.getVector()
         vectorFile = workingFolder+recName
-        myfileWrite = open(vectorFile, 'wb')
-        wr = csv.writer(myfileWrite)
-        wr.writerow(vector)
-        myfileWrite.close()       
-        k = bucket.new_key(vectorUri)
-        k.set_contents_from_filename(vectorFile)
-        k.set_acl('public-read')
+            
+        storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
+            
         infos = []
         infos.append(line[4])
         infos.append(line[3])
@@ -149,7 +143,9 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         db.close()
         return {"fets":fets,"info":infos}
     else:
-        log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
+        if log:
+            log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
-        log.write(line[0])
+        if log:
+            log.write(line[0])
         return 'err'

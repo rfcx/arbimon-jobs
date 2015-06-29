@@ -11,6 +11,7 @@ with warnings.catch_warnings():
 import contextlib
 import numpy as np
 from a2pyutils.logger import Logger
+import a2pyutils.storage
 from scikits.samplerate import resample
 from pylab import *
 import numpy
@@ -49,7 +50,7 @@ class Rec:
     channs = 0
     status = 'NotProcessed'
     
-    def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False,resample=True):
+    def __init__(self, uri, tempFolder, storage, logs=None, removeFile=True , test=False,resample=True):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -59,8 +60,8 @@ class Rec:
             raise ValueError("invalid tempFolder")
         elif not os.access(tempFolder, os.W_OK):
             raise ValueError("invalid tempFolder")
-        if type(bucketName) is not str:
-            raise ValueError("bucketName must be a string")
+        if not isinstance(storage, a2pyutils.storage.AbstractStorage):
+            raise ValueError("invalid storage instance")
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
         if type(removeFile) is not bool:
@@ -70,7 +71,7 @@ class Rec:
         start_time = time.time()
         self.logs = logs
         self.localFiles = tempFolder
-        self.bucket = bucketName    
+        self.storage = storage    
         self.uri = uri
         self.removeFile = removeFile
         self.original = []
@@ -159,19 +160,20 @@ class Rec:
         start_time = time.time()
         f = None
         if self.logs :
-            self.logs.write('Rec.py : https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
+            self.logs.write('Rec.py : fetching recording : '+ self.storage.get_file_uri(self.uri))
         try:
-            f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
+            f = self.storage.get_file(self.uri)
             if self.logs :
-                self.logs.write('Rec.py : urlopen success')
-        except urllib2.HTTPError, e:
+                self.logs.write('Rec.py : fetch success')
+        except a2pyutils.storage.StorageError, e:
             if self.logs :
-                self.logs.write("Rec.py : bucket http error:" + str(e.code ))
+                self.logs.write("Rec.py : storage error:" + str(e.message))
             return False
-        except urllib2.URLError, e:
-            if self.logs :
-                self.logs.write("Rec.py : bucket url error:" + str(e.reason ))
-            return False  
+        except:
+            import traceback
+            print "Unhandled exception"
+            traceback.print_exc()
+            raise
         if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
