@@ -8,12 +8,21 @@ import a2pyutils.palette
 import soundscape
 import sys
 import boto.s3.connection
+import os
+import shutil
 
-
-def exit_error(msg, code=-1, log=None):
+def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
     print '<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg)
     if log:
         log.write('\n<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg))
+    if jobId and db:
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            db.commit() 
+        log.write(msg)
+    if workingFolder:
+        if os.path.exists(workingFolder):
+            shutil.rmtree(workingFolder)
     sys.exit(code)
 
 
