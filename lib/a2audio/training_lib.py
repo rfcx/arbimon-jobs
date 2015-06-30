@@ -7,35 +7,15 @@ import csv
 from a2pyutils.logger import Logger
 import os
 import shutil
+from a2pyutils.config import Config
+from soundscape.set_visual_scale_lib import *
+from classification_lib import create_temp_dir
+import time
+import multiprocessing
+import csv
+from a2pyutils.jobs_lib import cancelStatus
+import numpy
 
-
-def cancelStatus(db,jobId,rmFolder=None,quitj=True):
-    status = None
-    with closing(db.cursor()) as cursor:
-        cursor.execute('select `cancel_requested` from`jobs`  where `job_id` = '+str(jobId))
-        db.commit()
-        status = cursor.fetchone()
-        if status:
-            if 'cancel_requested' in status:
-                status = status['cancel_requested']
-            else:
-                status  = status[0]
-        else:
-            return False
-        if status and int(status) > 0:
-            cursor.execute('update `jobs` set `state`="canceled" where `job_id` = '+str(jobId))
-            db.commit()
-            print 'job canceled'
-            if rmFolder:
-                if os.path.exists(rmFolder):
-                    shutil.rmtree(rmFolder)
-            if quitj:
-                quit()
-            else:
-                return True
-        else:
-            return False
-        
 def roigen(line,config,tempFolder,currDir ,jobId,useSsim,bIndex):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
@@ -150,3 +130,181 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         log.write(line[0])
         db.close()
         return 'err'
+
+def get_training_job_data(db,jobId):
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute("""
+                SELECT J.`project_id`, J.`user_id`,
+                    JP.model_type_id, JP.training_set_id,
+                    JP.validation_set_id, JP.trained_model_id,
+                    JP.use_in_training_present,
+                    JP.use_in_training_notpresent,
+                    JP.use_in_validation_present,
+                    JP.use_in_validation_notpresent,
+                    JP.name,
+                    MT.usesSsim,
+                    J.ncpu,
+                    MT.usesRansac
+                FROM `jobs` J
+                JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
+                WHERE J.`job_id` = %s and MT.`model_type_id` =  JP.`model_type_id`
+            """, [jobId])
+            row = cursor.fetchone()
+    except:
+        exit_error("Could not query database with training job #{}".format(jobId))
+    if not row:
+        exit_error("Could not find training job #{}".format(jobId))
+        
+    return  [row['project_id'],
+             row['user_id'],
+             row['model_type_id'],
+             row['training_set_id'],
+             row['validation_set_id'],
+             row['trained_model_id'],
+             row['use_in_training_present'],
+             row['use_in_training_notpresent'],
+             row['use_in_validation_present'],
+             row['use_in_validation_notpresent'],
+             row['name'],
+             row['usesSsim'],
+             row['ncpu'],
+             row['usesRansac']
+            ]
+
+def get_job_model_type(db,jobId):
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute("""
+                SELECT JP.model_type_id
+                FROM `jobs` J
+                JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
+                WHERE J.`job_id` = %s
+            """, [jobId])
+            row = cursor.fetchone()
+    except:
+        exit_error("Could not query database with training job #{}".format(jobId))
+    if not row:
+        exit_error("Could not find training job #{}".format(jobId))
+        
+    return int(row['model_type_id'])
+
+def get_training_recordings(jobId,training_set_id,workingFolder,log,config):
+    db = get_db(config,cursor=False)
+    trainingData = []
+    """ Training data file creation """
+    try:
+        with closing(db.cursor()) as cursor:
+            # create training file
+            cursor.execute("""
+                SELECT r.`recording_id`, ts.`species_id`, ts.`songtype_id`,
+                    ts.`x1`, ts.`x2`, ts.`y1`, ts.`y2`, r.`uri`
+                FROM `training_set_roi_set_data` ts, `recordings` r
+                WHERE r.`recording_id` = ts.`recording_id`
+                  AND ts.`training_set_id` = %s
+            """, [training_set_id])
+            db.commit()
+            trainingFileName = os.path.join(
+                workingFolder,
+                'training_{}_{}.csv'.format(jobId, training_set_id)
+            )
+            # write training file to temporary folder
+            banwds = []
+            with open(trainingFileName, 'wb') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=',')
+                numTrainingRows = int(cursor.rowcount)
+                progress_steps = numTrainingRows
+                for x in range(0, numTrainingRows):
+                    rowTraining = cursor.fetchone()
+                    banwds.append(float(rowTraining[6])-float(rowTraining[5]))
+                    trainingData.append(rowTraining)
+                    spamwriter.writerow(rowTraining[0:7+1] + (jobId,))
+            meanBand = numpy.mean(banwds)
+            maxBand = numpy.max(banwds)
+            cursor.execute("""
+                SELECT DISTINCT `recording_id`
+                FROM `training_set_roi_set_data`
+                where `training_set_id` = %s
+            """, [training_set_id])
+            db.commit()
+    
+            numrecordingsIds = int(cursor.rowcount)
+            recordingsIds = []
+            for x in range(0, numrecordingsIds):
+                rowRec = cursor.fetchone()
+                recordingsIds.append(rowRec[0])
+    
+            cursor.execute("""
+                SELECT DISTINCT `species_id`, `songtype_id`
+                FROM `training_set_roi_set_data`
+                WHERE `training_set_id` = %s
+            """, [training_set_id])
+            db.commit()
+    
+            numSpeciesSongtype = int(cursor.rowcount)
+            speciesSongtype = []
+            for x in range(0, numSpeciesSongtype):
+                rowSpecies = cursor.fetchone()
+                speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
+    except:
+        exit_error('cannot create training csvs files or access training data from db',-1,log)
+        
+    cancelStatus(db,jobId,workingFolder)
+    
+    db.close()
+    
+    return trainingData
+
+def train_pattern_matching(db,jobId,log,config):
+    (
+        project_id, user_id,
+        model_type_id, training_set_id,
+        validation_set_id, trained_model_id,
+        use_in_training_present,
+        use_in_training_notpresent,
+        use_in_validation_present,
+        use_in_validation_notpresent,
+        name,
+        ssim_flag,
+        ncpu,
+        ransac_flag
+    ) = get_training_job_data(db,jobId)
+    num_cores = multiprocessing.cpu_count()
+    if int(ncpu) > 0:
+        num_cores = int(ncpu)
+    progress_steps = 0
+    workingFolder = create_temp_dir(jobId,log)
+    
+    cancelStatus(db,jobId,workingFolder)
+    
+    training_recordings = get_training_recordings(jobId,training_set_id,workingFolder,log,config)
+    
+    cancelStatus(db,jobId,workingFolder)
+    
+def run_training(jobId):
+    try:
+        retValue = False
+        start_time = time.time()   
+        log = Logger(jobId, 'training.py', 'main')
+        log.also_print = True    
+        configuration = Config()
+        config = configuration.data()
+        bucketName = config[4]
+        db = get_db(config)
+        log.write('database connection succesful')
+        model_type_id = get_job_model_type(db,jobId)
+        log.write('job data fetched.')
+    except:
+        return False
+    if model_type_id in [1,2,3]:
+        log.write("Pattern Matching (modified Alvarez thesis)")
+        retValue = train_pattern_matching(db,jobId,log,config)
+        db.close()
+        return retValue
+    elif model_type_id in [4,5,6,7,8,9]:
+        pass
+        """Entry point for new model types"""
+    else:
+        log.write("Unkown model type")
+        db.close()
+        return False

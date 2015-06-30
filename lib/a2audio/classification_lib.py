@@ -1,7 +1,7 @@
 from a2pyutils.logger import Logger
 from a2pyutils.config import Config
 from a2audio.recanalizer import Recanalizer
-from a2audio.training_lib import cancelStatus
+from a2pyutils.jobs_lib import cancelStatus
 from soundscape.set_visual_scale_lib import *
 import time
 import MySQLdb
@@ -15,7 +15,7 @@ import cPickle as pickle
 import csv
 import json
 
-def get_job_data(db,jobId):
+def get_classification_job_data(db,jobId):
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute("""
@@ -54,7 +54,7 @@ def get_model_params(db,classifierId,log):
 def create_temp_dir(jobId,log):
     try:
         tempFolders = tempfile.gettempdir()
-        workingFolder = tempFolders+"/classification_"+str(jobId)+'/'
+        workingFolder = tempFolders+"/job_"+str(jobId)+'/'
         if os.path.exists(workingFolder):
             shutil.rmtree(workingFolder)
         os.makedirs(workingFolder)
@@ -335,9 +335,9 @@ def run_classification(jobId):
         db = get_db(config)
         log.write('database connection succesful')
         (
-            classifierId,projectId, userId,
-            classificationName, playlistId,ncpu   
-        ) = get_job_data(db,jobId)
+            classifierId, projectId, userId,
+            classificationName, playlistId, ncpu   
+        ) = get_clasification_job_data(db,jobId)
         log.write('job data fetched.')
         model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
         log.write('model params fetched.')
@@ -347,6 +347,10 @@ def run_classification(jobId):
         retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         db.close()
         return retValue
+    elif model_type_id in [4,5,6,7,8,9]:
+        pass
+        """Entry point for new model types"""
     else:
+        log.write("Unkown model type")
         db.close()
         return False

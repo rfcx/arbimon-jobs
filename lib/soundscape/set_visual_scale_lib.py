@@ -17,12 +17,17 @@ def exit_error(msg, code=-1, log=None):
     sys.exit(code)
 
 
-def get_db(config):
+def get_db(config,cursor=True):
     db = None
     try:
-        db = MySQLdb.connect(
-            host=config[0], user=config[1], passwd=config[2], db=config[3],
-            cursorclass=MySQLdb.cursors.DictCursor
+        if cursor:
+            db = MySQLdb.connect(
+                host=config[0], user=config[1], passwd=config[2], db=config[3],
+                cursorclass=MySQLdb.cursors.DictCursor
+            )
+        else:
+            db = MySQLdb.connect(
+            host=config[0], user=config[1], passwd=config[2], db=config[3]
         )
     except MySQLdb.Error as e:
         exit_error("cannot connect to database.")
