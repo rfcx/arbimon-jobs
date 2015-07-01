@@ -10,7 +10,9 @@ from mock import mock_open
 from mock import MagicMock
 import numpy
 from contextlib import contextmanager
+from test_python.framework.mocks import Mock_BotoBucketStorage
 
+MOCK_STORAGE = Mock_BotoBucketStorage()
 
 mock_file_data = []
 class mock_file(object):
@@ -104,8 +106,8 @@ class Test_rec(unittest.TestCase):
             os_path_exists.return_value = True
             os_access.return_value = True          
             """Test valid arguments"""
-            self.assertIsInstance( Rec("/tmp/","/tmp/","dummyBucket",logs,False,True) ,Rec)
-            self.assertIsInstance( Rec("/tmp/","/tmp/","dummyBucket",None,True,True) ,Rec)        
+            self.assertIsInstance( Rec("/tmp/","/tmp/", MOCK_STORAGE,logs,False,True) ,Rec)
+            self.assertIsInstance( Rec("/tmp/","/tmp/", MOCK_STORAGE,None,True,True) ,Rec)        
 
     @patch('os.path.isfile')
     @patch('os.access')
@@ -122,7 +124,7 @@ class Test_rec(unittest.TestCase):
         with mock.patch('sys.maxint', sys_maxint , create=False):
             os_path_exists.return_value = True
             os_access.return_value = True
-            rec_test = Rec("test/test.wav","/tmp/","arbimon2",None,True,True)
+            rec_test = Rec("test/test.wav","/tmp/", MOCK_STORAGE,None,True,True)
             rec_test.setLocalFileLocation('test_python/data/test.wav')
             os_path_isfile.return_value = True
             self.assertEqual('test_python/data/test.wav',rec_test.getLocalFileLocation(True),msg="Rec.getLocalFileLocation returned invalid location")
@@ -143,7 +145,7 @@ class Test_rec(unittest.TestCase):
         with mock.patch('sys.maxint', sys_maxint , create=False):
             os_path_exists.return_value = True
             os_access.return_value = True
-            rec_test = Rec("test/test.wav","/tmp/","arbimon2",None,True,True)
+            rec_test = Rec("test/test.wav","/tmp/", MOCK_STORAGE,None,True,True)
             for i in range(1000):
                 rec_test.appendToOriginal(i)
             data_test = rec_test.getAudioFrames()
@@ -176,7 +178,7 @@ class Test_rec(unittest.TestCase):
                     os_path_exists.return_value = True
                     os_access.return_value = True
                     for rec in recordingsTest:
-                        rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,True,True)
+                        rec_test = Rec(str(rec['a2Uri']),"/tmp/", MOCK_STORAGE,None,True,True)
                         self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
                         rec_test.getAudioFromUri()
                         self.assertIsNone(m.assert_any_call(rec_test.getLocalFileLocation(True), 'wb'),msg="Rec.getAudioFromUri: file open function not called")
@@ -188,7 +190,7 @@ class Test_rec(unittest.TestCase):
     def test_parseEncoding(self):
         """Test Rec.parseEncoding function"""
         from a2audio.rec import Rec
-        rec_testing = Rec("/tmp/","/tmp/","dummyBucket",None,True,True)
+        rec_testing = Rec("/tmp/","/tmp/", MOCK_STORAGE,None,True,True)
         self.assertIsInstance( rec_testing ,Rec,msg="Cannot create Rec object")
         encodings = None
         with open('test_python/data/encodings.json') as fd:
@@ -214,7 +216,7 @@ class Test_rec(unittest.TestCase):
         j = 0
         with mock.patch('contextlib.closing', mock_closing , create=False):
             for rec in recordingsTest:    
-                rec_test = Rec(str(rec['a2Uri']),"/tmp/","arbimon2",None,False,True)
+                rec_test = Rec(str(rec['a2Uri']),"/tmp/", MOCK_STORAGE,None,False,True)
                 self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
                 rec_test.setLocalFileLocation(str(rec['local']))
                 rec_test.readAudioFromFile()
@@ -238,7 +240,7 @@ class Test_rec(unittest.TestCase):
         from a2audio.rec import Rec
         os_path_isfile.return_value = False
         removeFileFlag = True
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,removeFileFlag,True)
+        rec_test = Rec("test/short.wav","/tmp/", MOCK_STORAGE,None,removeFileFlag,True)
         self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
         rec_test.setLocalFileLocation("test_python/data/short.wav")
         rec_test.removeFiles()
@@ -251,7 +253,7 @@ class Test_rec(unittest.TestCase):
         
         removeFileFlag = False
         os_path_isfile.return_value = False
-        rec_test = Rec("test/short.wav","/tmp/","arbimon2",None,removeFileFlag,True)
+        rec_test = Rec("test/short.wav","/tmp/", MOCK_STORAGE,None,removeFileFlag,True)
         self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
         rec_test.setLocalFileLocation("test_python/data/short.wav")
         os_path_isfile.reset_mock()
@@ -263,7 +265,7 @@ class Test_rec(unittest.TestCase):
         os_path_isfile.reset_mock()
         os_path_isfile.return_value = False
         removeFileFlag = True
-        rec_test = Rec("test/short.flac.test","/tmp/","arbimon2",None,removeFileFlag,True)
+        rec_test = Rec("test/short.flac.test","/tmp/", MOCK_STORAGE,None,removeFileFlag,True)
         self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
         rec_test.setLocalFileLocation("test_python/data/short.flac.test")
         rec_test.removeFiles()
@@ -282,7 +284,7 @@ class Test_rec(unittest.TestCase):
                 os_path_isfile.return_value = False
                 audiolab_Format.return_value = "WavFormat"
                 audiolab_Sndfile.return_value = mock_sndfile("test/short.flac.test")
-                rec_test = Rec("test/short.flac.test","/tmp/","arbimon2",None,removeFileFlag,True)
+                rec_test = Rec("test/short.flac.test","/tmp/", MOCK_STORAGE,None,removeFileFlag,True)
                 self.assertIsInstance( rec_test ,Rec,msg="Cannot create Rec object")
                 os_path_isfile.return_value = True
                 rec_test.setLocalFileLocation("test_python/data/short.flac.test")

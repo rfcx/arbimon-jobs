@@ -85,11 +85,9 @@ def get_scidx_file(scidx_uri, file_cache, storage):
         scidx_file = file_cache.fetch(scidx_uri)
         if isinstance(scidx_file, tempfilecache.CacheMiss):
             finp = storage.get_file(scidx_uri)
-            with open(scidx_file.file, 'rb') as fout:
-                fout.write(finp.read())
-            scidx_file = scidx_file.retry_get()
-    except:
-        exit_error('cannot not retrieve scidx_file.')
+            scidx_file.set_file_data(finp.read())
+    except a2pyutils.storage.StorageError as se:
+        exit_error('cannot not retrieve scidx_file. error:'+se.message)
     if not scidx_file:
         exit_error('cannot not retrieve scidx_file.')
     return scidx_file
