@@ -125,9 +125,7 @@ class Roizer:
         Z = numpy.flipud(Pxx[1:(Pxx.shape[0]-1),:])
         z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
         z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
-        if self.ssim:
-            self.spec = z
-        else:
-            threshold = Thresholder()
-            self.spec = threshold.apply(z)
+
+        self.spec = z
+ 
 

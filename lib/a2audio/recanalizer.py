@@ -61,7 +61,7 @@ class Recanalizer:
         self.status = 'InitNoData'
         self.ssim = useSsim
         self.step = step
-        self.oldModel = oldModel
+        self.oldModel = False
         self.numsoffeats = numsoffeats
         self.algo = 'sift'
         self.useRansac = ransakit
@@ -101,10 +101,7 @@ class Recanalizer:
                         if self.logs:
                             self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                         start_time = time.time()
-                        if self.useRansac:
-                            self.ransac()
-                        else:
-                            self.featureVector()
+                        self.featureVector_search()
                         if self.logs:
                             self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
                         self.status = 'Processed'
@@ -115,7 +112,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,True,False,not self.oldModel)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,True,False,True)
         self.hasrec = True
         
     def getVector(self ):
@@ -148,7 +145,7 @@ class Recanalizer:
         acf = acf/(N - numpy.arange(N))
         
         xf = abs(numpy.fft.fft(self.distances))
-        skew(xf)
+
         fs = [ numpy.mean(xf), (max(xf)-min(xf)),
                 max(xf), min(xf)
                 , numpy.std(xf) , numpy.median(xf),skew(xf),
@@ -231,7 +228,49 @@ class Recanalizer:
                     #self.distances.append(  val )
             if self.logs:
                self.logs.write("Done featureVector end")
-    
+               
+    def featureVector_search(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            removeUnwanted = self.matrixSurfacComp == -10000
+            if len(removeUnwanted) > 0  :
+                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            spec = self.spec
+            currColumns = self.spec.shape[1]
+            spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+            spec = spec.astype('uint8')
+            pat = self.matrixSurfacComp
+            pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+            pat = pat.astype('uint8')
+            th, tw = pat.shape[:2]
+            plotAB = True
+            
+            print spec.shape, pat.shape
+            result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
+            #self.logs.write(str(result))
+            #self.logs.write(str(len(result)))
+            #self.logs.write(str(len(result[0])))
+            #self.logs.write(str(numpy.max(result)))
+            #self.logs.write(str(numpy.mean(result)))
+            #self.logs.write(str(numpy.min(result)))
+            #self.logs.write(str(minLoc)+' '+str(maxLoc))
+            for i in range(11):
+                if plotAB:
+                    figure(figsize=(25,15))
+                    ax1 = subplot(211)
+                    plot(result[i])
+                    subplot(212, sharex=ax1)
+                    ax = gca()
+                    im = ax.imshow(spec , interpolation='nearest', aspect='auto')
+                    savefig('/home/rafa/Desktop/presenta/'+self.rec.filename+str(i)+'.png', dpi=100)
+            self.distances = result[0]
+            
     def getSpec(self):
         return self.spec
     
@@ -253,16 +292,16 @@ class Recanalizer:
         while freqs[i] < self.low:
             j = j + 1
             i = i + 1
-        
+        Pxx =  10. * np.log10( Pxx)
         #calculate decibeles in the passband
         while (i < len(freqs)) and (freqs[i] < self.high):
-            Pxx[i,:] =  10. * np.log10( Pxx[i,:])
+            #Pxx =  10. * np.log10( Pxx)
             i = i + 1
  
         if i >= dims[0]:
             i = dims[0] - 1
             
-        Z= Pxx[j:i,:]
+        Z= Pxx[(j-5):(i+5),:]
         
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i
@@ -291,11 +330,8 @@ class Recanalizer:
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
             
-        if self.ssim:
-            self.spec = Z
-        else:
-            threshold = Thresholder()
-            self.spec = threshold.apply(Z)
+        self.spec = Z
+
     
     def showVectAndSpec(self):
         # pdist = [0] * self.spec.shape[1]

@@ -1,7 +1,10 @@
 #! .env/bin/python
 
 import sys
+sys.path.append('/home/rafa/node/arbimon2-jobs-stable/lib/')
+
 from a2audio.training_lib import run_training
+
 
 USAGE = """Runs a training job.
 {prog} job_id

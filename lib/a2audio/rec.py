@@ -48,7 +48,6 @@ class Rec:
     sample_rate = 0
     channs = 0
     status = 'NotProcessed'
-    
     def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False,resample=True):
         
         if type(uri) is not str and type(uri) is not unicode:
@@ -135,18 +134,24 @@ class Rec:
         self.status = 'HasAudioData'
     
     def resample(self):
+        plotBA = True
         if type(self.original) is list:
             self.original = numpy.asarray(self.original)
         if self.logs :
-            self.logs.write("Rec.py : resampling recording")      
-       # a,b,c=mlab.specgram(self.original,NFFT=256,Fs=self.sample_rate)
-        #imshow(20*log10(a))
-        #show()
+            self.logs.write("Rec.py : resampling recording")
+
+        aa,b,c=mlab.specgram(self.original,NFFT=256,Fs=self.sample_rate)
+
         to_sample = self.calc_resample_factor()
         self.original   = resample(self.original, float(to_sample)/float(self.sample_rate) , 'sinc_best')
-        #a,b,c=mlab.specgram(self.original,NFFT=256,Fs=to_sample)
-        #imshow(20*log10(a))
-        #show()
+        if plotBA:
+            a,b,c=mlab.specgram(self.original,NFFT=256,Fs=to_sample)
+            figure(figsize=(25,15))
+            subplot(211)
+            imshow(20*log10(numpy.flipud(aa)), interpolation='nearest', aspect='auto')
+            subplot(212)
+            imshow(20*log10(numpy.flipud(a)),interpolation='nearest', aspect='auto')
+            savefig('/home/rafa/Desktop/presenta/'+self.filename+'.png', dpi=100)
         self.samples = len(self.original)
         self.sample_rate = to_sample
         
@@ -159,7 +164,7 @@ class Rec:
         start_time = time.time()
         f = None
         if self.logs :
-            self.logs.write('Rec.py : https://s3.amazonaws.com/'+self.bucket+'/'+self.uri)
+            self.logs.write('Rec.py : https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
         try:
             f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :
@@ -175,6 +180,8 @@ class Rec:
         if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
+                    if self.logs:
+                        self.logs.write('writing:'+self.localfilename)
                     local_file.write(f.read())
             except:
                 if self.logs :
@@ -215,9 +222,13 @@ class Rec:
             return False
 
     def removeFiles(self):
+        if self.logs:
+            self.logs.write('removing temp file')
         start_time = time.time()
         if '.flac' in self.filename: #if flac convert to wav
             if not self.removeFile:
+                if self.logs:
+                    self.logs.write('file was flac: creating wav copy')
                 try:
                     format = Format('wav')
                     f = Sndfile(self.localfilename+".wav", 'w', format, self.channs, self.sample_rate)
@@ -231,10 +242,12 @@ class Rec:
                     return False
             
         if self.removeFile:
+            if self.logs:
+                self.logs.write('removing tmeporary file '+self.localfilename)
             if os.path.isfile(self.localfilename):
                 os.remove(self.localfilename)
             if self.logs :
-                self.logs.write("Rec.py : remove temporary file:" + str(time.time() - start_time))
+                self.logs.write("Rec.py : removed temporary file:" + str(time.time() - start_time))
         
         return True
 

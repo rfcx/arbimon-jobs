@@ -61,6 +61,9 @@ class Model:
         return self.obbScore
     
     def train(self):
+        with open('/home/rafa/Desktop/presenta/data.pickle', 'wb') as output:
+            pickler = pickle.Pickler(output, -1)
+            pickle.dump([self.classes,self.data], output, -1)       
         self.clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1,oob_score=True)
         classSubset = [self.classes[i] for i in self.trainDataIndices]
         data = self.data[self.trainDataIndices]

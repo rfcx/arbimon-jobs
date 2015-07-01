@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/home/rafa/node/arbimon2-jobs-stable/lib/')
 import MySQLdb
 from a2audio.roizer import Roizer
 from contextlib import closing
@@ -117,12 +119,12 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
-    try:
-        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
-    except:
-        log.write('error analyzing: Recanalizer is wrong')
-        insertRecError(db,jobId,recId)
-        return 'err'
+    #try:
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
+    #except:
+        #log.write('error analyzing: Recanalizer is wrong')
+        #insertRecError(db,jobId,recId)
+        #return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
@@ -393,7 +395,6 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
     rois = None
     """Roigenerator"""
     try:
-        #roigen defined in a2audio.training
         rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex) for line in trainingData)
     except:
         exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
@@ -401,6 +402,14 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
     if rois is None or len(rois) == 0 :
         exit_error('cannot create rois from recordings',-1,log,jobId,db,workingFolder)
     
+    errRoi = 0
+    for roi in rois:
+        if 'err' in roi:
+            errRoi = errRoi +1
+            
+    if errRoi == len(rois):
+        exit_error('cannot create rois from recordings (all err)',-1,log,jobId,db,workingFolder)
+        
     cancelStatus(db,jobId,workingFolder)
     
     log.write('rois generated')
@@ -411,6 +420,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
     patternSurfaces = {}
     classes = {}
     """Align rois"""
+    log.write('rois 2 surface')
     try:
         for roi in rois:
             if 'err' not in roi:
@@ -430,7 +440,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
             classes[i].alignSamples(bIndex)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
     except:
-            exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
+         exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
             
     cancelStatus(db,jobId,workingFolder)
     
@@ -446,10 +456,10 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
     """Recnilize"""
     log.write("analizing recordings")
     
-    try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex) for line in validationData)
-    except:
-        exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
+    #try:
+    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex) for line in validationData)
+    #except:
+        #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
     if results is None:
         exit_error('cannot analyze recordings',-1,log,jobId,db,workingFolder)
@@ -705,8 +715,8 @@ def train_pattern_matching(db,jobId,log,config):
         modelSaved = True
         log.write("model saved")
     
-    if os.path.exists(workingFolder):
-        shutil.rmtree(workingFolder)
+    #if os.path.exists(workingFolder):
+        #shutil.rmtree(workingFolder)
     
     return modelSaved 
 

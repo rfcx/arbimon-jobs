@@ -99,33 +99,33 @@ class Roiset:
             big_low_index = 0
             if self.logs:
                 self.logs.write("Roiset.py: high freq = "+str(self.highestFreq)+" low freq "+str(self.lowestFreq))
-            while float(freqs[big_high_index]) >= float(self.highestFreq):
+            while float(freqs[big_high_index]) > float(self.highestFreq):
                 big_high_index = big_high_index + 1
                 big_low_index  = big_low_index  + 1
             if self.logs:
                 self.logs.write("Roiset.py: search freqs ")
-            while big_low_index <= (len(freqs)-1) and float(freqs[big_low_index ]) >=  float(self.lowestFreq) :
+            while big_low_index <= (len(freqs)-1) and float(freqs[big_low_index ]) >  float(self.lowestFreq) :
                 big_low_index  = big_low_index  + 1
             if self.logs:
                 self.logs.write("Roiset.py: freqs searched")
-            big_low_index  = big_low_index #-1
-            big_high_index = big_high_index #+ 2
+            big_low_index  = big_low_index +4
+            big_high_index = big_high_index -3
             if self.logs:
                 self.logs.write("Roiset.py: creating temp computation space ")
-            surface = numpy.zeros(shape=(self.rows,self.maxColumns*2))
-            compsurface = numpy.random.rand(self.rows,self.maxColumns*2)
+            surface = numpy.zeros(shape=(self.rows,self.maxColumns))
+            compsurface = numpy.random.rand(self.rows,self.maxColumns)
             if self.logs:
                 self.logs.write("Roiset.py: done creating temp computation space ")
             jval = math.floor(self.maxColumns/2)
-            surface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
-            compsurface[:,jval:(jval+self.maxColumns)] = self.biggestRoi
+            surface = self.biggestRoi
+            compsurface = self.biggestRoi
             if self.logs:
                 self.logs.write("Roiset.py: weights initialization ")
-            weights = numpy.zeros(shape=(self.rows,self.maxColumns*2))
-            weights[big_high_index:big_low_index,jval:(jval+self.maxColumns)] = 1
+            weights = numpy.zeros(shape=(self.rows,self.maxColumns))
+            weights[big_high_index:big_low_index,:] = 1
             dm = 1
-            minj = jval
-            maxj = jval+self.maxColumns
+            minj = 0
+            maxj = self.maxColumns
             index = 0
             highcut = big_high_index
             lowcut = big_low_index
@@ -139,31 +139,23 @@ class Roiset:
                 if index is not self.biggestIndex:
                     high_index = 0
                     low_index = 0
-                    while float(freqs[high_index]) >= float(roi.highFreq):
+                    while float(freqs[high_index]) > float(roi.highFreq):
                         high_index = high_index + 1
                         low_index  = low_index  + 1
-                    while float(freqs[low_index ]) >=  float(roi.lowFreq):
+                    while float(freqs[low_index ]) >  float(roi.lowFreq):
                         low_index  = low_index  + 1
-                    low_index  = low_index  #- 1
-                    high_index = high_index #+ 2
+                    low_index  = low_index  +4
+                    high_index = high_index -3
                     distances = []
                     currColumns = roi.spec.shape[1]
                     compareArea = roi.spec[high_index:low_index,:]
-                    winSize = min(compareArea.shape)
-                    winSize = min(winSize,7)
-                    if winSize %2 == 0:
-                        winSize = winSize - 1
-                    if winSize < 1:
-                        winSize = 1
-                    if False:#self.useDynamicRanging:
-                        for jj in range((self.maxColumns*2) -currColumns ): 
-                            subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
-                            distances.append(ssim(subMatrix ,compareArea , win_size=winSize, gradient=False  , dynamic_range=dm) )
+                    for jj in range((self.maxColumns) - currColumns ): 
+                      subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
+                      distances.append(numpy.linalg.norm(subMatrix  - compareArea) )
+                    if len(distances) > 0:
+                        j = distances.index(min(distances))
                     else:
-                        for jj in range((self.maxColumns*2) -currColumns ): 
-                            subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
-                            distances.append(ssim(subMatrix ,compareArea , win_size=winSize  ) )
-                    j = distances.index(max(distances))
+                        j = 0                  
                     del distances
                     if minj > j :
                         minj = j
@@ -178,7 +170,7 @@ class Roiset:
                     dm = dm + 1    
                     weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
                 index = index + 1
-            self.meanSurface = numpy.divide(surface[:,minj:(maxj)],weights[:,minj:(maxj)])
+            self.meanSurface = numpy.divide(surface,weights)
             self.meanSurface[0:big_high_index,:] = -10000
             self.meanSurface[big_low_index:(self.meanSurface.shape[0]-1),:] = -10000 
             self.maxColumns = self.meanSurface.shape[1]
