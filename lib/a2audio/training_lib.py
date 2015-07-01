@@ -15,11 +15,12 @@ from soundscape.set_visual_scale_lib import *
 from classification_lib import create_temp_dir
 import time
 import multiprocessing
-from a2pyutils.jobs_lib import cancelStatus
+from a2pyutils.jobs_lib import *
 import numpy
 from joblib import Parallel, delayed
 from a2audio.roiset import Roiset
 from a2audio.model import Model
+import png
 
 classificationCanceled =False
 
@@ -94,6 +95,9 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     except:
         log.write('error analyzing: db or conn are wrong')
         return 'err'
+    with closing(db.cursor()) as cursor:
+        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        db.commit()
     if cancelStatus(db,jobId,workingFolder,False):
         classificationCanceled = True
         quit()
@@ -284,94 +288,95 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
                               useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent ):
     db = get_db(config,cursor=False)
     validationData = []
+    validationId = None
     """ Validation file creation """
-#    try:
-    validationFile = workingFolder+'/validation_'+str(jobId)+'.csv'
-    with open(validationFile, 'wb') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=',')
-        for x in range(0, numSpeciesSongtype):
-            spst = speciesSongtype[x]
-            with closing(db.cursor()) as cursor:
-                cursor.execute("""
-                    (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
-                    FROM `recording_validations` rv, `recordings` r
-                    WHERE r.`recording_id` = rv.`recording_id`
-                      AND rv.`project_id` = %s
-                      AND `species_id` = %s
-                      AND `songtype_id` = %s
-                      AND `present` = 1
-                      ORDER BY rand()
-                      LIMIT %s)
-                      UNION
-                    (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
-                    FROM `recording_validations` rv, `recordings` r
-                    WHERE r.`recording_id` = rv.`recording_id`
-                      AND rv.`project_id` = %s
-                      AND `species_id` = %s
-                      AND `songtype_id` = %s
-                      AND `present` = 0
-                      ORDER BY rand()
-                      LIMIT %s)
-                """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
-                      project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
-                
-                db.commit()
-
-                numValidationRows = int(cursor.rowcount)
-
-                progress_steps = progress_steps + numValidationRows
-
-                for x in range(0, numValidationRows):
-                    rowValidation = cursor.fetchone()
-                    cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                    validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
-                    spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+    try:
+        validationFile = workingFolder+'/validation_'+str(jobId)+'.csv'
+        with open(validationFile, 'wb') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',')
+            for x in range(0, numSpeciesSongtype):
+                spst = speciesSongtype[x]
+                with closing(db.cursor()) as cursor:
+                    cursor.execute("""
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
+                        FROM `recording_validations` rv, `recordings` r
+                        WHERE r.`recording_id` = rv.`recording_id`
+                          AND rv.`project_id` = %s
+                          AND `species_id` = %s
+                          AND `songtype_id` = %s
+                          AND `present` = 1
+                          ORDER BY rand()
+                          LIMIT %s)
+                          UNION
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`
+                        FROM `recording_validations` rv, `recordings` r
+                        WHERE r.`recording_id` = rv.`recording_id`
+                          AND rv.`project_id` = %s
+                          AND `species_id` = %s
+                          AND `songtype_id` = %s
+                          AND `present` = 0
+                          ORDER BY rand()
+                          LIMIT %s)
+                    """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
+                          project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
+                    
+                    db.commit()
     
-    bucketName = config[4]
-    awsKeyId = config[5]
-    awsKeySecret = config[6]
+                    numValidationRows = int(cursor.rowcount)
     
-    # get Amazon S3 bucket
-    conn = S3Connection(awsKeyId, awsKeySecret)
-    bucket = conn.get_bucket(bucketName)
-    valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
-
-    # save validation file to bucket
-    k = bucket.new_key(valiKey)
-    k.set_contents_from_filename(validationFile)
-
-    # save validation to DB
-    progress_steps = progress_steps + 15
-    with closing(db.cursor()) as cursor:
-        cursor.execute("""
-            INSERT INTO `validation_set`(
-                `validation_set_id`, `project_id`, `user_id`, `name`, `uri`,
-                `params`, `job_id`
-            ) VALUES (
-                NULL, %s, %s, %s, %s, %s, %s
-            )
-        """, [
-            project_id, user_id, modelName+" validation", valiKey,
-            json.dumps({'name': modelName}),
-            jobId
-        ])
-        db.commit()
-
-        cursor.execute("""
-            UPDATE `job_params_training`
-            SET `validation_set_id` = %s
-            WHERE `job_id` = %s
-        """, [cursor.lastrowid, jobId])
-        db.commit()
-
-        cursor.execute("""
-            UPDATE `jobs`
-            SET `progress_steps` = %s, progress=0, state="processing"
-            WHERE `job_id` = %s
-        """, [progress_steps, jobId])
-        db.commit()
-    #except:
-    #    exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
+                    progress_steps = progress_steps + numValidationRows
+    
+                    for x in range(0, numValidationRows):
+                        rowValidation = cursor.fetchone()
+                        cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
+        
+        bucketName = config[4]
+        awsKeyId = config[5]
+        awsKeySecret = config[6]
+        
+        # get Amazon S3 bucket
+        conn = S3Connection(awsKeyId, awsKeySecret)
+        bucket = conn.get_bucket(bucketName)
+        valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
+    
+        # save validation file to bucket
+        k = bucket.new_key(valiKey)
+        k.set_contents_from_filename(validationFile)
+    
+        # save validation to DB
+        progress_steps = progress_steps + 15
+        with closing(db.cursor()) as cursor:
+            cursor.execute("""
+                INSERT INTO `validation_set`(
+                    `validation_set_id`, `project_id`, `user_id`, `name`, `uri`,
+                    `params`, `job_id`
+                ) VALUES (
+                    NULL, %s, %s, %s, %s, %s, %s
+                )
+            """, [
+                project_id, user_id, modelName+" validation", valiKey,
+                json.dumps({'name': modelName}),
+                jobId
+            ])
+            db.commit()
+            validationId = cursor.lastrowid
+            cursor.execute("""
+                UPDATE `job_params_training`
+                SET `validation_set_id` = %s
+                WHERE `job_id` = %s
+            """, [cursor.lastrowid, jobId])
+            db.commit()
+            
+            cursor.execute("""
+                UPDATE `jobs`
+                SET `progress_steps` = %s, progress=0, state="processing"
+                WHERE `job_id` = %s
+            """, [progress_steps, jobId])
+            db.commit()
+    except:
+        exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
         
     cancelStatus(db,jobId,workingFolder)
     
@@ -382,7 +387,7 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
     
     log.write('validation data gathered')
     
-    return validationData
+    return validationData,validationId
    
 def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db):
     rois = None
@@ -465,10 +470,11 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
     if presentsCount < 2 or ausenceCount < 2:
         exit_error('not enough validations to create model',-1,log,jobId,db,workingFolder)
         
-    return results
+    return results,presentsCount,ausenceCount
 
 def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
     models = {}
+    log.write('adding samples to model')
     try:
         for res in results:
             if 'err' not in res:
@@ -482,9 +488,136 @@ def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
         exit_error('cannot add samples to model',-1,log,jobId,db,workingFolder)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    log.write('model has samples')
     return models
 
+def balance_validation_samples(useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent, presentsCount,ausenceCount):
+    if (useTrainingPresent+useValidationPresent) > presentsCount:
+        if presentsCount <= useTrainingPresent:
+            useTrainingPresent = presentsCount - 1
+            useValidationPresent = 1
+        else:
+            useValidationPresent = presentsCount - useTrainingPresent
+
+    if (useTrainingNotPresent + useValidationNotPresent)  > ausenceCount:
+        if ausenceCount <= useTrainingNotPresent:
+            useTrainingNotPresent = ausenceCount - 1
+            useValidationNotPresent = 1
+        else:
+            useValidationNotPresent = ausenceCount  - useTrainingNotPresent
+    return   useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent
+
+def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent,log,jobId,db,workingFolder,useSsim,useRansac,bIndex,patternSurfaces,classId):
+    modelFilesLocation = workingFolder
+    resultSplit = False
+    try:
+        resultSplit = model.splitData(useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent)
+    except:
+        exit_error('error spliting data for validation',-1,log,jobId,db,workingFolder)
+    if not resultSplit:
+        return None
+
+    try:
+        model.train()
+    except:
+        exit_error('error training model',-1,log,jobId,db,workingFolder)
+
+    validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'    
+    if useValidationPresent > 0:
+        try:
+            model.validate()
+            model.saveValidations(validationsLocalFile)
+        except:
+           exit_error('error validating model',-1,log,jobId,db,workingFolder)
+           
+    modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(classId)+".mod"
+    try:
+        model.save(modFile,patternSurfaces[2] ,patternSurfaces[3],patternSurfaces[4],useSsim,useRansac,bIndex)
+    except:
+        exit_error('error saving model file to local storage',-1,log,jobId,db,workingFolder)
+        
+    modelStats = None
+    try:
+        modelStats = model.modelStats()
+    except :
+        exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
+
+    return modelStats
+
+def prepare_png_data(data,log,jobId,db,workingFolder):
+    log.write('preparing png data')
+    try:
+        specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
+        rowsInSpec = data.shape[0]
+        spec = numpy.copy(data)
+        if sum(sum(spec == -10000))>0:
+            spec[spec == -10000] = numpy.nan
+        for j in range(0,rowsInSpec):
+            if abs(numpy.nansum(spec[j,:])) > 0.0:
+                specToShow = numpy.vstack((specToShow,numpy.copy(spec[j,:])))
+        if sum(sum(numpy.isnan(specToShow)))>0:
+            specToShow[numpy.isnan(specToShow)] = numpy.nanmean(numpy.nanmean(specToShow))
+        smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
+        smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
+        matrix = 255*(1-((specToShow - smin)/(smax-smin)))
+    except:
+        exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
+    log.write('png data prepared')
+    return matrix 
+
+def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces,pngKey,modelname,model_type_id,modKey,project_id,user_id,valiId,log,workingFolder):
+    species,songtype = classId.split("_")
+    try:
+        #save model to DB
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
+            db.commit()        
+            cursor.execute("SELECT   max(ts.`x2` -  ts.`x1`) as l , min(ts.`y1`)  as min, max(ts.`y2`) as max "+
+                "FROM `training_set_roi_set_data` ts "+
+                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            db.commit()
+            row = cursor.fetchone()
+            lengthRoi = row['l']	
+            minFrequ = row['min']
+            maxFrequ = row['max']
+            
+            cursor.execute("SELECT   count(*) as c "+
+                "FROM `training_set_roi_set_data` ts "+
+                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            db.commit()
+            row = cursor.fetchone()
+            totalRois = row['c']
+            
+            statsJson = '{"roicount":'+str(totalRois)+' , "roilength":'+str(lengthRoi)+' , "roilowfreq":'+str(minFrequ)+' , "roihighfreq":'+str(maxFrequ)
+            statsJson = statsJson + ',"accuracy":'+str(modelStats[0])+' ,"precision":'+str(modelStats[1])+',"sensitivity":'+str(modelStats[2])
+            statsJson = statsJson + ', "forestoobscore" :'+str(modelStats[3])+' , "roisamplerate" : '+str(patternSurfaces[1])+' , "roipng":"'+pngKey+'"'
+            statsJson = statsJson + ', "specificity":'+str(modelStats[5])+' , "tp":'+str(modelStats[6])+' , "fp":'+str(modelStats[7])+' '
+            statsJson = statsJson + ', "tn":'+str(modelStats[8])+' , "fn":'+str(modelStats[9])+' , "minv": '+str(modelStats[10])+', "maxv": '+str(modelStats[11])+'}'
+        
+            cursor.execute("INSERT INTO `models`(`name`, `model_type_id`, `uri`, `date_created`, `project_id`, `user_id`,"+
+                           " `training_set_id`, `validation_set_id`) " +
+                           " VALUES ('"+modelname+"', "+str(model_type_id)+" , '"+modKey+"' , now() , "+str(project_id)+","+
+                           str(user_id)+" ,"+str(training_set_id)+", "+str(valiId)+" )")
+            db.commit()
+            insertmodelId = cursor.lastrowid
+            
+            cursor.execute("INSERT INTO `model_stats`(`model_id`, `json_stats`) VALUES ("+str(insertmodelId)+",'"+statsJson+"')")
+            db.commit()
+            
+            cursor.execute("INSERT INTO `model_classes`(`model_id`, `species_id`, `songtype_id`) VALUES ("+str(insertmodelId)
+                           +","+str(species)+","+str(songtype)+")")
+            db.commit()       
+            
+            cursor.execute('update `job_params_training` set `trained_model_id` = '+str(insertmodelId)+' where `job_id` = '+str(jobId))
+            db.commit()
+            
+            cursor.execute('update `jobs` set `last_update` = now() where `job_id` = '+str(jobId))
+            db.commit()
+            cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            db.commit()
+    except:
+        exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
+        
 def train_pattern_matching(db,jobId,log,config):
     (
         project_id, user_id,
@@ -514,8 +647,8 @@ def train_pattern_matching(db,jobId,log,config):
     
     cancelStatus(db,jobId,workingFolder)
 
-    validation_recordings = get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
-
+    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
+    
     cancelStatus(db,jobId,workingFolder)
     
     bIndex = band2index(maxBand)
@@ -530,13 +663,55 @@ def train_pattern_matching(db,jobId,log,config):
     
     cancelStatus(db,jobId,workingFolder)
     
-    recordings_results = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db)
+    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db)
     
     cancelStatus(db,jobId,workingFolder)
     
     models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces)
 
+    cancelStatus(db,jobId,workingFolder)
+    
+    use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent = balance_validation_samples(use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent, presentsCount,ausenceCount)
+    
+    cancelStatus(db,jobId,workingFolder)    
+    
+    modelSaved = False
+    for classId in models:
+        modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
+        
+        pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
+       
+        patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+        
+        png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+        
+        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
+        modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
+        files2upload = {
+            'model':{'key':modKey ,
+                     'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
+                     'public':False},
+            'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
+                          'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
+                          'public':False},
+            'png':{'key': pngKey ,
+                   'file':pngFilename,
+                   'public':True}
+        }
+        upload_files_2bucket(config,files2upload,log,jobId,db,workingFolder)
+    
+        save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+        
+        modelSaved = True
+        log.write("model saved")
+    
+    if os.path.exists(workingFolder):
+        shutil.rmtree(workingFolder)
+    
+    return modelSaved 
+
 def run_training(jobId):
+    
     try:
         retValue = False
         start_time = time.time()   
@@ -548,15 +723,15 @@ def run_training(jobId):
         db = get_db(config)
         log.write('database connection succesful')
         model_type_id = get_job_model_type(db,jobId)
-        log.write('job data fetched.')
+        log.write('job model type fetched.')
     except:
         return False
-    if model_type_id in [1,2,3]:
+    if model_type_id in [1,2,3,4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
         retValue = train_pattern_matching(db,jobId,log,config)
         db.close()
         return retValue
-    elif model_type_id in [4,5,6,7,8,9]:
+    elif model_type_id in [-1]:
         pass
         """Entry point for new model types"""
     else:

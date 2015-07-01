@@ -28,7 +28,7 @@ class Model:
         self.jobId = jobid
         
     def addSample(self,present,row,uri):
-        self.classes.append(present)
+        self.classes.append(str(present))
         self.uris.append(uri)
         if self.minv >  row[3]:
             self.minv =  row[3]
@@ -41,10 +41,8 @@ class Model:
     
     def splitData(self,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent):
         self.splitParams = [useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent]
-
         presentIndeces = [i for i, j in zip(count(), self.classes) if j == '1' or j == 1]
         notPresentIndices = [i for i, j in zip(count(), self.classes) if j == '0' or j == 0]
-        
         if(len(presentIndeces) < 1):
             return False
         if(len(notPresentIndices) < 1):
@@ -52,10 +50,8 @@ class Model:
           
         random.shuffle(presentIndeces)
         random.shuffle(notPresentIndices)
-        
         self.trainDataIndices = presentIndeces[:useTrainingPresent] + notPresentIndices[:useTrainingNotPresent]
         self.validationDataIndices = presentIndeces[useTrainingPresent:(useTrainingPresent+useValidationPresent)] + notPresentIndices[useTrainingNotPresent:(useTrainingNotPresent+useValidationNotPresent)]
-        
         return True
     
     def getModel(self):
@@ -80,7 +76,7 @@ class Model:
         self.outClassesTraining = classSubsetTraining
         self.outuris = [self.uris[i] for i in self.validationDataIndices]
         self.outurisTraining = [self.uris[i] for i in self.trainDataIndices]
-        data = self.data[self.trainDataIndices]
+        data = self.data[self.validationDataIndices]
         data[numpy.isnan(data)] = 0
         data[numpy.isinf(data)] = 0
         predictions = self.clf.predict(data)

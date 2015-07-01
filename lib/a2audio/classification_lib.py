@@ -347,7 +347,7 @@ def run_classification(jobId):
         retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         db.close()
         return retValue
-    elif model_type_id in [4,5,6,7,8,9]:
+    elif model_type_id in [-1]:
         pass
         """Entry point for new model types"""
     else:
