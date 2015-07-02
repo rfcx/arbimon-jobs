@@ -38,6 +38,10 @@ class Mock_BotoBucketStorage(a2pyutils.storage.AbstractStorage):
     @calls.trace_fn
     def get_file(self, file):
         entry = self.filelist[file] if self.filelist and file in self.filelist else {'data':'file_data'}
+        if not entry.get('exists', True):
+            entry = None
+        if entry is None:
+            entry = {'data':'file_data'}
         if 'file' in entry:
             return open(entry['file'], 'r'+entry.get('mode', 'b'))
         elif 'raise' in entry and entry['raise']:
@@ -47,7 +51,21 @@ class Mock_BotoBucketStorage(a2pyutils.storage.AbstractStorage):
 
     @calls.trace_fn
     def put_file(self, file, filedata, acl=None):
-        pass
+        entry = self.filelist[file] if self.filelist and file in self.filelist else None
+        if entry and 'raise' in entry:
+            raise a2pyutils.storage.StorageError(entry['raise'])
+
+    @calls.trace_fn
+    def put_file_fd(self, img_uri, img_file, acl=None):
+        entry = self.filelist[file] if self.filelist and file in self.filelist else None
+        if entry and 'raise' in entry:
+            raise a2pyutils.storage.StorageError(entry['raise'])
+
+    @calls.trace_fn
+    def put_file_path(self, img_uri, img_file, acl=None):
+        entry = self.filelist[file] if self.filelist and file in self.filelist else None
+        if entry and 'raise' in entry:
+            raise a2pyutils.storage.StorageError(entry['raise'])
         
     def set_file_list(self, filelist):
         self.filelist = filelist

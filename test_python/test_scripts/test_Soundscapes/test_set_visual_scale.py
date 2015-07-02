@@ -356,25 +356,22 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         bucket_mock_calls = []
         from soundscape.set_visual_scale_lib import upload_image
         exitErr = MagicMock()
-        bucketMock = bucket_mock(True)
+        MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-            upload_image('/any/image/uri','/any/image/path',bucketMock)
+            upload_image('/any/image/uri','/error/file', MOCK_STORAGE)
         exitErr.assert_any_calls('cannot upload image file.')
-        self.assertEqual(bucket_mock_calls[0],{'u': '/any/image/uri', 'f': 'new_key'},msg="upload_image_raise: wrong bucket call")
-        self.assertEqual(0,len(keyMockCalls),msg="upload_image_raise: no calls expected to key functions")
+        assertArraysEqual(self, [
+            ('put_file_path', ('/any/image/uri', '/error/file'), {'acl': 'public-read'})
+        ], MOCK_STORAGE.calls.traced, msg="upload_image: wrong key calls")
 
     def test_upload_image(self):
-        global bucket_mock_calls
-        global keyMockCalls
-        keyMockCalls = []
-        bucket_mock_calls = []
         from soundscape.set_visual_scale_lib import upload_image
         exitErr = MagicMock()
         MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
             upload_image('/any/image/uri','/any/image/path', MOCK_STORAGE)
         assertArraysEqual(self, [
-            ('get_file', ('/any/image/uri',), {'acl':'public-read'})
+            ('put_file_path', ('/any/image/uri', '/any/image/path'), {'acl': 'public-read'})
         ], MOCK_STORAGE.calls.traced, msg="upload_image: wrong key calls")
         self.assertEqual(0,len(exitErr.mock_calls),msg="upload_image: no errors expected")
     
