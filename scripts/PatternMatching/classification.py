@@ -78,7 +78,6 @@ if not row:
 ) = row
 print row
 
-bucketName = config[4]
 sys.stdout.flush()
 
 

@@ -10,6 +10,7 @@ import boto
 import shutil
 import MySQLdb
 import json
+import a2pyutils.storage
 from boto.s3.connection import S3Connection
 from contextlib import closing
 from a2pyutils.config import Config
@@ -47,9 +48,7 @@ project_id = -1
 currDir = os.path.dirname(os.path.abspath(__file__))
 currPython = sys.executable
 
-bucketName = config[4]
-awsKeyId = config[5]
-awsKeySecret = config[6]
+storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
 
 print 'started'
 sys.stdout.flush()
@@ -175,13 +174,10 @@ if model_type_id == 1:  # Pattern Matching (modified Alvarez thesis)
                     spamwriter.writerow(rowValidation[0:4])
 
     # get Amazon S3 bucket
-    conn = S3Connection(awsKeyId, awsKeySecret)
-    bucket = conn.get_bucket(bucketName)
     valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
 
     # save validation file to bucket
-    k = bucket.new_key(valiKey)
-    k.set_contents_from_filename(validationFile)
+    storage.put_file_path(valiKey, validationFile)
 
     # save validation to DB
     progress_steps = progress_steps + 15

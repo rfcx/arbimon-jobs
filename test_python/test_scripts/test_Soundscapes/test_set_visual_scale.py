@@ -82,43 +82,6 @@ class keyMock(object):
         global keyMockCalls
         keyMockCalls.append({'f':'set_acl','u':a})
     
-# bucket_mock_calls = []
-# class bucket_mock:
-#     def __init__(self,raisee=False):
-#         self.raisee = raisee
-#     def new_key(self,uri):
-#         global bucket_mock_calls
-#         bucket_mock_calls.append({'f':'new_key','u':uri})
-#         if self.raisee:
-#             raise IOError
-#         else:
-#             return keyMock()
-#     def get_key(self,scidx_uri, validate=False ):
-#         global bucket_mock_calls
-#         bucket_mock_calls.append({'f':'get_key','u':scidx_uri})
-#         return keyMock()
-    
-conn_mock_calls= []    
-class conn_mock:
-    def __init__(self,a,b):
-        global conn_mock_calls
-        conn_mock_calls.append({'f':'init','a':a,'b':b})
-    def get_bucket(self,bn,validate=None):
-        global conn_mock_calls
-        conn_mock_calls.append({'f':'get_bucket','b':bn,'a':validate})
-        return bucket_mock()
-
-new_con_calls = []
-def new_con(a,b):
-    global new_con_calls
-    new_con_calls.append({'a':a,'b':b})
-    return conn_mock(a,b)
-
-new_con_none_calls = []
-def new_con_none(a,b):
-    global new_con_none_calls
-    new_con_none_calls.append({'a':a,'b':b})
-    return None
 
 isInstanceMockFalse_calls = []
 def isInstanceMockFalse(a,b):
@@ -270,8 +233,6 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
         global isInstanceMockFalse_calls
-        global bucket_mock_calls
-        bucket_mock_calls = []
         isInstanceMockFalse_calls= []
         file_cache_mock_calls = []
         from soundscape.set_visual_scale_lib import get_scidx_file
@@ -284,7 +245,7 @@ class Test_set_visual_scale_lib(unittest.TestCase):
             
         self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache wrong call")
         self.assertEqual(isInstanceMockFalse_calls[0],{'a': None, 'b': "<class 'a2pyutils.tempfilecache.CacheMiss'>"})
-        self.assertEqual(len(bucket_mock_calls),0,msg="get_scidx_file: bucket new_key should have not been call")
+        assertArraysEqual(self, [], MOCK_STORAGE.calls.traced, msg="get_scidx_file: storage should have not been call")
         exitErr.assert_ant_calls('cannot not retrieve scidx_file.')
         exitErr.reset_mock()
         
@@ -292,12 +253,10 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
         global isInstanceMockTrue_calls
-        global bucket_mock_calls
         global scidxFile_Calls
         global keyMockCalls
         keyMockCalls = []
         scidxFile_Calls = []
-        bucket_mock_calls = []
         isInstanceMockTrue_calls= []
         file_cache_mock_calls = []
         from soundscape.set_visual_scale_lib import get_scidx_file
@@ -350,10 +309,8 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         getPalette.assert_any_call('matrix return value matrix')
     
     def test_upload_image_raise(self):
-        global bucket_mock_calls
         global keyMockCalls
         keyMockCalls = []
-        bucket_mock_calls = []
         from soundscape.set_visual_scale_lib import upload_image
         exitErr = MagicMock()
         MOCK_STORAGE.calls.clear()

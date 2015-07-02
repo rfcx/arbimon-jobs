@@ -18,6 +18,7 @@ from a2pyutils.config import Config
 from a2pyutils.logger import Logger
 import multiprocessing
 from joblib import Parallel, delayed
+import a2pyutils.storage
 from a2audio.roiset import Roiset
 from a2audio.model import Model
 import numpy
@@ -65,9 +66,7 @@ def exit_error(db,workingFolder,log,jobId,msg):
 currDir = os.path.dirname(os.path.abspath(__file__))
 currPython = sys.executable
 
-bucketName = config[4]
-awsKeyId = config[5]
-awsKeySecret = config[6]
+storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
 
 sys.stdout.flush()
 
@@ -322,13 +321,8 @@ if model_type_id in [1,2,3]:
                         """, [progress_steps, jobId])
                     db.commit()
                     
-        # get Amazon S3 bucket
-        conn = S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
-
-        # save validation file to bucket
-        k = bucket.new_key(valiKey)
-        k.set_contents_from_filename(validationFile)
+        # save validation file to storage
+        storage.put_file_path(valiKey, validationFile)
     
     #except:
         #exit_error(db,workingFolder,log,jobId,'cannot create validation csvs files or access validation data from db')
@@ -510,21 +504,15 @@ if model_type_id in [1,2,3]:
         cancelStatus(db,jobId,workingFolder)
         
         try:
-            conn = S3Connection(awsKeyId, awsKeySecret)
-            bucket = conn.get_bucket(bucketName)
             modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(i)+'.mod'
             #save model file to bucket
-            k = bucket.new_key(modKey)
-            k.set_contents_from_filename(modFile)
+            storage.put_file_path(modKey, modFile)
             #save validations results to bucket
-            k = bucket.new_key(validationsKey)
-            k.set_contents_from_filename(validationsLocalFile)
+            storage.put_file_path(validationsKey, validationsLocalFile)
             #save vocalization surface png to bucket
-            k = bucket.new_key(pngKey)
-            k.set_contents_from_filename(pngFilename)
-            k.set_acl('public-read')
-        except:
-            exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket')
+            storage.put_file_path(pngKey, pngFilename, acl='public-read')
+        except a2pyutils.storage.StorageError as se:
+            exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket. error:'+se.message)
             
         species,songtype = i.split("_")
         try:

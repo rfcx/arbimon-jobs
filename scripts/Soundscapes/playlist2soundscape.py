@@ -22,7 +22,7 @@ from a2audio.rec import Rec
 from a2audio.training_lib import cancelStatus
 from a2pyutils import palette
 from a2pyutils.news import insertNews
-from boto.s3.connection import S3Connection
+import a2pyutils.storage
 from soundscape.set_visual_scale_lib import get_norm_vector
 from soundscape.set_visual_scale_lib import get_sc_data
 from soundscape.set_visual_scale_lib import get_db
@@ -124,9 +124,7 @@ if bin_size < 0:
     log.close()
     sys.exit(-1)
 
-bucketName = config[4]
-awsKeyId = config[5]
-awsKeySecret = config[6]
+storage = a2pyutils.storage.BotoBucketStorage(**configuration)
 
 try:
 #------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
@@ -455,8 +453,6 @@ try:
         
         log.write('tring s3 connection')
         start_time = time.time()
-        bucket = None
-        conn = S3Connection(awsKeyId, awsKeySecret)
         try:
             soundscapeId = scpId
             start_time_all = time.time()                
@@ -473,51 +469,25 @@ try:
             hUri = uriBase + '/h.json'
             aciUri = uriBase + '/aci.json'
             
-            log.write('tring connection to bucket')
-            start_time = time.time()
-            bucket = None
-            conn = S3Connection(awsKeyId, awsKeySecret)
-            try:
-                log.write('connecting to '+bucketName)
-                bucket = conn.get_bucket(bucketName)
-            except Exception, ex:
-                log.write('fatal error cannot connect to bucket '+ex.error_message)
-                with closing(db.cursor()) as cursor:
-                    cursor.execute('UPDATE `jobs` \
-                    SET `completed` = -1, `state`="error", \
-                    `remarks` = \'Error: connecting to bucket.\' \
-                    WHERE `job_id` = '+str(job_id))
-                    db.commit()
-                quit()
-            log.write('connect to bucket  succesful')
-            k = bucket.new_key(imageUri)
-            k.set_contents_from_filename(workingFolder+imgout)
-            k.set_acl('public-read')
+            log.write('Writing output to storage')
+            storage.put_file_path(imageUri, workingFolder+imgout, acl='public-read')
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set `state`="processing", \
                     `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                 db.commit()
-            k = bucket.new_key(indexUri)
-            k.set_contents_from_filename(workingFolder+scidxout)
-            k.set_acl('public-read')
+            storage.put_file_path(indexUri, workingFolder+scidxout, acl='public-read')
             with closing(db.cursor()) as cursor:
                 cursor.execute("update `soundscapes` set `uri` = '"+imageUri+"' \
                     where  `soundscape_id` = "+str(soundscapeId))
                 db.commit()
                 
-            k = bucket.new_key(peaknumbersUri)
-            k.set_contents_from_filename(peaknFile+'.json')
-            k.set_acl('public-read')
+            storage.put_file_path(peaknumbersUri, peaknFile+'.json', acl='public-read')
     
-            k = bucket.new_key(hUri)
-            k.set_contents_from_filename(hFile+'.json')
-            k.set_acl('public-read')
+            storage.put_file_path(hUri, hFile+'.json', acl='public-read')
      
-            k = bucket.new_key(aciUri)
-            k.set_contents_from_filename(aciFile+'.json')
-            k.set_acl('public-read')
-        except:
-            log.write('error uploading to bucket')
+            storage.put_file_path(aciUri, aciFile+'.json', acl='public-read')
+        except a2pyutils.storage.StorageError as se:
+            log.write('error writing output to storage. error:'+se.message)
             with closing(db.cursor()) as cursor:
                 cursor.execute('delete from soundscapes where soundscape_id ='+str(scpId))
                 db.commit()
