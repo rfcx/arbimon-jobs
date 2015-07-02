@@ -238,14 +238,24 @@ class Test_training(unittest.TestCase):
                 self.assertEqual(bucketCalls[i],bucket_mock_calls[i])
         except:
             self.fail("recnilize incorrect number of bucket calls")
-        dbCalls = [{'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'},
-            {'f': 'fetch_one'},
+        dbCalls = [
+            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'close'}, 
+            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, 
+            {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1000,1) ', 'f': 'execute'}, 
+            {'f': 'close'}, 
+            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1000,1) ', 'f': 'execute'}, 
+            {'f': 'close'}, 
+            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'close'}, {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
             {'f': 'close'}]
         try:
             for i in range(len(dbCalls)):

@@ -114,7 +114,8 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
             pid = None
     if pid is None:
         insertRecError(db,jobId,recId)
-        log.write('error analyzing: pid is wrong')
+        if log:
+            log.write('error analyzing: pid is wrong')
         return 'err'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
@@ -149,7 +150,9 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,useSsim,useRansac,
         db.close()
         return {"fets":fets,"info":infos}
     else:
-        log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
+        if log:
+            log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
-        log.write(line[0])
+        if log:
+            log.write(line[0])
         return 'err'
