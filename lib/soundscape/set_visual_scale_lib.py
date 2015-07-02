@@ -107,10 +107,9 @@ def write_image(img_file, scidx_file, clip_max, palette_id, norm_vector=None):
 
 def upload_image(img_uri, img_file, storage):
     try:
-        with open(img_file, 'rb') as finp:
-            storage.put_file(img_uri, finp.read(), acl='public-read')
-    except:
-        exit_error('cannot upload image file.')
+        storage.put_file_path(img_uri, img_file, acl='public-read')
+    except a2pyutils.storage.StorageError as se:
+        exit_error('cannot upload image file. error:'+se.message)
 
 
 def update_db(db, clip_max, palette_id, soundscape_id, normalized):
