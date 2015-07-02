@@ -155,7 +155,7 @@ class Test_roiset(unittest.TestCase):
                 for j in range(roi[3].shape[1]):
                     self.assertEqual(specs[jj][ii,j],roi[3][ii,j],msg="Roiset.addRoi saved wron spec")           
                
-    @unittest.skip("Broken test (jul 1, 2015)")
+    @unittest.skip("FIX ME: Test is broken - gio Jul 2, 2015")
     def test_alignSamples(self):
         """Test Roiset.alignSamples function"""
         print "\nALINGMENT TEST TAKES A WHILE"
