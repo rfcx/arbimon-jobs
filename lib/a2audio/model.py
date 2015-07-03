@@ -2,6 +2,7 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 from sklearn.preprocessing import normalize
+from sklearn import cross_validation
 import numpy
 import cPickle as pickle
 from itertools import izip as zip, count
@@ -60,10 +61,7 @@ class Model:
     def getOobScore(self):
         return self.obbScore
     
-    def train(self):
-        with open('/home/rafa/Desktop/presenta/data.pickle', 'wb') as output:
-            pickler = pickle.Pickler(output, -1)
-            pickle.dump([self.classes,self.data], output, -1)       
+    def train(self):     
         self.clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1,oob_score=True)
         classSubset = [self.classes[i] for i in self.trainDataIndices]
         data = self.data[self.trainDataIndices]
@@ -71,6 +69,65 @@ class Model:
         data[numpy.isinf(data)] = 0
         self.clf.fit(data, classSubset)
         self.obbScore = self.clf.oob_score_
+    
+    def k_fold_validation(self,folds=10):
+        totalData = len(self.classes)
+        kf = cross_validation.KFold(n=totalData, n_folds=folds)
+        testCl = []
+        predicCl = []
+        for train_index, test_index in kf:
+            trainData = self.data[train_index]
+            testData = self.data[test_index]
+            trainClasses = self.classes[train_index]
+            testClasses = self.classes[test_index]
+            clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1)
+            clf.fit(trainData, trainClasses)
+            predictions = clf.predict(testData)
+            for i in testClasses:
+                testCl.append(i)
+            for i in predictions:
+                predicCl.append(i)
+            del clf
+            del trainData
+            del trainClasses
+            del testData
+            del testClasses
+            
+        tp = 0.0
+        fp = 0.0
+        tn = 0.0
+        fn = 0.0
+        accuracy_score = 0.0
+        precision_score = 0.0
+        sensitivity_score = 0.0
+        specificity_score  = 0.0
+        
+        for i in range(len(testCl)):
+            if str(testCl[i])=='1':
+                if testCl[i] == predicCl[i]:
+                    tp = tp + 1.0
+                else:
+                    fn = fn + 1.0
+            else:
+                if testCl[i] == predicCl[i]:
+                    tn = tn + 1.0
+                else:
+                    fp = fp + 1.0
+        
+        if (tp+fp+tn+fn) >0:
+            accuracy_score = (tp +  tn)/(tp+fp+tn+fn)
+        if (tp+fp) > 0:
+            precision_score = tp/(tp+fp)
+        if (tp+fn) > 0:
+            sensitivity_score = tp/(tp+fn)
+        if (tn+fp) > 0:
+            specificity_score  = tn/(tn+fp)
+        print '-----------------------------------------------------------------------------------------'
+        print 'accuracy_score ' ,accuracy_score 
+        print 'precision_score ', precision_score 
+        print 'sensitivity_score ',sensitivity_score 
+        print 'specificity_score ',specificity_score
+        print '-----------------------------------------------------------------------------------------' 
         
     def validate(self):
         classSubset = [self.classes[i] for i in self.validationDataIndices]

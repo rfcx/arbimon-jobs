@@ -22,7 +22,7 @@ def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
         log.write(msg)
     if workingFolder:
         if os.path.exists(workingFolder):
-            shutil.rmtree(workingFolder)
+           shutil.rmtree(workingFolder)
     sys.exit(code)
 
 

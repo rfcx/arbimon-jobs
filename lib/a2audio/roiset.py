@@ -89,95 +89,35 @@ class Roiset:
         return self.meanSurface
     
     def alignSamples(self,bIndex=0):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            if self.logs:
-                self.logs.write("Roiset.py: set sample rate = "+str(self.setSampleRate))
-            freqs = [i for i in reversed(get_freqs(bIndex))]
-            self.rows = len(freqs)
-            big_high_index = 0
-            big_low_index = 0
-            if self.logs:
-                self.logs.write("Roiset.py: high freq = "+str(self.highestFreq)+" low freq "+str(self.lowestFreq))
-            while float(freqs[big_high_index]) > float(self.highestFreq):
-                big_high_index = big_high_index + 1
-                big_low_index  = big_low_index  + 1
-            if self.logs:
-                self.logs.write("Roiset.py: search freqs ")
-            while big_low_index <= (len(freqs)-1) and float(freqs[big_low_index ]) >  float(self.lowestFreq) :
-                big_low_index  = big_low_index  + 1
-            if self.logs:
-                self.logs.write("Roiset.py: freqs searched")
-            big_low_index  = big_low_index +4
-            big_high_index = big_high_index -3
-            if self.logs:
-                self.logs.write("Roiset.py: creating temp computation space ")
-            surface = numpy.zeros(shape=(self.rows,self.maxColumns))
-            compsurface = numpy.random.rand(self.rows,self.maxColumns)
-            if self.logs:
-                self.logs.write("Roiset.py: done creating temp computation space ")
-            jval = math.floor(self.maxColumns/2)
-            surface = self.biggestRoi
-            compsurface = self.biggestRoi
-            if self.logs:
-                self.logs.write("Roiset.py: weights initialization ")
-            weights = numpy.zeros(shape=(self.rows,self.maxColumns))
-            weights[big_high_index:big_low_index,:] = 1
-            dm = 1
-            minj = 0
-            maxj = self.maxColumns
-            index = 0
-            highcut = big_high_index
-            lowcut = big_low_index
-            if self.logs:
-                self.logs.write("Roiset.py:start align ")
-            cccc=0
-            for roi in self.roi:
-                cccc = cccc+1
-                if self.logs:
-                    self.logs.write("roi:"+str(cccc))
-                if index is not self.biggestIndex:
-                    high_index = 0
-                    low_index = 0
-                    while float(freqs[high_index]) > float(roi.highFreq):
-                        high_index = high_index + 1
-                        low_index  = low_index  + 1
-                    while float(freqs[low_index ]) >  float(roi.lowFreq):
-                        low_index  = low_index  + 1
-                    low_index  = low_index  +4
-                    high_index = high_index -3
-                    distances = []
-                    currColumns = roi.spec.shape[1]
-                    compareArea = roi.spec[high_index:low_index,:]
-                    for jj in range((self.maxColumns) - currColumns ): 
-                      subMatrix =   compsurface[high_index:low_index, jj:(jj+currColumns)]
-                      distances.append(numpy.linalg.norm(subMatrix  - compareArea) )
-                    if len(distances) > 0:
-                        j = distances.index(min(distances))
-                    else:
-                        j = 0                  
-                    del distances
-                    if minj > j :
-                        minj = j
-                    if maxj< j+currColumns:
-                        maxj = j+currColumns
-                    if highcut < high_index:
-                        highcut = high_index
-                    if lowcut   >  low_index:
-                        lowcut   =  low_index
-                    compsurface[high_index:low_index, j:(j+currColumns)] = compsurface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
-                    surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
-                    dm = dm + 1    
-                    weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
-                index = index + 1
-            self.meanSurface = numpy.divide(surface,weights)
-            self.meanSurface[0:big_high_index,:] = -10000
-            self.meanSurface[big_low_index:(self.meanSurface.shape[0]-1),:] = -10000 
-            self.maxColumns = self.meanSurface.shape[1]
-            self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
-            self.meanSurface[numpy.isinf(self.meanSurface)]   = -10000
-            if self.logs:
-                self.logs.write("Roiset.py: aligned "+str(len(self.roi))+" rois")
+        print self.rows,self.maxColumns
+        surface = numpy.zeros(shape=self.biggestRoi.shape)
+        weights = numpy.zeros(shape=self.biggestRoi.shape)
+        freqs = [i for i in reversed(get_freqs(bIndex))]
+        for roi in self.roi:
+            high_index = 0
+            low_index = 0
+            while freqs[high_index] >= roi.highFreq:
+                high_index = high_index + 1
+                low_index  = low_index  + 1
+            while freqs[low_index ] >=  roi.lowFreq:
+                low_index  = low_index  + 1
+            distances = []
+            currColumns = roi.spec.shape[1]
+            
+            for jj in range(self.maxColumns -currColumns ): 
+                subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
+                distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
+            if len(distances) > 0:
+                j = distances.index(min(distances))
+            else:
+                j = 0
+
+            surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
+                
+            weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+            
+        self.meanSurface = numpy.divide(surface,weights)
+        self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
     
     def showSurface(self):
         ax1 = subplot(111)

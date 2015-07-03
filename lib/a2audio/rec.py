@@ -134,7 +134,7 @@ class Rec:
         self.status = 'HasAudioData'
     
     def resample(self):
-        plotBA = True
+        plotBA = False
         if type(self.original) is list:
             self.original = numpy.asarray(self.original)
         if self.logs :
@@ -151,7 +151,8 @@ class Rec:
             imshow(20*log10(numpy.flipud(aa)), interpolation='nearest', aspect='auto')
             subplot(212)
             imshow(20*log10(numpy.flipud(a)),interpolation='nearest', aspect='auto')
-            savefig('/home/rafa/Desktop/presenta/'+self.filename+'.png', dpi=100)
+            savefig(''+self.filename+'.png', dpi=100)
+            close()
         self.samples = len(self.original)
         self.sample_rate = to_sample
         

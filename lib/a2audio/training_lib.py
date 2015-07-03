@@ -1,5 +1,4 @@
 import sys
-sys.path.append('/home/rafa/node/arbimon2-jobs-stable/lib/')
 import MySQLdb
 from a2audio.roizer import Roizer
 from contextlib import closing
@@ -73,6 +72,7 @@ def insertRecError(db,jobId,recId):
         cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
         db.commit()
     db.close()
+    db = None
     
 def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0):
     global classificationCanceled
@@ -120,7 +120,7 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
     #try:
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex)
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId)
     #except:
         #log.write('error analyzing: Recanalizer is wrong')
         #insertRecError(db,jobId,recId)
@@ -153,8 +153,6 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
         log.write(line[0])
-        if db:
-            db.close()
         return 'err'
 
 def get_training_job_data(db,jobId):
@@ -552,6 +550,10 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
     except :
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
 
+    # validation_k_fold = False
+    # if validation_k_fold:
+    #     model.k_fold_validation(folds=10)
+    
     return modelStats
 
 def prepare_png_data(data,log,jobId,db,workingFolder):
@@ -715,8 +717,8 @@ def train_pattern_matching(db,jobId,log,config):
         modelSaved = True
         log.write("model saved")
     
-    #if os.path.exists(workingFolder):
-        #shutil.rmtree(workingFolder)
+    if os.path.exists(workingFolder):
+        shutil.rmtree(workingFolder)
     
     return modelSaved 
 
@@ -736,15 +738,12 @@ def run_training(jobId):
         log.write('job model type fetched.')
     except:
         return False
-    if model_type_id in [1,2,3,4]:
+    if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
         retValue = train_pattern_matching(db,jobId,log,config)
         db.close()
         return retValue
-    elif model_type_id in [-1]:
-        pass
-        """Entry point for new model types"""
     else:
-        log.write("Unkown model type")
+        log.write("incorrect model type")
         db.close()
         return False

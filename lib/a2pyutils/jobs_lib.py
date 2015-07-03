@@ -4,6 +4,9 @@ import shutil
 from soundscape.set_visual_scale_lib import exit_error
 from boto.s3.connection import S3Connection
 
+def  get_model_type():
+    pass
+
 def cancelStatus(db,jobId,rmFolder=None,quitj=True):
     status = None
     with closing(db.cursor()) as cursor:

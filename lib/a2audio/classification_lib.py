@@ -266,7 +266,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                 insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
     except:
         exit_error('cannot process results.')
-    return {"t":processed,"stats":{"minv": minVectorVal, "maxv": maxVectorVal}}
+    return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
    
 def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
     global classificationCanceled
@@ -304,6 +304,8 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
         return False
     log.write('computed stats.')
     shutil.rmtree(workingFolder)
+    log.write('removed folder.')
+    statsJson = jsonStats['stats']
     if jsonStats['t'] < 1:
         exit_error('no recordings processed.')
     try:
@@ -311,7 +313,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
             cursor.execute("""
                 INSERT INTO `classification_stats` (`job_id`, `json_stats`)
                 VALUES (%s, %s)
-            """, [jobId, json.dumps(jsonStats['stats'])])
+            """, [jobId, json.dumps(statsJson)])
             db.commit()
             cursor.execute("""
                 UPDATE `jobs`
@@ -337,13 +339,13 @@ def run_classification(jobId):
         (
             classifierId, projectId, userId,
             classificationName, playlistId, ncpu   
-        ) = get_clasification_job_data(db,jobId)
+        ) = get_classification_job_data(db,jobId)
         log.write('job data fetched.')
         model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
         log.write('model params fetched.')
     except:
         return False
-    if model_type_id in [1,2,3]:
+    if model_type_id in [4]:
         retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         db.close()
         return retValue
