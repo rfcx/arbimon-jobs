@@ -20,21 +20,21 @@ class Model:
         
         self.classid = classid
         self.speciesSpec = speciesSpec
-        self.data  = numpy.zeros(shape=(0,6))
+        self.data  = numpy.zeros(shape=(0,41))
         self.classes = []
         self.uris = []
         self.minv = 9999999
         self.maxv = -9999999
         self.jobId = jobid
         
-    def addSample(self,present,meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat,uri):
+    def addSample(self,present,row,uri):
+        print str(present)
         self.classes.append(str(present))
         self.uris.append(uri)
-        if self.minv > minfeat:
-            self.minv = minfeat
-        if self.maxv < maxfeat:
-            self.maxv = maxfeat
-        row = [meanfeat,difffeat,maxfeat,minfeat,stdfeat,medfeat]
+        if self.minv > row[3]:
+            self.minv = row[3]
+        if self.maxv < row[2]:
+            self.maxv = row[2]
         self.data = numpy.vstack((self.data,row))
     
     def getDataIndices(self):

@@ -2,6 +2,7 @@
 
 # simple mapper
 import sys
+sys.path.append('/home/rafa/node/arbimon2-jobs-master-old/lib')
 from a2pyutils.logger import Logger
 
 jobId = sys.argv[1].strip("'").strip(" ")

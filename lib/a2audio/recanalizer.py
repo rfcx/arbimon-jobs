@@ -8,6 +8,8 @@ from scipy.stats import kendalltau as ktau
 from scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
+from scipy.stats import *
+from  scipy.signal import *
 from a2pyutils.logger import Logger
 import os
 import json
@@ -16,10 +18,10 @@ from a2audio.thresholder import Thresholder
 import cv2
 from cv import *
 import random
-
+from contextlib import closing
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -54,6 +56,9 @@ class Recanalizer:
         self.rec = None
         self.status = 'NoData'
         self.searchMatch = searchMatch
+        self.db =db
+        self.rec_id = rec_id
+        self.job_id = job_id
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
@@ -73,6 +78,7 @@ class Recanalizer:
                 self.status = 'CannotProcess'
             else:
                 start_time = time.time()
+                start_time_all = time.time()
                 self.spectrogram()
                 if self.spec.shape[1] < 2*self.speciesSurface.shape[1]:
                     self.status = 'AudioIsShort'
@@ -82,7 +88,14 @@ class Recanalizer:
                     if self.logs:
                         self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                     start_time = time.time()
-                    self.featureVector()
+                    self.featureVector_search()
+                    
+                    if self.db:
+                        elapsed = time.time() - start_time_all
+                        print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
+                        with closing(self.db.cursor()) as cursor:
+                            cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
+                            self.db.commit()   
                     if self.logs:
                         self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
                     self.status = 'Processed'
@@ -99,10 +112,58 @@ class Recanalizer:
         return self.distances
     
     def features(self):
-        return [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
-                max(self.distances), min(self.distances)
-                , numpy.std(self.distances) , numpy.median(self.distances)]
+        if len(self.distances)<1:
+            self.featureVector()
+        N = len(self.distances)
+        fvi = np.fft.fft(self.distances, n=2*N)
+        acf = np.real( np.fft.ifft( fvi * np.conjugate(fvi) )[:N] )
+        acf = acf/(N - numpy.arange(N))
         
+        xf = abs(numpy.fft.fft(self.distances))
+
+        fs = [ numpy.mean(xf), (max(xf)-min(xf)),
+                max(xf), min(xf)
+                , numpy.std(xf) , numpy.median(xf),skew(xf),
+                kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
+        hist = histogram(self.distances,6)[0]
+        cfs =  cumfreq(self.distances,6)[0]
+        ffs = [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
+                    max(self.distances), min(self.distances)
+                    , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
+                    kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
+                    ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
+                    ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
+                    ,moment(self.distances,9),moment(self.distances,10)
+                    ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
+                    ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
+                    ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
+        return ffs
+				
+    def featureVector_search(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+            removeUnwanted = self.matrixSurfacComp == -10000
+            if len(removeUnwanted) > 0  :
+                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            spec = self.spec
+            currColumns = self.spec.shape[1]
+            spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+            spec = spec.astype('uint8')
+            pat = self.matrixSurfacComp
+            pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+            pat = pat.astype('uint8')
+            th, tw = pat.shape[:2]
+            
+            result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF_NORMED)
+
+            self.distances = numpy.mean(result,axis=0) 
+			
     def featureVector(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -238,14 +299,14 @@ class Recanalizer:
             i = i + 1
         
         #calculate decibeles in the passband
+        Pxx =  10. * np.log10( Pxx.clip(min=0.0000000001))
         while (i < len(freqs)) and (freqs[i] < self.high):
-            Pxx[i,:] =  10. * np.log10( Pxx[i,:].clip(min=0.0000000001))
             i = i + 1
  
         if i >= dims[0]:
             i = dims[0] - 1
             
-        Z= Pxx[j:i,:]
+        Z= Pxx[(j-2):(i+2),:]
         
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i

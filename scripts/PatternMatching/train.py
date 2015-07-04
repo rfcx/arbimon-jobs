@@ -1,5 +1,5 @@
 #! .env/bin/python
-
+import sys
 import time
 import sys
 import tempfile
@@ -115,7 +115,7 @@ if not row:
 modelName = name
 tempFolders = str(configuration.pathConfig['tempDir'])
 # select the model_type by its id
-if model_type_id in [1, 2, 3]:
+if model_type_id in [4]:
     """Pattern Matching (modified Alvarez thesis)"""
     ssim = True
     if model_type_id == 2:
@@ -125,13 +125,7 @@ if model_type_id in [1, 2, 3]:
         searchMatch = True
 
     log.write("Pattern Matching (modified Alvarez thesis)")
-    if searchMatch:
-        log.write("using search match")
-    else:
-        if ssim:
-            log.write("using ssim")
-        else:
-            log.write("not using ssim")
+
     progress_steps = 0
     # creating a temporary folder
     workingFolder = tempFolders+"/training_"+str(jobId)+"/"
@@ -224,7 +218,7 @@ if model_type_id in [1, 2, 3]:
                 spst = speciesSongtype[x]
                 with closing(db.cursor()) as cursor:
                     cursor.execute("""
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present`
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id` 
                         FROM `recording_validations` rv, `recordings` r
                         WHERE r.`recording_id` = rv.`recording_id`
                           AND rv.`project_id` = %s
@@ -234,7 +228,7 @@ if model_type_id in [1, 2, 3]:
                           ORDER BY rand()
                           LIMIT %s)
                           UNION
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present`
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id` 
                         FROM `recording_validations` rv, `recordings` r
                         WHERE r.`recording_id` = rv.`recording_id`
                           AND rv.`project_id` = %s
@@ -255,8 +249,8 @@ if model_type_id in [1, 2, 3]:
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
-                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc])
+                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc,rowValidation[4]])
+                        spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc,rowValidation[4]])
 
         # get Amazon S3 bucket
         conn = S3Connection(awsKeyId, awsKeySecret)
@@ -386,9 +380,9 @@ if model_type_id in [1, 2, 3]:
     processed_count = 0
     for res in results:
         if 'err' not in res:
-            if int(res[7]) == 0:
+            if int(res['info'][1]) == 0:
                 ausenceCount = ausenceCount + 1
-            if int(res[7]) == 1:
+            if int(res['info'][1]) == 1:
                 presentsCount = presentsCount + 1            
         else:
             log.write(res)
@@ -405,12 +399,12 @@ if model_type_id in [1, 2, 3]:
         for res in results:
             if 'err' not in res:
                 no_errors = no_errors + 1                               
-                classid = res[6]
+                classid = res['info'][0]
                 if classid in models:
-                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
                 else:
                     models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
-                    models[classid].addSample(res[7],float(res[0]),float(res[1]),float(res[2]),float(res[3]),float(res[4]),float(res[5]),res[12])
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
             else:
                 errors_count = errors_count + 1
 
@@ -480,15 +474,17 @@ if model_type_id in [1, 2, 3]:
     log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
 
     savedModel = False
-
+    print 'try models'
     """ Create and save model """
     for i in models:
+        print i,'in models'
         resultSplit = False
         try:
             resultSplit = models[i].splitData(useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent)
         except:
             exit_error(db,workingFolder,log,jobId,'error spliting data for validation')
         if not resultSplit:
+            print 'split failed'
             continue
         validationsKey =  'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv'
         validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'
@@ -535,6 +531,7 @@ if model_type_id in [1, 2, 3]:
         except:
             exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
         modKey = None  
+        print 'uploading png'
         try:
             conn = S3Connection(awsKeyId, awsKeySecret)
             bucket = conn.get_bucket(bucketName)
@@ -552,11 +549,12 @@ if model_type_id in [1, 2, 3]:
             k.set_acl('public-read')
         except:
             exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket')
-            
+        print 'saving to db'        
         species,songtype = i.split("_")
         try:
             #save model to DB
             with closing(db.cursor()) as cursor:
+                print 'saving to db'               
                 cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
                 db.commit()        
                 cursor.execute("SELECT   max(ts.`x2` -  ts.`x1`) , min(ts.`y1`) , max(ts.`y2`) "+
@@ -602,6 +600,7 @@ if model_type_id in [1, 2, 3]:
                 db.commit()
                 cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
                 db.commit()
+                print 'saved to db correctly'
                 savedModel  = True
         except:
             exit_error(db,workingFolder,log,jobId,'error saving model into database')

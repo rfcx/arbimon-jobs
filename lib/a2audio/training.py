@@ -4,6 +4,8 @@ from contextlib import closing
 from boto.s3.connection import S3Connection
 from a2audio.recanalizer import Recanalizer
 import csv
+import sys
+sys.path.append('/home/rafa/node/arbimon2-jobs-master-old/lib')
 
 def roigen(line,config,tempFolder,currDir ,jobId,log=None):
     if log is not None:
@@ -49,6 +51,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
     bucketName = config[4]
     awsKeyId = config[5]
     awsKeySecret = config[6]
+    recId = int(line[5])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2], db=config[3])
     conn = S3Connection(awsKeyId, awsKeySecret)
     bucket = conn.get_bucket(bucketName)
@@ -66,7 +69,7 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
             log.write('cannot analize '+line[0])
         return 'err project not found'
     bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim,searchMatch)
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim,searchMatch,db=db,rec_id=recId,job_id=jobId)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
@@ -81,17 +84,18 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
         k = bucket.new_key(vectorUri)
         k.set_contents_from_filename(vectorFile)
         k.set_acl('public-read')
-        fets.append(line[4])
-        fets.append(line[3])
-        fets.append(pattern[4])
-        fets.append(pattern[2])
-        fets.append(pattern[3])
-        fets.append(pattern[1])
-        fets.append(line[0])
+        info = []
+        info.append(line[4])
+        info.append(line[3])
+        info.append(pattern[4])
+        info.append(pattern[2])
+        info.append(pattern[3])
+        info.append(pattern[1])
+        info.append(line[0])
         db.close()
         if log is not None:
             log.write('done analizing '+line[0])
-        return fets
+        return {'fets':fets,'info':info}
     else:
         if log is not None:
             log.write('cannot analize '+line[0])

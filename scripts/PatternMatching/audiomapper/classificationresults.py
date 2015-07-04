@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+sys.path.append('/home/rafa/node/arbimon2-jobs-master-old/lib')
 import shutil
 import os
 import json
