@@ -21,13 +21,14 @@ from samplerates import *
 import cv2
 from cv import *
 import a2pyutils.storage
+from contextlib import closing
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, storage, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, storage, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0,db=None,rec_id=None,job_id=None):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -62,12 +63,15 @@ class Recanalizer:
         self.status = 'InitNoData'
         self.ssim = useSsim
         self.step = step
-        self.oldModel = oldModel
+        self.oldModel = False
         self.numsoffeats = numsoffeats
         self.algo = 'sift'
         self.useRansac = ransakit
         self.hasrec = False
         self.bIndex = bIndex
+        self.db =db
+        self.rec_id = rec_id
+        self.job_id = job_id
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
@@ -93,6 +97,7 @@ class Recanalizer:
                     self.status = "SampleRateNotSupported"
                 else:
                     start_time = time.time()
+                    start_time_all = time.time()
                     self.spectrogram()
                     if self.spec.shape[1] < 2*self.speciesSurface.shape[1]:
                         self.status = 'AudioIsShort'
@@ -102,10 +107,13 @@ class Recanalizer:
                         if self.logs:
                             self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                         start_time = time.time()
-                        if self.useRansac:
-                            self.ransac()
-                        else:
-                            self.featureVector()
+                        self.featureVector_search()
+                        if self.db:
+                            elapsed = time.time() - start_time_all
+                            print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
+                            with closing(self.db.cursor()) as cursor:
+                                cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
+                                self.db.commit()                           
                         if self.logs:
                             self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
                         self.status = 'Processed'
@@ -116,7 +124,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.storage,self.logs,True,False,not self.oldModel)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.storage,self.logs,True,False,True)
         self.hasrec = True
         
     def getVector(self ):
@@ -166,73 +174,43 @@ class Recanalizer:
                     ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
                     ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
                     ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
-        if self.oldModel:
-            return ffs[:self.numsoffeats]
-        else:
-            return ffs
-        
-    def featureVector(self):
+        return ffs
+               
+    def featureVector_search(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if self.logs:
                self.logs.write("featureVector start")
             if self.logs:
                self.logs.write(self.uri)    
-            pieces = self.uri.split('/')
-            self.distances = numpy.zeros(self.spec.shape[1])
-            currColumns = self.spec.shape[1]
-            step = self.step#int(self.spec.shape[1]*.05) # 5 percent of the pattern size
-            if self.oldModel:
-                if self.logs:
-                    self.logs.write("Backward compatibility mode")  
-                freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
-                i = len(freqs44100) - 1
-                j = i
-                if self.logs:
-                    self.logs.write('Searchjing frequencies')  
-                while freqs44100[i] > self.high and i>=0:
-                    j = j -1
-                    i = i -1
-                while freqs44100[j] > self.low and j>=0:
-                    j = j -1
-                if self.logs:
-                    self.logs.write('Search done')  
-                speclow = len(freqs44100) - j - 2
-                spechigh = len(freqs44100) - i - 2
-                if speclow >= len(freqs44100):
-                    speclow = len(freqs44100)-1
-                if spechigh < 0:
-                    spechigh = 0
-                self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
-            else:
-                self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
             removeUnwanted = self.matrixSurfacComp == -10000
             if len(removeUnwanted) > 0  :
                 self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
-            winSize = min(self.matrixSurfacComp.shape)
-            winSize = min(winSize,7)
-            if winSize %2 == 0:
-                winSize = winSize - 1
-            spec = self.spec;
-            self.currColumns = currColumns
-            if self.logs:
-                self.logs.write('Computing distances')
-            if self.ssim:
-                for j in range(0,currColumns - self.columns,step):
-                    val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
-                    if val < 0:
-                       val = 0
-                    self.distances[j+self.columns/2]=val
-                    #self.distances.append(  val )
-            else:
-                maxnormforsize = numpy.linalg.norm( numpy.ones(shape=self.matrixSurfacComp.shape) )
-                for j in range(0,currColumns - self.columns,step):
-                    val = numpy.linalg.norm( numpy.multiply ( numpy.copy(spec[: , j:(j+self.columns)]), self.matrixSurfacComp ) )/maxnormforsize
-                    self.distances[j+self.columns/2]=val
-                    #self.distances.append(  val )
-            if self.logs:
-               self.logs.write("--------------------------Done featureVector end--------------------------")
-    
+            spec = self.spec
+            currColumns = self.spec.shape[1]
+            spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+            spec = spec.astype('uint8')
+            pat = self.matrixSurfacComp
+            pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+            pat = pat.astype('uint8')
+            th, tw = pat.shape[:2]
+            
+            result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF_NORMED)
+
+            self.distances = numpy.mean(result,axis=0)
+            plotAB = False
+            if plotAB:
+                figure(figsize=(25,15))
+                ax1 = subplot(211)
+                plot(self.distances)
+                subplot(212, sharex=ax1)
+                ax = gca()
+                im = ax.imshow(spec , interpolation='nearest', aspect='auto')
+                savefig(''+self.rec.filename+'mean'+'.png', dpi=100)
+                close()
+
     def getSpec(self):
         return self.spec
     
@@ -254,17 +232,15 @@ class Recanalizer:
         while freqs[i] < self.low:
             j = j + 1
             i = i + 1
-        
-        #calculate decibeles in the passband
+        Pxx =  10. * np.log10( Pxx)    
         while (i < len(freqs)) and (freqs[i] < self.high):
-            Pxx[i,:] =  10. * np.log10( Pxx[i,:])
             i = i + 1
  
         if i >= dims[0]:
             i = dims[0] - 1
             
-        Z= Pxx[j:i,:]
-        
+        Z= Pxx[(j-2):(i+2),:]
+
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i
         
@@ -292,47 +268,10 @@ class Recanalizer:
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
             
-        if self.ssim:
-            self.spec = Z
-        else:
-            threshold = Thresholder()
-            self.spec = threshold.apply(Z)
+        self.spec = Z
+
     
     def showVectAndSpec(self):
-        # pdist = [0] * self.spec.shape[1]
-        # index = int(self.speciesSurface.shape[1]/2)
-        # if self.step == 1:
-        #     if len(self.distances)>0:
-        #         pdist[index:(index+len(self.distances))] = self.distances
-        # else:
-        #     i = 0
-        #     for j in range(index,self.currColumns - self.columns,self.step):
-        #         pdist[j] = self.distances[i]
-        #         i = i + 1
-            #for j in range(index,self.currColumns - self.columns - index,self.step):
-            #    aa = [self.distances[i]] * self.step
-            #    print len(aa)
-            #    pdist[j:(j+index)] = aa
-            #    i = i + 1
-            #for j in range(index,self.spec.shape[1]-index ,self.step):
-            #    print i,j
-            #    reps = (min(j+self.step,self.spec.shape[1]-index))-j
-            #    pdist[j:(min(j+self.step,self.spec.shape[1]-index))] = [self.distances[i]] * reps 
-            #    i = i + 1
-            #start_index = index
-            #for i in range(index):
-            #    pdist2.append(None)
-            #for v in self.distances:
-            #    for i  in range(self.step):
-            #        pdist2.append(v)
-            #for i in range(index):
-            #    pdist2.append(None)
-            #for v in self.distances:
-            #    print start_index 
-            #    pdist[start_index:(start_index+(self.step))] = [v]*(self.step)
-            #    start_index = start_index + (self.step)
-            #print self.distances
-            #print pdist
         ax1 = subplot(211)
         plot(self.distances)
         subplot(212, sharex=ax1)
@@ -366,68 +305,3 @@ class Recanalizer:
        fig, ax = subplots(figsize=(25, 15))
        ax.imshow(s,aspect='auto')
        show()
-    
-    def ransac(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            if self.logs:
-               self.logs.write("featureVector start")
-            if self.logs:
-               self.logs.write(self.uri)    
-            self.distances = numpy.zeros(self.spec.shape[1])
-            currColumns = self.spec.shape[1]
-            if self.oldModel:
-                if self.logs:
-                    self.logs.write("Backward compatibility mode")  
-                freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
-                i = len(freqs44100) - 1
-                j = i
-                if self.logs:
-                    self.logs.write('Searching frequencies')  
-                while freqs44100[i] > self.high and i>=0:
-                    j = j -1
-                    i = i -1
-                while freqs44100[j] > self.low and j>=0:
-                    j = j -1
-                if self.logs:
-                    self.logs.write('Search done')  
-                speclow = len(freqs44100) - j - 2
-                spechigh = len(freqs44100) - i - 2
-                if speclow >= len(freqs44100):
-                    speclow = len(freqs44100)-1
-                if spechigh < 0:
-                    spechigh = 0
-                self.matrixSurfacComp = numpy.copy(self.speciesSurface[spechigh:speclow,:])
-            else:
-                self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
-            removeUnwanted = self.matrixSurfacComp == -10000
-            if len(removeUnwanted) > 0  :
-                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
-
-
-            ############### PREPARE MATRICES
-            spec = self.spec
-            spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
-            spec = spec.astype('uint8')
-  
-            pat = self.matrixSurfacComp
-            pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
-            pat = pat.astype('uint8')          
-
-            self.MIN_MATCHES = 4
-            ###################################################
-
-            self.computeGFTT(pat,spec,currColumns)
-            
-    def computeGFTT(self,pat,spec,currColumns):
-        # CV_TM_SQDIFF CV_TM_SQDIFF_NORMED CV_TM_CCORR CV_TM_CCORR_NORMED CV_TM_CCOEFF CV_TM_CCOEFF_NORMED
-        th, tw = pat.shape[:2]
-        result = cv2.matchTemplate(spec, pat, cv2.TM_CCORR_NORMED)
-        threshold = numpy.percentile(result,99)
-        loc = numpy.where(result >= threshold)
-        winSize = min(pat.shape)
-        winSize = min(winSize,7)
-        if winSize %2 == 0:
-            winSize = winSize - 1
-        for pt in zip(*loc[::-1]):
-            self.distances[pt[0]+tw/2] = ssim( numpy.copy(spec[:,pt[0]:(pt[0]+tw)]) , pat, win_size=winSize)
