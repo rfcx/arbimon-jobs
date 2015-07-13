@@ -204,7 +204,7 @@ class Test_training(unittest.TestCase):
         mysql_connect.return_value = dbMock
         with mock.patch('contextlib.closing', mock_closing , create=False):
             with mock.patch('a2pyutils.storage.BotoBucketStorage', Mock_BotoBucketStorage, create=False):
-                ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
+                ret = recnilize(lineData,config,'/tmp', 1,[radnMatrx,1,2,3,4],False,False,None,1)
                 self.assertEqual(ret,'err',msg="recnilize should have returned err")
         del dbMock
         BotoBucketStorageCalls = [
@@ -254,7 +254,7 @@ class Test_training(unittest.TestCase):
                     with mock.patch('contextlib.closing', mock_closing , create=False):
                         with mock.patch('a2pyutils.storage.BotoBucketStorage', Mock_BotoBucketStorage, create=False):
                             recanalizer.return_value = Status_mock('NoAudio')
-                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
+                            ret = recnilize(lineData,config,'/tmp', 1,[radnMatrx,1,2,3,4],False,False,None,1)
                             self.assertEqual(ret,'err',msg="recnilize should have returned err with noAudio")
         BotoBucketStorageCalls = [
             ('__init__', ('region', 'aws', 'key', 'secret'), {})
@@ -301,7 +301,7 @@ class Test_training(unittest.TestCase):
                     with mock.patch('contextlib.closing', mock_closing , create=False):
                         with mock.patch('a2pyutils.storage.BotoBucketStorage', Mock_BotoBucketStorage, create=False):
                             recanalizer.return_value = Status_mock('Processed', [1, 2, 3], [0,0,1,1,2,2,0,0])
-                            ret = recnilize(lineData,config,'/tmp','/tmp/' ,1,[radnMatrx,1,2,3,4],False,False,None,1)
+                            ret = recnilize(lineData,config,'/tmp', 1,[radnMatrx,1,2,3,4],False,False,None,1)
 
         recanalizer.assert_called_once('any/rec/uri',radnMatrx, 2, 3, '/tmp', 'aws', None, False, False, bIndex=1, step=16, numsoffeats=41, ransakit=False, oldModel=False)
 
