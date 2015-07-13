@@ -103,7 +103,7 @@ class Test_training(unittest.TestCase):
                 with mock.patch('a2audio.training_lib.Roizer', roizer, create=False):
                     with mock.patch('a2pyutils.storage.BotoBucketStorage', Mock_BotoBucketStorage, create=False):
                         roizer.return_value = Status_mock('NoAudio')
-                        ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False,1)
+                        ret = roigen(lineData,config,'/any/temp/folder', 1,False,1)
                         self.assertEqual(ret,'err',msg="roigen should have returned error")
         
         logger.assert_any_call(1, 'training.py', 'roigen')
@@ -120,10 +120,13 @@ class Test_training(unittest.TestCase):
         ], log_Writer.calls, "roigen incorrect order of logger writer calls")
         
         assertArraysEqual(self, [
-            {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}
+            {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}
         ], dbMock.calls, msg="roigen incorrect order of database calls")
 
         assertArraysEqual(self, [
+            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'},
             {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
             {'f': 'fetch_one'},
             {'f': 'close'},
@@ -153,7 +156,7 @@ class Test_training(unittest.TestCase):
                     with mock.patch('a2pyutils.storage.BotoBucketStorage', Mock_BotoBucketStorage, create=False):
                         roi_with_Data = Status_mock('HasData')
                         roizer.return_value = roi_with_Data
-                        ret = roigen(lineData,config,'/any/temp/folder','/any/cuur/dir' ,1,False,1)
+                        ret = roigen(lineData,config,'/any/temp/folder', 1,False,1)
                         assertArraysEqual(self, [
                             roi_with_Data, '2_3'
                         ], ret, msg="roigen should have returned a ROI object and the class")
@@ -175,10 +178,13 @@ class Test_training(unittest.TestCase):
         ], log_Writer.calls, msg="roigen incorrect order of logger writer calls")
 
         assertArraysEqual(self, [
-            {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}
+            {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'cursor'}, {'f': 'close'}
         ], dbMock.calls, msg="incorrect number of db connection calls")
         
         assertArraysEqual(self, [
+            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
+            {'f': 'fetch_one'},
+            {'f': 'close'},
             {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
             {'f': 'fetch_one'},
             {'f': 'close'},
@@ -214,6 +220,9 @@ class Test_training(unittest.TestCase):
         assertArraysEqual(self, BotoBucketStorageCalls, Mock_BotoBucketStorage.calls.traced, msg="recnilize incorrect number of connection calls")
         mysql_connect.assert_any_call(passwd='pass', host='host', db='db', user='user')
         assertArraysEqual(self, [{'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'close'}, 
+            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
             {'f': 'close'}, 
             {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
