@@ -247,7 +247,7 @@ class Test_training(unittest.TestCase):
         mysql_connect.return_value = dbMock
         recanalizer = MagicMock()
         mock_writerow = MagicMock()
-        cancelStatusM = MagicMock()
+        cancelStatusM = MagicMock(return_value=None)
         with mock.patch('csv.writer',mock_writerow,create=False):
             with mock.patch('a2audio.training_lib.cancelStatus', cancelStatusM, create=False):
                 with mock.patch('a2audio.training_lib.Recanalizer', recanalizer, create=False):
@@ -294,7 +294,7 @@ class Test_training(unittest.TestCase):
         mysql_connect.return_value = dbMock
         recanalizer = MagicMock()
         mock_writerow = MagicMock()
-        cancelStatusM = MagicMock()
+        cancelStatusM = MagicMock(return_value=None)
         with mock.patch('csv.writer',mock_writerow,create=False):
             with mock.patch('a2audio.training_lib.cancelStatus', cancelStatusM, create=False):
                 with mock.patch('a2audio.training_lib.Recanalizer', recanalizer, create=False):
