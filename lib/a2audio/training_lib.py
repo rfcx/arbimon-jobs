@@ -22,6 +22,7 @@ from joblib import Parallel, delayed
 from a2audio.roiset import Roiset
 from a2audio.model import Model
 import png
+import a2pyutils.storage
 
 classificationCanceled =False
 
@@ -279,7 +280,7 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
     
     return trainingData,progress_steps,speciesSongtype,numSpeciesSongtype,maxBand
 
-def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id, modelName,
+def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage,log,speciesSongtype,numSpeciesSongtype,project_id,user_id, modelName,
                               useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent ):
     db = get_db(config,cursor=False)
     validationData = []
@@ -327,18 +328,10 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
                         validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
                         spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
         
-        bucketName = config[4]
-        awsKeyId = config[5]
-        awsKeySecret = config[6]
-        
-        # get Amazon S3 bucket
-        conn = S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
-        valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
-    
-        # save validation file to bucket
-        k = bucket.new_key(valiKey)
-        k.set_contents_from_filename(validationFile)
+        # compute storage key
+        valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)    
+        # save validation file to storage
+        storage.put_file_path(valiKey, validationFile)
     
         # save validation to DB
         progress_steps = progress_steps + 15
@@ -625,7 +618,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
     except:
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
-def train_pattern_matching(db,jobId,log,config):
+def train_pattern_matching(db,jobId,log,config, storage):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -654,7 +647,7 @@ def train_pattern_matching(db,jobId,log,config):
     
     cancelStatus(db,jobId,workingFolder)
 
-    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
+    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config, storage, log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -705,7 +698,7 @@ def train_pattern_matching(db,jobId,log,config):
                    'file':pngFilename,
                    'public':True}
         }
-        upload_files_2bucket(config,files2upload,log,jobId,db,workingFolder)
+        upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
     
         save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
         
@@ -726,7 +719,7 @@ def run_training(jobId):
         log.also_print = True    
         configuration = Config()
         config = configuration.data()
-        bucketName = config[4]
+        storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
         db = get_db(config)
         log.write('database connection succesful')
         model_type_id = get_job_model_type(db,jobId)
@@ -735,7 +728,7 @@ def run_training(jobId):
         return False
     if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        retValue = train_pattern_matching(db,jobId,log,config)
+        retValue = train_pattern_matching(db,jobId,log,config, storage)
         db.close()
         return retValue
     else:
