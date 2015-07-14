@@ -112,7 +112,12 @@ class Recanalizer:
                             elapsed = time.time() - start_time_all
                             print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
                             with closing(self.db.cursor()) as cursor:
-                                cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
+                                cursor.execute("""
+                                    INSERT INTO `recanalizer_stats` (job_id, rec_id, exec_time) 
+                                    VALUES (%s, %s, %s)
+                                """, [
+                                    self.job_id, self.rec_id, elapsed
+                                ])
                                 self.db.commit()                           
                         if self.logs:
                             self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))

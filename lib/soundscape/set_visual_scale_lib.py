@@ -17,7 +17,13 @@ def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
         log.write('\n<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg))
     if jobId and db:
         with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `remarks` = %s ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                "Error: " + str(msg) , jobId
+            ])
             db.commit() 
         log.write(msg)
     if workingFolder:
@@ -53,9 +59,9 @@ def get_sc_data(db, soundscape_id):
                 FROM soundscapes S
                 JOIN soundscape_aggregation_types SAT ON S.soundscape_aggregation_type_id = SAT.soundscape_aggregation_type_id
                 WHERE soundscape_id = %s
-            """,
-                [soundscape_id]
-            )
+            """, [
+                soundscape_id
+            ])
             sc_data = cursor.fetchone()
     if not sc_data:
         exit_error("Soundscape #{} not found".format(soundscape_id))
@@ -70,13 +76,13 @@ def get_norm_vector(db, sc_data):
         for dp in aggregation['date']
     ]
     with closing(db.cursor()) as cursor:
-            cursor.execute('''
+            cursor.execute("""
                 SELECT {} , COUNT(*) as count
                 FROM `playlist_recordings` PR
                 JOIN `recordings` R ON R.recording_id = PR.recording_id
                 WHERE PR.playlist_id = {}
                 GROUP BY {}
-            '''.format(
+            """.format(
                 ', '.join([
                     "{} as dp_{}".format(d, i)
                     for i, d in enumerate(date_parts)
@@ -134,7 +140,9 @@ def update_db(db, clip_max, palette_id, soundscape_id, normalized):
                 SET visual_max_value = %s, visual_palette = %s,
                     normalized = %s
                 WHERE soundscape_id = %s
-            """, [clip_max, palette_id, int(normalized), soundscape_id])
+            """, [
+                clip_max, palette_id, int(normalized), soundscape_id
+            ])
             db.commit()
     except:
         print 'WARNING: Cannot update database soundscape information'

@@ -23,6 +23,7 @@ from a2audio.roiset import Roiset
 from a2audio.model import Model
 import png
 import a2pyutils.storage
+import json
 
 classificationCanceled =False
 
@@ -55,12 +56,23 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
     roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute("""
+            UPDATE `jobs` 
+            SET `state`="processing", `progress` = `progress` + 1 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
     if "NoAudio" in roi.status:
         log.write("roigen: no audio err " + str(recuri))
         with closing(db.cursor()) as cursor:
-            cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
+            cursor.execute("""
+                INSERT INTO `recordings_errors` (`recording_id`, `job_id`) 
+                VALUES (%s, %s)
+            """, [
+                recId, jobId
+            ])
             db.commit()
         db.close()
         return 'err'
@@ -71,7 +83,12 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
 
 def insertRecError(db,jobId,recId):
     with closing(db.cursor()) as cursor:
-        cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
+        cursor.execute("""
+            INSERT INTO `recordings_errors` (`recording_id`, `job_id`) 
+            VALUES (%s, %s)
+        """, [
+            recId, jobId
+        ])
         db.commit()
     db.close()
     db = None
@@ -95,7 +112,13 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         log.write('error analyzing: Cannot connect to database')
         return 'err'
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute("""
+            UPDATE `jobs` 
+            SET `state`="processing", `progress` = `progress` + 1 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
     if cancelStatus(db,jobId,workingFolder,False):
         classificationCanceled = True
@@ -103,7 +126,13 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     pid = None
     cancelStatus(db,jobId,workingFolder)
     with closing(db.cursor()) as cursor:
-        cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
+        cursor.execute("""
+            SELECT `project_id` 
+            FROM `jobs` 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
         rowpid = cursor.fetchone()
         try:
@@ -169,7 +198,9 @@ def get_training_job_data(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
                 WHERE J.`job_id` = %s and MT.`model_type_id` =  JP.`model_type_id`
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with training job #{}".format(jobId),-1,None,jobId,db)
@@ -200,7 +231,9 @@ def get_job_model_type(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
                 WHERE J.`job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with training job #{}".format(jobId),-1,None,jobId,db)
@@ -222,7 +255,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 FROM `training_set_roi_set_data` ts, `recordings` r
                 WHERE r.`recording_id` = ts.`recording_id`
                   AND ts.`training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
             trainingFileName = os.path.join(
                 workingFolder,
@@ -245,7 +280,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 SELECT DISTINCT `recording_id`
                 FROM `training_set_roi_set_data`
                 where `training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
     
             numrecordingsIds = int(cursor.rowcount)
@@ -258,7 +295,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 SELECT DISTINCT `species_id`, `songtype_id`
                 FROM `training_set_roi_set_data`
                 WHERE `training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
     
             numSpeciesSongtype = int(cursor.rowcount)
@@ -313,8 +352,10 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
                           AND `present` = 0
                           ORDER BY rand()
                           LIMIT %s)
-                    """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
-                          project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
+                    """, [
+                        project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
+                        project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) 
+                    ])
                     
                     db.commit()
     
@@ -354,14 +395,18 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
                 UPDATE `job_params_training`
                 SET `validation_set_id` = %s
                 WHERE `job_id` = %s
-            """, [cursor.lastrowid, jobId])
+            """, [
+                cursor.lastrowid, jobId
+            ])
             db.commit()
             
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress_steps` = %s, progress=0, state="processing"
                 WHERE `job_id` = %s
-            """, [progress_steps, jobId])
+            """, [
+                progress_steps, jobId
+            ])
             db.commit()
     except:
         exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
@@ -570,50 +615,96 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
     try:
         #save model to DB
         with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
-            db.commit()        
-            cursor.execute("SELECT   max(ts.`x2` -  ts.`x1`) as l , min(ts.`y1`)  as min, max(ts.`y2`) as max "+
-                "FROM `training_set_roi_set_data` ts "+
-                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="processing", `progress` = `progress` + 5 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
+            db.commit()
+            cursor.execute("""
+                SELECT   max(ts.`x2` -  ts.`x1`) as l , min(ts.`y1`)  as min, max(ts.`y2`) as max
+                FROM `training_set_roi_set_data` ts
+                WHERE ts.`training_set_id` =  %s
+            """, [
+                training_set_id
+            ])
             db.commit()
             row = cursor.fetchone()
             lengthRoi = row['l']	
             minFrequ = row['min']
             maxFrequ = row['max']
             
-            cursor.execute("SELECT   count(*) as c "+
-                "FROM `training_set_roi_set_data` ts "+
-                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            cursor.execute("""
+                SELECT count(*) as c 
+                FROM `training_set_roi_set_data` ts 
+                WHERE ts.`training_set_id` =  %s
+            """, [
+                training_set_id
+            ])
             db.commit()
             row = cursor.fetchone()
             totalRois = row['c']
             
-            statsJson = '{"roicount":'+str(totalRois)+' , "roilength":'+str(lengthRoi)+' , "roilowfreq":'+str(minFrequ)+' , "roihighfreq":'+str(maxFrequ)
-            statsJson = statsJson + ',"accuracy":'+str(modelStats[0])+' ,"precision":'+str(modelStats[1])+',"sensitivity":'+str(modelStats[2])
-            statsJson = statsJson + ', "forestoobscore" :'+str(modelStats[3])+' , "roisamplerate" : '+str(patternSurfaces[1])+' , "roipng":"'+pngKey+'"'
-            statsJson = statsJson + ', "specificity":'+str(modelStats[5])+' , "tp":'+str(modelStats[6])+' , "fp":'+str(modelStats[7])+' '
-            statsJson = statsJson + ', "tn":'+str(modelStats[8])+' , "fn":'+str(modelStats[9])+' , "minv": '+str(modelStats[10])+', "maxv": '+str(modelStats[11])+'}'
+            
+            statsJson = json.dumps({
+                "roicount":totalRois, "roilength": lengthRoi, "roilowfreq": minFrequ, "roihighfreq":maxFrequ,
+                "accuracy":modelStats[0], "precision":modelStats[1], "sensitivity": modelStats[2],
+                "forestoobscore": modelStats[3], "roisamplerate": patternSurfaces[1], "roipng": pngKey,
+                "specificity": modelStats[5], "tp": modelStats[6], "fp": modelStats[7],
+                "tn": modelStats[8], "fn": modelStats[9], "minv": modelStats[10], "maxv": modelStats[11]
+            })
         
-            cursor.execute("INSERT INTO `models`(`name`, `model_type_id`, `uri`, `date_created`, `project_id`, `user_id`,"+
-                           " `training_set_id`, `validation_set_id`) " +
-                           " VALUES ('"+modelname+"', "+str(model_type_id)+" , '"+modKey+"' , now() , "+str(project_id)+","+
-                           str(user_id)+" ,"+str(training_set_id)+", "+str(valiId)+" )")
+            cursor.execute("""
+                INSERT INTO `models`(`name`, `model_type_id`, `uri`, `date_created`, `project_id`, `user_id`, `training_set_id`, `validation_set_id`)
+                VALUES (%s, %s, %s, now(), %s, %s, %s, %s)
+            """, [
+                modelname, model_type_id, modKey, project_id, user_id, training_set_id, valiId
+            ])
             db.commit()
             insertmodelId = cursor.lastrowid
             
-            cursor.execute("INSERT INTO `model_stats`(`model_id`, `json_stats`) VALUES ("+str(insertmodelId)+",'"+statsJson+"')")
+            cursor.execute("""
+                INSERT INTO `model_stats`(`model_id`, `json_stats`) 
+                VALUES (%s, %s)
+            """, [
+                insertmodelId, statsJson
+            ])
             db.commit()
             
-            cursor.execute("INSERT INTO `model_classes`(`model_id`, `species_id`, `songtype_id`) VALUES ("+str(insertmodelId)
-                           +","+str(species)+","+str(songtype)+")")
+            cursor.execute("""
+                INSERT INTO `model_classes`(`model_id`, `species_id`, `songtype_id`) 
+                VALUES (%s, %s, %s)
+            """, [
+                insertmodelId, species, songtype
+            ])
             db.commit()       
             
-            cursor.execute('update `job_params_training` set `trained_model_id` = '+str(insertmodelId)+' where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `job_params_training` 
+                SET `trained_model_id` = %s 
+                WHERE `job_id` = %s
+            """, [
+                insertmodelId, jobId
+            ])
             db.commit()
             
-            cursor.execute('update `jobs` set `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
-            cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
     except:
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)

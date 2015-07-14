@@ -26,7 +26,9 @@ def get_classification_job_data(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_classification` JP ON JP.job_id = J.job_id
                 WHERE J.`job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with classification job #{}".format(jobId))
@@ -42,7 +44,9 @@ def get_model_params(db,classifierId,log):
                 FROM `models`m ,`training_sets_roi_set` ts
                 WHERE m.`training_set_id` = ts.`training_set_id`
                   AND `model_id` = %s
-            """, [classifierId])
+            """, [
+                classifierId
+            ])
             db.commit()
             numrows = int(cursor.rowcount)
             if numrows < 1:
@@ -74,7 +78,9 @@ def get_playlist(db,playlistId,log):
                 FROM `recordings` R, `playlist_recordings` PR
                 WHERE R.`recording_id` = PR.`recording_id`
                   AND PR.`playlist_id` = %s
-            """, [playlistId])
+            """, [
+                playlistId
+            ])
             db.commit()
             numrows = int(cursor.rowcount)
             for x in range(0, numrows):
@@ -93,7 +99,9 @@ def set_progress_params(db,progress_steps, jobId):
                 UPDATE `jobs`
                 SET `progress_steps`=%s, progress=0, state="processing"
                 WHERE `job_id` = %s
-            """, [progress_steps*2+5, jobId])
+            """, [
+                progress_steps*2+5, jobId
+            ])
             db.commit()
     except:
         exit_error("Could not set progress params")
@@ -104,7 +112,9 @@ def insert_rec_error(db, recId, jobId):
             cursor.execute("""
                 INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
                 VALUES (%s, %s)
-            """, [recId, jobId])
+            """, [
+                recId, jobId
+            ])
             db.commit()
     except:
         exit_error("Could not insert recording error")
@@ -142,7 +152,9 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
                 UPDATE `jobs`
                 SET `progress` = `progress` + 1
                 WHERE `job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             db.commit()       
     except:
         errorProcessing = True
@@ -219,7 +231,9 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
                 ) VALUES (%s, %s, %s, %s, %s,
                     %s
                 )
-            """, [jId, recId, species, songtype, presence, maxV])
+            """, [
+                jId, recId, species, songtype, presence, maxV
+            ])
             db.commit()
     except:
         exit_error('cannot insert results to database.')
@@ -235,7 +249,9 @@ def processResults(res, workingFolder, config, modelUri, jobId, species, songtyp
                     UPDATE `jobs`
                     SET `progress` = `progress` + 1
                     WHERE `job_id` = %s
-                """, [jobId])
+                """, [
+                    jobId
+                ])
                 db.commit()   
             if r and 'id' in r:
                 processed = processed + 1
@@ -302,14 +318,18 @@ def run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, lo
             cursor.execute("""
                 INSERT INTO `classification_stats` (`job_id`, `json_stats`)
                 VALUES (%s, %s)
-            """, [jobId, json.dumps(statsJson)])
+            """, [
+                jobId, json.dumps(statsJson)
+            ])
             db.commit()
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress` = `progress_steps`, `completed` = 1,
                     state="completed", `last_update` = now()
                 WHERE `job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             db.commit()
         return True
     except:

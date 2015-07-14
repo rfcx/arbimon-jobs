@@ -11,7 +11,13 @@ def  get_model_type():
 def cancelStatus(db,jobId,rmFolder=None,quitj=True):
     status = None
     with closing(db.cursor()) as cursor:
-        cursor.execute('select `cancel_requested` from`jobs`  where `job_id` = '+str(jobId))
+        cursor.execute("""
+            SELECT `cancel_requested` 
+            FROM `jobs`
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
         status = cursor.fetchone()
         if status:
@@ -22,7 +28,13 @@ def cancelStatus(db,jobId,rmFolder=None,quitj=True):
         else:
             return False
         if status and int(status) > 0:
-            cursor.execute('update `jobs` set `state`="canceled" where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="canceled" 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
             print 'job canceled'
             if rmFolder:
