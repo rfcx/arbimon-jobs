@@ -14,8 +14,8 @@ class AbstractStorage(object):
         raise StorageError("Cannot put file " + file + " to " + self.__class__.__name__)
 
     def put_file_fd(self, file, fd, acl=None):
-        self.put_file(self, file, fd.read(), acl=acl)
+        self.put_file(file, fd.read(), acl=acl)
 
     def put_file_path(self, file, filepath, acl=None):
-        with open(filepath, 'rb') as finp:
-            self.put_file_fd(self, file, fd, acl=acl)
+        with open(filepath, 'rb') as fd:
+            self.put_file_fd(file, fd, acl=acl)
