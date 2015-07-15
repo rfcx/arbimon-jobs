@@ -126,7 +126,7 @@ if bin_size < 0:
     log.close()
     sys.exit(-1)
 
-storage = a2pyutils.storage.BotoBucketStorage(**configuration)
+storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
 
 try:
 #------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
@@ -194,7 +194,7 @@ try:
     
 #------------------------------- FUNCTION THAT PROCESS ONE RECORDING --------------------------------------------------------------------------------------------------------------------
     cancelStatusFlag = False
-    def processRec(rec, config):
+    def processRec(rec, config, storage):
         try:
             db1 = MySQLdb.connect(
                 host=config[0], user=config[1], passwd=config[2], db=config[3]
@@ -234,7 +234,7 @@ try:
         logofthread.write('worker id'+str(id)+' log: rec uri:'+uri)
         start_time_rec = time.time()
         recobject = Rec(
-            str(uri), str(workingFolder), str(config[4]), logofthread, False
+            str(uri), str(workingFolder), storage, logofthread, False
             )
 
         logofthread.write(
@@ -366,7 +366,7 @@ try:
     resultsParallel = None
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(processRec)(recordingi, config) for recordingi in recsToProcess
+            delayed(processRec)(recordingi, config, storage) for recordingi in recsToProcess
         )
     except:
         if cancelStatus(db,job_id,workingFolder,False):

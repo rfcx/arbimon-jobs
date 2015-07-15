@@ -121,7 +121,7 @@ def insert_rec_error(db, recId, jobId):
         
 import sys
 classificationCanceled =False
-def classify_rec(rec,mod,workingFolder,log,config,jobId):
+def classify_rec(rec,mod,workingFolder, storage, log,config,jobId):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -146,7 +146,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
             useSsim =  mod[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim,16,oldModel,clfFeatsN,useRansac,bIndex )
+        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder, storage,log,False,useSsim,16,oldModel,clfFeatsN,useRansac,bIndex )
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
@@ -216,7 +216,7 @@ def write_vector(recUri,tempFolder,featvector):
 
 def upload_vector(uri, filen, storage):
     try:
-        storage.put_file(uri, finp.read(), acl='public-read')
+        storage.put_file_path(uri, filen, acl='public-read')
     except a2pyutils.storage.StorageError as se:
         exit_error('cannot upload vector file. error:' + se.message)
 
@@ -295,7 +295,7 @@ def run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, lo
     log.write('starting parallel for.')
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
+            delayed(classify_rec)(rec,mod,workingFolder, storage, log,config,jobId) for rec in recsToClassify
         )
     except:
         if classificationCanceled:
@@ -355,8 +355,10 @@ def run_classification(jobId):
     except:
         return False
     if model_type_id in [4]:
-        retValue = run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, log, config, ncpu, storage)
-        db.close()
+        try:
+            retValue = run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, log, config, ncpu, storage)
+        finally:
+            db.close()
         return retValue
     elif model_type_id in [-1]:
         pass
