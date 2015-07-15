@@ -40,9 +40,9 @@ class close_obj:
     def close(self):
         global close_obj_calls
         close_obj_calls.append({'f':'close'})
-    def execute(self,q):
+    def execute(self,q, p=None):
         global close_obj_calls
-        close_obj_calls.append({'f':'execute','q':q})
+        close_obj_calls.append({'f':'execute','q':q, 'p':p})
     def fetchone(self):
         global close_obj_calls
         close_obj_calls.append({'f':'fetch_one'})
@@ -124,16 +124,31 @@ class Test_training(unittest.TestCase):
         ], dbMock.calls, msg="roigen incorrect order of database calls")
 
         assertArraysEqual(self, [
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'},
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'},
-            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
-            {'f': 'close'},
-            {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1,1) ', 'f': 'execute'},
-            {'f': 'close'},
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, 
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, 
+            {'q': '\n' +
+            '            UPDATE `jobs` \n' +
+            '            SET `state`="processing", `progress` = `progress` + 1 \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
+            {'f': 'close'}, 
+            {'q': '\n' +
+            '                INSERT INTO `recordings_errors` (`recording_id`, `job_id`) \n' +
+            '                VALUES (%s, %s)\n' +
+            '            ', 'p': [1, 1], 'f': 'execute'}, 
+            {'f': 'close'}
         ], close_obj_calls, msg="incorrect number of database calls")
 
 
@@ -182,13 +197,25 @@ class Test_training(unittest.TestCase):
         ], dbMock.calls, msg="incorrect number of db connection calls")
         
         assertArraysEqual(self, [
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'},
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'},
-            {'f': 'fetch_one'},
-            {'f': 'close'},
-            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'},
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, 
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
+            {'f': 'fetch_one'}, 
+            {'f': 'close'}, 
+            {'q': '\n' +
+            '            UPDATE `jobs` \n' +
+            '            SET `state`="processing", `progress` = `progress` + 1 \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'close'}
         ], close_obj_calls, msg="incorrect number of database calls")
         
@@ -219,18 +246,38 @@ class Test_training(unittest.TestCase):
         
         assertArraysEqual(self, BotoBucketStorageCalls, Mock_BotoBucketStorage.calls.traced, msg="recnilize incorrect number of connection calls")
         mysql_connect.assert_any_call(passwd='pass', host='host', db='db', user='user')
-        assertArraysEqual(self, [{'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+        assertArraysEqual(self, [
+            {'q': '\n' +
+            '            UPDATE `jobs` \n' +
+            '            SET `state`="processing", `progress` = `progress` + 1 \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'close'}, 
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
             {'f': 'close'}, 
-            {'q': 'select `cancel_requested` from`jobs`  where `job_id` = 1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            SELECT `cancel_requested` \n' +
+            '            FROM `jobs`\n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
             {'f': 'close'}, 
-            {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            SELECT `project_id` \n' +
+            '            FROM `jobs` \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
             {'f': 'close'}, 
-            {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1000,1) ', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            INSERT INTO `recordings_errors` (`recording_id`, `job_id`) \n' +
+            '            VALUES (%s, %s)\n' +
+            '        ', 'p': [1000, 1], 'f': 'execute'}, 
             {'f': 'close'}
         ], close_obj_calls, msg="recnilize incorrect number of db calls")        
         assertArraysEqual(self, [], status_mock_calls, msg="recnilize incorrect number of status calls")
@@ -272,12 +319,23 @@ class Test_training(unittest.TestCase):
 
         mysql_connect.assert_called_once(passwd='pass', host='host', db='db', user='user')
         assertArraysEqual(self, close_obj_calls, [
-            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            UPDATE `jobs` \n' +
+            '            SET `state`="processing", `progress` = `progress` + 1 \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'close'}, 
-            {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            SELECT `project_id` \n' +
+            '            FROM `jobs` \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
             {'f': 'close'}, 
-            {'q': 'INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES (1000,1) ', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            INSERT INTO `recordings_errors` (`recording_id`, `job_id`) \n' +
+            '            VALUES (%s, %s)\n' +
+            '        ', 'p': [1000, 1], 'f': 'execute'}, 
             {'f': 'close'}
         ], msg="recnilize incorrect number of db calls")
         statusCalls = ['features', 'getVector']
@@ -325,9 +383,17 @@ class Test_training(unittest.TestCase):
 
         mysql_connect.assert_called_once(passwd='pass', host='host', db='db', user='user')
         assertArraysEqual(self, [
-            {'q': 'update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = 1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            UPDATE `jobs` \n' +
+            '            SET `state`="processing", `progress` = `progress` + 1 \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'close'}, 
-            {'q': 'SELECT `project_id` FROM `jobs` WHERE `job_id` =  1', 'f': 'execute'}, 
+            {'q': '\n' +
+            '            SELECT `project_id` \n' +
+            '            FROM `jobs` \n' +
+            '            WHERE `job_id` = %s\n' +
+            '        ', 'p': [1], 'f': 'execute'}, 
             {'f': 'fetch_one'}, 
             {'f': 'close'}
         ], close_obj_calls, msg="recnilize incorrect number of db calls")
