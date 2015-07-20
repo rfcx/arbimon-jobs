@@ -27,14 +27,18 @@ import json
 
 classificationCanceled =False
 
-def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
+def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
     global classificationCanceled
     if classificationCanceled:
         return None
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
-    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
+    local_storage = True
+    if local_storage:
+        storage = a2pyutils.storage.LocalStorage("folder")
+    else:
+        storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     if len(line) < 8:
         db.close()
@@ -54,7 +58,7 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
     recuri = line[7]
     log.write("roigen: processing "+recuri)
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
-    roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
+    roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex,save_model)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
             UPDATE `jobs` 
@@ -93,7 +97,7 @@ def insertRecError(db,jobId,recId):
     db.close()
     db = None
     
-def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0):
+def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0,save_model=True):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -103,7 +107,11 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         log.write('error analyzing: config is wrong')
         return 'err'
     recId = int(line[5])
-    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
+    local_storage = True
+    if local_storage:
+        storage = a2pyutils.storage.LocalStorage("folder")
+    else:
+        storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = None
     conn = None
     try:
@@ -159,8 +167,8 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         fets = recAnalized.features()
         vector = recAnalized.getVector()
         vectorFile = workingFolder+recName
-            
-        storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
+        if save_model:
+            storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
             
         infos = []
         infos.append(line[4])
@@ -320,7 +328,7 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
     return trainingData,progress_steps,speciesSongtype,numSpeciesSongtype,maxBand
 
 def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage,log,speciesSongtype,numSpeciesSongtype,project_id,user_id, modelName,
-                              useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent ):
+                              useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent,save_model=True ):
     db = get_db(config,cursor=False)
     validationData = []
     validationId = None
@@ -372,7 +380,8 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
         # compute storage key
         valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)    
         # save validation file to storage
-        storage.put_file_path(valiKey, validationFile)
+        if save_model:
+            storage.put_file_path(valiKey, validationFile)
     
         # save validation to DB
         progress_steps = progress_steps + 15
@@ -422,11 +431,11 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
     
     return validationData,validationId
    
-def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db):
+def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db,save_model=True):
     rois = None
     """Roigenerator"""
     try:
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex) for line in trainingData)
+        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model) for line in trainingData)
     except:
         exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
         
@@ -482,13 +491,13 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
         
     return classes,patternSurfaces
 
-def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db):
+def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model):
     results = None
     """Recnilize"""
     log.write("analizing recordings")
     
     #try:
-    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex) for line in validationData)
+    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model) for line in validationData)
     #except:
         #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
@@ -716,7 +725,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
 
-def train_pattern_matching(db,jobId,log,config, storage):
+def train_pattern_matching(db,jobId,log,config, storage,save_model=True):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -745,7 +754,7 @@ def train_pattern_matching(db,jobId,log,config, storage):
     
     cancelStatus(db,jobId,workingFolder)
 
-    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config, storage, log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
+    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config, storage, log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent,save_model)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -753,7 +762,7 @@ def train_pattern_matching(db,jobId,log,config, storage):
     
     cancelStatus(db,jobId,workingFolder)
     
-    rois =  generate_rois(training_recordings,num_cores,config,workingFolder,jobId,ssim_flag,bIndex,log,db)
+    rois =  generate_rois(training_recordings,num_cores,config,workingFolder,jobId,ssim_flag,bIndex,log,db,save_model)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -761,7 +770,7 @@ def train_pattern_matching(db,jobId,log,config, storage):
     
     cancelStatus(db,jobId,workingFolder)
     
-    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db)
+    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -777,30 +786,30 @@ def train_pattern_matching(db,jobId,log,config, storage):
     for classId in models:
         modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
         
-        pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
-       
-        patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
-        
-        png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-        
-        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
-        modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
-        files2upload = {
-            'model':{'key':modKey ,
-                     'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
-                     'public':False},
-            'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
-                          'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
-                          'public':False},
-            'png':{'key': pngKey ,
-                   'file':pngFilename,
-                   'public':True}
-        }
-        upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
-    
-        save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+        if save_model:
+            pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
+           
+            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
             
+            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
             
+            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
+            modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
+            files2upload = {
+                'model':{'key':modKey ,
+                         'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
+                         'public':False},
+                'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
+                              'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
+                              'public':False},
+                'png':{'key': pngKey ,
+                       'file':pngFilename,
+                       'public':True}
+            }
+            upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
+        
+            save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+                        
         log.write("model saved")
         modelSaved = True
     
@@ -818,7 +827,11 @@ def run_training(jobId,save_model=True):
         log.also_print = True    
         configuration = Config()
         config = configuration.data()
-        storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
+        local_storage = True
+        if local_storage:
+            storage = a2pyutils.storage.LocalStorage("folder")
+        else:
+            storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
         db = get_db(config)
         log.write('database connection succesful')
         model_type_id = get_job_model_type(db,jobId)
@@ -827,7 +840,7 @@ def run_training(jobId,save_model=True):
         return False
     if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        retValue = train_pattern_matching(db,jobId,log,config, storage)
+        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model)
         db.close()
         return retValue
     else:

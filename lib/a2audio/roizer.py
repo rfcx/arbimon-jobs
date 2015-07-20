@@ -11,7 +11,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,storage ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True,bIndex=0):
+    def __init__(self, uri ,tempFolder,storage ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True,bIndex=0,save_model=True):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -40,6 +40,7 @@ class Roizer:
         self.logs = logs
         self.ssim = useSsim
         self.bIndex = bIndex
+        self.save_model = save_model
         if self.logs:
             logs.write("Roizer: "+str(uri))
         if  'HasAudioData' in recording.status:
