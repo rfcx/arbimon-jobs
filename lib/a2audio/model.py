@@ -71,6 +71,7 @@ class Model:
         self.obbScore = self.clf.oob_score_
     
     def k_fold_validation(self,folds=10):
+        print 'stating validation'
         totalData = len(self.classes)
         kf = cross_validation.KFold(n=totalData, n_folds=folds)
         testCl = []
@@ -78,8 +79,8 @@ class Model:
         for train_index, test_index in kf:
             trainData = self.data[train_index]
             testData = self.data[test_index]
-            trainClasses = self.classes[train_index]
-            testClasses = self.classes[test_index]
+            trainClasses = [self.classes[i] for i in train_index]
+            testClasses = [self.classes[i] for i in test_index]
             clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1)
             clf.fit(trainData, trainClasses)
             predictions = clf.predict(testData)
@@ -127,7 +128,8 @@ class Model:
         print 'precision_score ', precision_score 
         print 'sensitivity_score ',sensitivity_score 
         print 'specificity_score ',specificity_score
-        print '-----------------------------------------------------------------------------------------' 
+        print '-----------------------------------------------------------------------------------------'
+        print 'end validation'
         
     def validate(self):
         classSubset = [self.classes[i] for i in self.validationDataIndices]

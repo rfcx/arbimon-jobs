@@ -516,6 +516,7 @@ def balance_validation_samples(useTrainingPresent,useValidationPresent,useTraini
     return   useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent
 
 def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent,log,jobId,db,workingFolder,useSsim,useRansac,bIndex,patternSurfaces,classId):
+    log.write("training model")
     modelFilesLocation = workingFolder
     resultSplit = False
     try:
@@ -539,6 +540,8 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
            exit_error('error validating model',-1,log,jobId,db,workingFolder)
            
     modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(classId)+".mod"
+    
+    log.write("saving model to file")
     try:
         model.save(modFile,patternSurfaces[2] ,patternSurfaces[3],patternSurfaces[4],useSsim,useRansac,bIndex)
     except:
@@ -550,10 +553,13 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
     except :
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
 
-    # validation_k_fold = False
-    # if validation_k_fold:
-    #     model.k_fold_validation(folds=10)
-    
+    log.write("k fold validation")
+    validation_k_fold = True
+    if validation_k_fold:
+        model.k_fold_validation(folds=10)
+        
+    log.write("done")
+
     return modelStats
 
 def prepare_png_data(data,log,jobId,db,workingFolder):
@@ -630,7 +636,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
     except:
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
-def train_pattern_matching(db,jobId,log,config):
+def train_pattern_matching(db,jobId,log,config,save_model=False):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -691,38 +697,40 @@ def train_pattern_matching(db,jobId,log,config):
     for classId in models:
         modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
         
-        pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
-       
-        patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+        if save_model:
+            pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
+           
+            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+            
+            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+            
+            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
+            modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
+            files2upload = {
+                'model':{'key':modKey ,
+                         'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
+                         'public':False},
+                'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
+                              'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
+                              'public':False},
+                'png':{'key': pngKey ,
+                       'file':pngFilename,
+                       'public':True}
+            }
+            upload_files_2bucket(config,files2upload,log,jobId,db,workingFolder)
         
-        png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-        
-        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
-        modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
-        files2upload = {
-            'model':{'key':modKey ,
-                     'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
-                     'public':False},
-            'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
-                          'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
-                          'public':False},
-            'png':{'key': pngKey ,
-                   'file':pngFilename,
-                   'public':True}
-        }
-        upload_files_2bucket(config,files2upload,log,jobId,db,workingFolder)
-    
-        save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
-        
+            save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+            
+            
+            log.write("model saved")
         modelSaved = True
-        log.write("model saved")
     
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
     
     return modelSaved 
 
-def run_training(jobId):
+def run_training(jobId,save_model=True):
     
     try:
         retValue = False
@@ -740,7 +748,7 @@ def run_training(jobId):
         return False
     if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        retValue = train_pattern_matching(db,jobId,log,config)
+        retValue = train_pattern_matching(db,jobId,log,config,save_model)
         db.close()
         return retValue
     else:
