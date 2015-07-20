@@ -5,12 +5,13 @@ from matplotlib import *
 import numpy
 import math
 import json
+import a2pyutils.storage
 from samplerates import *
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True,bIndex=0):
+    def __init__(self, uri ,tempFolder,storage ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000,logs=None,useSsim=True,bIndex=0):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -20,8 +21,8 @@ class Roizer:
             raise ValueError("invalid tempFolder")
         elif not os.access(tempFolder, os.W_OK):
             raise ValueError("invalid tempFolder")
-        if type(bucketName) is not str:
-            raise ValueError("bucketName must be a string")
+        if not isinstance(storage, a2pyutils.storage.AbstractStorage):
+            raise ValueError("invalid storage instance")
         if type(iniSecs) is not int and  type(iniSecs) is not float:
             raise ValueError("iniSecs must be a number")
         if type(endiSecs) is not int and  type(endiSecs) is not float:
@@ -35,7 +36,7 @@ class Roizer:
         if lowFreq>=highFreq :
             raise ValueError("lowFreq must be less than highFreq")
         self.spec = None
-        recording = Rec(uri,tempFolder,bucketName,logs)
+        recording = Rec(uri,tempFolder,storage,logs)
         self.logs = logs
         self.ssim = useSsim
         self.bIndex = bIndex

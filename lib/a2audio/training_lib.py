@@ -22,6 +22,8 @@ from joblib import Parallel, delayed
 from a2audio.roiset import Roiset
 from a2audio.model import Model
 import png
+import a2pyutils.storage
+import json
 
 classificationCanceled =False
 
@@ -32,6 +34,7 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
+    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     if len(line) < 8:
         db.close()
@@ -51,14 +54,25 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
     recuri = line[7]
     log.write("roigen: processing "+recuri)
     log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
+    roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex)
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute("""
+            UPDATE `jobs` 
+            SET `state`="processing", `progress` = `progress` + 1 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
     if "NoAudio" in roi.status:
         log.write("roigen: no audio err " + str(recuri))
         with closing(db.cursor()) as cursor:
-            cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
+            cursor.execute("""
+                INSERT INTO `recordings_errors` (`recording_id`, `job_id`) 
+                VALUES (%s, %s)
+            """, [
+                recId, jobId
+            ])
             db.commit()
         db.close()
         return 'err'
@@ -69,7 +83,12 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex):
 
 def insertRecError(db,jobId,recId):
     with closing(db.cursor()) as cursor:
-        cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
+        cursor.execute("""
+            INSERT INTO `recordings_errors` (`recording_id`, `job_id`) 
+            VALUES (%s, %s)
+        """, [
+            recId, jobId
+        ])
         db.commit()
     db.close()
     db = None
@@ -84,21 +103,22 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         log.write('error analyzing: config is wrong')
         return 'err'
     recId = int(line[5])
-    bucketName = config[4]
-    awsKeyId = config[5]
-    awsKeySecret = config[6]
+    storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = None
     conn = None
-    bucket = None
     try:
         db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
-        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
     except:
-        log.write('error analyzing: db or conn are wrong')
+        log.write('error analyzing: Cannot connect to database')
         return 'err'
     with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+        cursor.execute("""
+            UPDATE `jobs` 
+            SET `state`="processing", `progress` = `progress` + 1 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
     if cancelStatus(db,jobId,workingFolder,False):
         classificationCanceled = True
@@ -106,7 +126,13 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     pid = None
     cancelStatus(db,jobId,workingFolder)
     with closing(db.cursor()) as cursor:
-        cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
+        cursor.execute("""
+            SELECT `project_id` 
+            FROM `jobs` 
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
         rowpid = cursor.fetchone()
         try:
@@ -115,12 +141,13 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
             pid = None
     if pid is None:
         insertRecError(db,jobId,recId)
-        log.write('error analyzing: pid is wrong')
+        if log:
+            log.write('error analyzing: pid is wrong')
         return 'err'
-    bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
+    key_prefix = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
     #try:
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder,str(bucketName),log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId)
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId)
     #except:
         #log.write('error analyzing: Recanalizer is wrong')
         #insertRecError(db,jobId,recId)
@@ -128,17 +155,13 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
-        vectorUri = bucketBase+recName 
+        vectorUri = key_prefix + recName 
         fets = recAnalized.features()
         vector = recAnalized.getVector()
         vectorFile = workingFolder+recName
-        myfileWrite = open(vectorFile, 'wb')
-        wr = csv.writer(myfileWrite)
-        wr.writerow(vector)
-        myfileWrite.close()       
-        k = bucket.new_key(vectorUri)
-        k.set_contents_from_filename(vectorFile)
-        k.set_acl('public-read')
+            
+        storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
+            
         infos = []
         infos.append(line[4])
         infos.append(line[3])
@@ -150,9 +173,11 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         db.close()
         return {"fets":fets,"info":infos}
     else:
-        log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
+        if log:
+            log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
-        log.write(line[0])
+        if log:
+            log.write(line[0])
         return 'err'
 
 def get_training_job_data(db,jobId):
@@ -173,7 +198,9 @@ def get_training_job_data(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
                 WHERE J.`job_id` = %s and MT.`model_type_id` =  JP.`model_type_id`
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with training job #{}".format(jobId),-1,None,jobId,db)
@@ -204,7 +231,9 @@ def get_job_model_type(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_training` JP ON JP.job_id = J.job_id , `model_types` MT
                 WHERE J.`job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with training job #{}".format(jobId),-1,None,jobId,db)
@@ -226,7 +255,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 FROM `training_set_roi_set_data` ts, `recordings` r
                 WHERE r.`recording_id` = ts.`recording_id`
                   AND ts.`training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
             trainingFileName = os.path.join(
                 workingFolder,
@@ -249,7 +280,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 SELECT DISTINCT `recording_id`
                 FROM `training_set_roi_set_data`
                 where `training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
     
             numrecordingsIds = int(cursor.rowcount)
@@ -262,7 +295,9 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
                 SELECT DISTINCT `species_id`, `songtype_id`
                 FROM `training_set_roi_set_data`
                 WHERE `training_set_id` = %s
-            """, [training_set_id])
+            """, [
+                training_set_id
+            ])
             db.commit()
     
             numSpeciesSongtype = int(cursor.rowcount)
@@ -284,7 +319,7 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
     
     return trainingData,progress_steps,speciesSongtype,numSpeciesSongtype,maxBand
 
-def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id, modelName,
+def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage,log,speciesSongtype,numSpeciesSongtype,project_id,user_id, modelName,
                               useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent ):
     db = get_db(config,cursor=False)
     validationData = []
@@ -317,8 +352,10 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
                           AND `present` = 0
                           ORDER BY rand()
                           LIMIT %s)
-                    """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
-                          project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) ])
+                    """, [
+                        project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
+                        project_id, spst[0], spst[1], (int(useTrainingNotPresent)+int(useValidationNotPresent )) 
+                    ])
                     
                     db.commit()
     
@@ -332,18 +369,10 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
                         validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
                         spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc ,rowValidation[4]])
         
-        bucketName = config[4]
-        awsKeyId = config[5]
-        awsKeySecret = config[6]
-        
-        # get Amazon S3 bucket
-        conn = S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
-        valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)
-    
-        # save validation file to bucket
-        k = bucket.new_key(valiKey)
-        k.set_contents_from_filename(validationFile)
+        # compute storage key
+        valiKey = 'project_{}/validations/job_{}.csv'.format(project_id, jobId)    
+        # save validation file to storage
+        storage.put_file_path(valiKey, validationFile)
     
         # save validation to DB
         progress_steps = progress_steps + 15
@@ -366,14 +395,18 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config,log,spec
                 UPDATE `job_params_training`
                 SET `validation_set_id` = %s
                 WHERE `job_id` = %s
-            """, [cursor.lastrowid, jobId])
+            """, [
+                cursor.lastrowid, jobId
+            ])
             db.commit()
             
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress_steps` = %s, progress=0, state="processing"
                 WHERE `job_id` = %s
-            """, [progress_steps, jobId])
+            """, [
+                progress_steps, jobId
+            ])
             db.commit()
     except:
         exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
@@ -588,55 +621,102 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
     try:
         #save model to DB
         with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
-            db.commit()        
-            cursor.execute("SELECT   max(ts.`x2` -  ts.`x1`) as l , min(ts.`y1`)  as min, max(ts.`y2`) as max "+
-                "FROM `training_set_roi_set_data` ts "+
-                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="processing", `progress` = `progress` + 5 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
+            db.commit()
+            cursor.execute("""
+                SELECT   max(ts.`x2` -  ts.`x1`) as l , min(ts.`y1`)  as min, max(ts.`y2`) as max
+                FROM `training_set_roi_set_data` ts
+                WHERE ts.`training_set_id` =  %s
+            """, [
+                training_set_id
+            ])
             db.commit()
             row = cursor.fetchone()
             lengthRoi = row['l']	
             minFrequ = row['min']
             maxFrequ = row['max']
             
-            cursor.execute("SELECT   count(*) as c "+
-                "FROM `training_set_roi_set_data` ts "+
-                "WHERE  ts.`training_set_id` =  "+str(training_set_id))
+            cursor.execute("""
+                SELECT count(*) as c 
+                FROM `training_set_roi_set_data` ts 
+                WHERE ts.`training_set_id` =  %s
+            """, [
+                training_set_id
+            ])
             db.commit()
             row = cursor.fetchone()
             totalRois = row['c']
             
-            statsJson = '{"roicount":'+str(totalRois)+' , "roilength":'+str(lengthRoi)+' , "roilowfreq":'+str(minFrequ)+' , "roihighfreq":'+str(maxFrequ)
-            statsJson = statsJson + ',"accuracy":'+str(modelStats[0])+' ,"precision":'+str(modelStats[1])+',"sensitivity":'+str(modelStats[2])
-            statsJson = statsJson + ', "forestoobscore" :'+str(modelStats[3])+' , "roisamplerate" : '+str(patternSurfaces[1])+' , "roipng":"'+pngKey+'"'
-            statsJson = statsJson + ', "specificity":'+str(modelStats[5])+' , "tp":'+str(modelStats[6])+' , "fp":'+str(modelStats[7])+' '
-            statsJson = statsJson + ', "tn":'+str(modelStats[8])+' , "fn":'+str(modelStats[9])+' , "minv": '+str(modelStats[10])+', "maxv": '+str(modelStats[11])+'}'
+            
+            statsJson = json.dumps({
+                "roicount":totalRois, "roilength": lengthRoi, "roilowfreq": minFrequ, "roihighfreq":maxFrequ,
+                "accuracy":modelStats[0], "precision":modelStats[1], "sensitivity": modelStats[2],
+                "forestoobscore": modelStats[3], "roisamplerate": patternSurfaces[1], "roipng": pngKey,
+                "specificity": modelStats[5], "tp": modelStats[6], "fp": modelStats[7],
+                "tn": modelStats[8], "fn": modelStats[9], "minv": modelStats[10], "maxv": modelStats[11]
+            })
         
-            cursor.execute("INSERT INTO `models`(`name`, `model_type_id`, `uri`, `date_created`, `project_id`, `user_id`,"+
-                           " `training_set_id`, `validation_set_id`) " +
-                           " VALUES ('"+modelname+"', "+str(model_type_id)+" , '"+modKey+"' , now() , "+str(project_id)+","+
-                           str(user_id)+" ,"+str(training_set_id)+", "+str(valiId)+" )")
+            cursor.execute("""
+                INSERT INTO `models`(`name`, `model_type_id`, `uri`, `date_created`, `project_id`, `user_id`, `training_set_id`, `validation_set_id`)
+                VALUES (%s, %s, %s, now(), %s, %s, %s, %s)
+            """, [
+                modelname, model_type_id, modKey, project_id, user_id, training_set_id, valiId
+            ])
             db.commit()
             insertmodelId = cursor.lastrowid
             
-            cursor.execute("INSERT INTO `model_stats`(`model_id`, `json_stats`) VALUES ("+str(insertmodelId)+",'"+statsJson+"')")
+            cursor.execute("""
+                INSERT INTO `model_stats`(`model_id`, `json_stats`) 
+                VALUES (%s, %s)
+            """, [
+                insertmodelId, statsJson
+            ])
             db.commit()
             
-            cursor.execute("INSERT INTO `model_classes`(`model_id`, `species_id`, `songtype_id`) VALUES ("+str(insertmodelId)
-                           +","+str(species)+","+str(songtype)+")")
+            cursor.execute("""
+                INSERT INTO `model_classes`(`model_id`, `species_id`, `songtype_id`) 
+                VALUES (%s, %s, %s)
+            """, [
+                insertmodelId, species, songtype
+            ])
             db.commit()       
             
-            cursor.execute('update `job_params_training` set `trained_model_id` = '+str(insertmodelId)+' where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `job_params_training` 
+                SET `trained_model_id` = %s 
+                WHERE `job_id` = %s
+            """, [
+                insertmodelId, jobId
+            ])
             db.commit()
             
-            cursor.execute('update `jobs` set `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
-            cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
     except:
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
-def train_pattern_matching(db,jobId,log,config,save_model=False):
+
+def train_pattern_matching(db,jobId,log,config, storage):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -665,7 +745,7 @@ def train_pattern_matching(db,jobId,log,config,save_model=False):
     
     cancelStatus(db,jobId,workingFolder)
 
-    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config,log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
+    validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config, storage, log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -697,32 +777,31 @@ def train_pattern_matching(db,jobId,log,config,save_model=False):
     for classId in models:
         modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
         
-        if save_model:
-            pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
-           
-            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
-            
-            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-            
-            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
-            modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
-            files2upload = {
-                'model':{'key':modKey ,
-                         'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
-                         'public':False},
-                'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
-                              'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
-                              'public':False},
-                'png':{'key': pngKey ,
-                       'file':pngFilename,
-                       'public':True}
-            }
-            upload_files_2bucket(config,files2upload,log,jobId,db,workingFolder)
+        pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
+       
+        patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
         
-            save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+        png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+        
+        pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
+        modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
+        files2upload = {
+            'model':{'key':modKey ,
+                     'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
+                     'public':False},
+            'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
+                          'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
+                          'public':False},
+            'png':{'key': pngKey ,
+                   'file':pngFilename,
+                   'public':True}
+        }
+        upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
+    
+        save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
             
             
-            log.write("model saved")
+        log.write("model saved")
         modelSaved = True
     
     if os.path.exists(workingFolder):
@@ -739,7 +818,7 @@ def run_training(jobId,save_model=True):
         log.also_print = True    
         configuration = Config()
         config = configuration.data()
-        bucketName = config[4]
+        storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
         db = get_db(config)
         log.write('database connection succesful')
         model_type_id = get_job_model_type(db,jobId)
@@ -748,7 +827,7 @@ def run_training(jobId,save_model=True):
         return False
     if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        retValue = train_pattern_matching(db,jobId,log,config,save_model)
+        retValue = train_pattern_matching(db,jobId,log,config, storage)
         db.close()
         return retValue
     else:

@@ -3,6 +3,7 @@ from contextlib import closing
 import shutil
 from soundscape.set_visual_scale_lib import exit_error
 from boto.s3.connection import S3Connection
+import a2pyutils.storage
 
 def  get_model_type():
     pass
@@ -10,7 +11,13 @@ def  get_model_type():
 def cancelStatus(db,jobId,rmFolder=None,quitj=True):
     status = None
     with closing(db.cursor()) as cursor:
-        cursor.execute('select `cancel_requested` from`jobs`  where `job_id` = '+str(jobId))
+        cursor.execute("""
+            SELECT `cancel_requested` 
+            FROM `jobs`
+            WHERE `job_id` = %s
+        """, [
+            jobId
+        ])
         db.commit()
         status = cursor.fetchone()
         if status:
@@ -21,7 +28,13 @@ def cancelStatus(db,jobId,rmFolder=None,quitj=True):
         else:
             return False
         if status and int(status) > 0:
-            cursor.execute('update `jobs` set `state`="canceled" where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `state`="canceled" 
+                WHERE `job_id` = %s
+            """, [
+                jobId
+            ])
             db.commit()
             print 'job canceled'
             if rmFolder:
@@ -34,25 +47,13 @@ def cancelStatus(db,jobId,rmFolder=None,quitj=True):
         else:
             return False
 
-def upload_files_2bucket(config,files,log,jobId,db,workingFolder):
-    bucket = None
-    log.write('starting bucket upload')
-    try:
-        bucketName = config[4]
-        awsKeyId = config[5]
-        awsKeySecret = config[6]
-        conn = S3Connection(awsKeyId, awsKeySecret)
-        bucket = conn.get_bucket(bucketName)
-    except:
-        exit_error('cannot initiate bucket connection',-1,log,jobId,db,workingFolder)
+def upload_files_2storage(storage, files,log,jobId,db,workingFolder):
+    log.write('starting storage upload')
         
     try:
         for k in files:
             fileu = files[k]
-            bk = bucket.new_key(fileu['key'])
-            bk.set_contents_from_filename(fileu['file'])
-            if fileu['public']:
-                bk.set_acl('public-read')
-    except:
-        exit_error('error uploading files to bucket',-1,log,jobId,db,workingFolder)
-    log.write('files uploaded to bucket')
+            storage.put_file_path(fileu['key'], fileu['file'], acl='public-read' if fileu['public'] else None)
+    except a2pyutils.storage.StorageError as se:
+        exit_error('error uploading files to storage. '+se.message,-1,log,jobId,db,workingFolder)
+    log.write('files uploaded to storage')

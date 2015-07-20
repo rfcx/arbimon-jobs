@@ -29,7 +29,8 @@ class Config(object):
             self.dbConfig['database'],
             self.awsConfig['bucketName'],
             self.awsConfig['accessKeyId'],
-            self.awsConfig['secretAccessKey']
+            self.awsConfig['secretAccessKey'],
+            self.awsConfig['region']
         ]
 
     def load(self, cfg):

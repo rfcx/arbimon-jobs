@@ -20,6 +20,7 @@ import warnings
 from samplerates import *
 import cv2
 from cv import *
+import a2pyutils.storage
 from contextlib import closing
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
@@ -27,7 +28,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder,bucketName, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0,db=None,rec_id=None,job_id=None):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, storage, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0,db=None,rec_id=None,job_id=None):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -44,8 +45,8 @@ class Recanalizer:
             raise ValueError("invalid tempFolder does not exists")
         elif not os.access(tempFolder, os.W_OK):
             raise ValueError("invalid tempFolder")
-        if type(bucketName) is not str:
-            raise ValueError("bucketName must be a string")
+        if not isinstance(storage, a2pyutils.storage.AbstractStorage):
+            raise ValueError("invalid storage instance")
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
         start_time = time.time()
@@ -56,7 +57,7 @@ class Recanalizer:
         self.speciesSurface = speciesSurface
         self.logs = logs   
         self.uri = uri
-        self.bucketName = bucketName
+        self.storage = storage
         self.tempFolder = tempFolder
         self.rec = None
         self.status = 'InitNoData'
@@ -86,7 +87,7 @@ class Recanalizer:
         if not self.hasrec:
             self.instanceRec()
         if self.logs:
-            self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
+            self.logs.write("retrieving recording from storage --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
@@ -111,7 +112,12 @@ class Recanalizer:
                             elapsed = time.time() - start_time_all
                             print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
                             with closing(self.db.cursor()) as cursor:
-                                cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
+                                cursor.execute("""
+                                    INSERT INTO `recanalizer_stats` (job_id, rec_id, exec_time) 
+                                    VALUES (%s, %s, %s)
+                                """, [
+                                    self.job_id, self.rec_id, elapsed
+                                ])
                                 self.db.commit()                           
                         if self.logs:
                             self.logs.write("Done:feature vector --- seconds ---" + str(time.time() - start_time))
@@ -123,7 +129,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,self.logs,True,False,True)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.storage,self.logs,True,False,True)
         self.hasrec = True
         
     def getVector(self ):
@@ -132,7 +138,7 @@ class Recanalizer:
         return self.distances
     
     def insertRecAudio(self,data,fs=44100):
-        self.rec = Rec('nouri','/tmp/','bucketName',None,True,True)
+        self.rec = Rec('nouri','/tmp/','storage',None,True,True)
         for i in data:
             self.rec.original.append(i)
         self.rec.sample_rate = fs

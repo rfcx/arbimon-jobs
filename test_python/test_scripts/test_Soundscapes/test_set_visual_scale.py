@@ -4,6 +4,13 @@ import mock
 from mock import patch
 from contextlib import contextmanager
 from mock import Mock
+from test_python.framework.assertion import assertArraysEqual
+from test_python.framework.mocks import Mock_BotoBucketStorage
+
+MOCK_STORAGE = Mock_BotoBucketStorage()
+MOCK_STORAGE.set_file_list({
+    'error/file' : {'raise': 'user error'}
+})
 
 class db_mock:
     calls = []
@@ -75,43 +82,6 @@ class keyMock(object):
         global keyMockCalls
         keyMockCalls.append({'f':'set_acl','u':a})
     
-bucket_mock_calls = []
-class bucket_mock:
-    def __init__(self,raisee=False):
-        self.raisee = raisee
-    def new_key(self,uri):
-        global bucket_mock_calls
-        bucket_mock_calls.append({'f':'new_key','u':uri})
-        if self.raisee:
-            raise IOError
-        else:
-            return keyMock()
-    def get_key(self,scidx_uri, validate=False ):
-        global bucket_mock_calls
-        bucket_mock_calls.append({'f':'get_key','u':scidx_uri})
-        return keyMock()
-    
-conn_mock_calls= []    
-class conn_mock:
-    def __init__(self,a,b):
-        global conn_mock_calls
-        conn_mock_calls.append({'f':'init','a':a,'b':b})
-    def get_bucket(self,bn,validate=None):
-        global conn_mock_calls
-        conn_mock_calls.append({'f':'get_bucket','b':bn,'a':validate})
-        return bucket_mock()
-
-new_con_calls = []
-def new_con(a,b):
-    global new_con_calls
-    new_con_calls.append({'a':a,'b':b})
-    return conn_mock(a,b)
-
-new_con_none_calls = []
-def new_con_none(a,b):
-    global new_con_none_calls
-    new_con_none_calls.append({'a':a,'b':b})
-    return None
 
 isInstanceMockFalse_calls = []
 def isInstanceMockFalse(a,b):
@@ -138,6 +108,10 @@ scidxFile_Calls = []
 class scidxFile(object):
     def __init__(self, n):
         self.file = n
+    def set_file_data(self, data):
+        global scidxFile_Calls
+        scidxFile_Calls.append({'f':'set_file_data', 'd':data})
+        
     def retry_get(self):
         global scidxFile_Calls
         scidxFile_Calls.append({'f':'retry_get'})
@@ -160,7 +134,6 @@ class Test_set_visual_scale_lib(unittest.TestCase):
             from soundscape.set_visual_scale_lib import exit_error
             from soundscape.set_visual_scale_lib import get_db
             from soundscape.set_visual_scale_lib import get_sc_data
-            from soundscape.set_visual_scale_lib import get_bucket
             from soundscape.set_visual_scale_lib import get_scidx_file
             from soundscape.set_visual_scale_lib import write_image
             from soundscape.set_visual_scale_lib import upload_image
@@ -256,48 +229,23 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         except:
             self.fail('get_norm_vector: Incorrect number of calls')
     
-    def test_get_bucket(self):
-        """Test get_bucket procedure"""
-        global bucket_mock_calls
-        global conn_mock_calls
-        global new_con_calls
-        global new_con_none_calls
-        new_con_calls = []
-        bucket_mock_calls = []
-        conn_mock_calls = []
-        from soundscape.set_visual_scale_lib import get_bucket
-        exitErr = MagicMock()
-        with mock.patch('boto.s3.connection.S3Connection', new_con_none, create=False):
-            with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-                self.assertIsNone(get_bucket(['d','d','d','d','bucketName','awsKey','awsPass']))
-        with mock.patch('boto.s3.connection.S3Connection', new_con, create=False):
-            with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-                self.assertIsInstance( get_bucket(['d','d','d','d','bucketName','awsKey','awsPass']),bucket_mock)
-
-        exitErr.assert_any_calls('cannot not connect to aws.')
-        self.assertEqual(conn_mock_calls[0],{'a': 'awsKey', 'b': 'awsPass', 'f': 'init'},msg="get_bucket: AWS Connection call incorrect")
-        self.assertEqual(new_con_calls[0],{'a': 'awsKey', 'b': 'awsPass'},msg="get_bucket: S3Connection call incorrect")
-        self.assertEqual(new_con_none_calls[0],{'a': 'awsKey', 'b': 'awsPass'},msg="get_bucket: S3Connection call incorrect")
-    
     def test_get_scidx_file_notinstance(self):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
         global isInstanceMockFalse_calls
-        global bucket_mock_calls
-        bucket_mock_calls = []
         isInstanceMockFalse_calls= []
         file_cache_mock_calls = []
         from soundscape.set_visual_scale_lib import get_scidx_file
         exitErr = MagicMock()
-        bucketMock = bucket_mock()
+        MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
             with mock.patch('__builtin__.isinstance',isInstanceMockFalse, create=False):
                 fcm = file_cache_mock(None)
-                get_scidx_file('randomUri',fcm,bucketMock)
+                get_scidx_file('randomUri',fcm, MOCK_STORAGE)
             
         self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache wrong call")
         self.assertEqual(isInstanceMockFalse_calls[0],{'a': None, 'b': "<class 'a2pyutils.tempfilecache.CacheMiss'>"})
-        self.assertEqual(len(bucket_mock_calls),0,msg="get_scidx_file: bucket new_key should have not been call")
+        assertArraysEqual(self, [], MOCK_STORAGE.calls.traced, msg="get_scidx_file: storage should have not been call")
         exitErr.assert_ant_calls('cannot not retrieve scidx_file.')
         exitErr.reset_mock()
         
@@ -305,25 +253,25 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         """Test get_scidx_file procedure"""
         global file_cache_mock_calls
         global isInstanceMockTrue_calls
-        global bucket_mock_calls
         global scidxFile_Calls
         global keyMockCalls
         keyMockCalls = []
         scidxFile_Calls = []
-        bucket_mock_calls = []
         isInstanceMockTrue_calls= []
         file_cache_mock_calls = []
         from soundscape.set_visual_scale_lib import get_scidx_file
         exitErr = MagicMock()
-        bucketMock = bucket_mock()
+        MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
             with mock.patch('__builtin__.isinstance',isInstanceMockTrue, create=False):
                 fcm = file_cache_mock_retry('a file')
-                get_scidx_file('randomUri',fcm,bucketMock)
-            
-        self.assertEqual(keyMockCalls[0] ,{'a': 'a file', 'f': 'get_contents_to_filename'},msg="get_scidx_file: get_contents_to_filename call wrong")
-        self.assertEqual(scidxFile_Calls[0],{'f': 'retry_get'},msg="get_scidx_file: retry_get function call wrong")
-        self.assertEqual(bucket_mock_calls[0] ,{'u': 'randomUri', 'f': 'get_key'},msg="get_scidx_file: bucket call wrong")
+                get_scidx_file('randomUri',fcm, MOCK_STORAGE)
+        assertArraysEqual(self, [
+            ('get_file', ('randomUri',), {})
+        ], MOCK_STORAGE.calls.traced, msg="get_scidx_file: get_contents_to_filename call wrong")
+        assertArraysEqual(self, [
+            {'f': 'set_file_data', 'd': 'file_data'}
+        ], scidxFile_Calls, msg="get_scidx_file: retry_get function call wrong")
         self.assertEqual(isInstanceMockTrue_calls[0]['b'], "<class 'a2pyutils.tempfilecache.CacheMiss'>",msg="get_scidx_file: is intance called wrong")
         self.assertEqual(file_cache_mock_calls[0],{'u': 'randomUri', 'f': 'fetch'},msg="get_scidx_file: file cache call wrong")
         self.assertEqual(len(exitErr.mock_calls),0,msg="get_scidx_file: expected no errors ")
@@ -361,31 +309,27 @@ class Test_set_visual_scale_lib(unittest.TestCase):
         getPalette.assert_any_call('matrix return value matrix')
     
     def test_upload_image_raise(self):
-        global bucket_mock_calls
         global keyMockCalls
         keyMockCalls = []
-        bucket_mock_calls = []
         from soundscape.set_visual_scale_lib import upload_image
         exitErr = MagicMock()
-        bucketMock = bucket_mock(True)
+        MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-            upload_image('/any/image/uri','/any/image/path',bucketMock)
+            upload_image('/any/image/uri','/error/file', MOCK_STORAGE)
         exitErr.assert_any_calls('cannot upload image file.')
-        self.assertEqual(bucket_mock_calls[0],{'u': '/any/image/uri', 'f': 'new_key'},msg="upload_image_raise: wrong bucket call")
-        self.assertEqual(0,len(keyMockCalls),msg="upload_image_raise: no calls expected to key functions")
+        assertArraysEqual(self, [
+            ('put_file_path', ('/any/image/uri', '/error/file'), {'acl': 'public-read'})
+        ], MOCK_STORAGE.calls.traced, msg="upload_image: wrong key calls")
 
     def test_upload_image(self):
-        global bucket_mock_calls
-        global keyMockCalls
-        keyMockCalls = []
-        bucket_mock_calls = []
         from soundscape.set_visual_scale_lib import upload_image
         exitErr = MagicMock()
-        bucketMock = bucket_mock(False)
+        MOCK_STORAGE.calls.clear()
         with mock.patch('soundscape.set_visual_scale_lib.exit_error', exitErr, create=False):
-            upload_image('/any/image/uri','/any/image/path',bucketMock)
-        self.assertEqual(bucket_mock_calls[0],{'u': '/any/image/uri', 'f': 'new_key'},msg="upload_image: wrong bucket call")
-        self.assertEqual(keyMockCalls,[{'u': '/any/image/path', 'f': 'set_contents_from_filename'}, {'u': 'public-read', 'f': 'set_acl'}],msg="upload_image: wrong key calls")
+            upload_image('/any/image/uri','/any/image/path', MOCK_STORAGE)
+        assertArraysEqual(self, [
+            ('put_file_path', ('/any/image/uri', '/any/image/path'), {'acl': 'public-read'})
+        ], MOCK_STORAGE.calls.traced, msg="upload_image: wrong key calls")
         self.assertEqual(0,len(exitErr.mock_calls),msg="upload_image: no errors expected")
     
     def test_update_db(self):

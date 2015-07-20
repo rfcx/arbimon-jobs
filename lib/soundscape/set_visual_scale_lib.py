@@ -7,7 +7,7 @@ from a2pyutils import tempfilecache
 import a2pyutils.palette
 import soundscape
 import sys
-import boto.s3.connection
+import a2pyutils.storage
 import os
 import shutil
 
@@ -17,7 +17,13 @@ def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
         log.write('\n<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg))
     if jobId and db:
         with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `remarks` = "Error: '+str(msg)+'" ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
+            cursor.execute("""
+                UPDATE `jobs` 
+                SET `remarks` = %s ,`state`="error", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() 
+                WHERE `job_id` = %s
+            """, [
+                "Error: " + str(msg) , jobId
+            ])
             db.commit() 
         log.write(msg)
     if workingFolder:
@@ -53,9 +59,9 @@ def get_sc_data(db, soundscape_id):
                 FROM soundscapes S
                 JOIN soundscape_aggregation_types SAT ON S.soundscape_aggregation_type_id = SAT.soundscape_aggregation_type_id
                 WHERE soundscape_id = %s
-            """,
-                [soundscape_id]
-            )
+            """, [
+                soundscape_id
+            ])
             sc_data = cursor.fetchone()
     if not sc_data:
         exit_error("Soundscape #{} not found".format(soundscape_id))
@@ -70,13 +76,13 @@ def get_norm_vector(db, sc_data):
         for dp in aggregation['date']
     ]
     with closing(db.cursor()) as cursor:
-            cursor.execute('''
+            cursor.execute("""
                 SELECT {} , COUNT(*) as count
                 FROM `playlist_recordings` PR
                 JOIN `recordings` R ON R.recording_id = PR.recording_id
                 WHERE PR.playlist_id = {}
                 GROUP BY {}
-            '''.format(
+            """.format(
                 ', '.join([
                     "{} as dp_{}".format(d, i)
                     for i, d in enumerate(date_parts)
@@ -93,38 +99,15 @@ def get_norm_vector(db, sc_data):
     return norm_vector
 
 
-def get_bucket(config):
-    bucketName = config[4]
-    awsKeyId = config[5]
-    awsKeySecret = config[6]
-    conn = None
-    bucket = None
-    try:
-        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
-    except:
-        exit_error('cannot not connect to aws.')
-    if not conn:
-        exit_error('cannot not connect to aws.')
-    else:
-        try:
-            bucket = conn.get_bucket(bucketName, validate=False)
-        except Exception, ex:
-            exit_error('cannot not connect to bucket.')
-        if not bucket:
-            exit_error('cannot not connect to bucket.')
-    return bucket
-
-
-def get_scidx_file(scidx_uri, file_cache, bucket):
+def get_scidx_file(scidx_uri, file_cache, storage):
     scidx_file = None
     try:
         scidx_file = file_cache.fetch(scidx_uri)
         if isinstance(scidx_file, tempfilecache.CacheMiss):
-            k = bucket.get_key(scidx_uri, validate=False)
-            k.get_contents_to_filename(scidx_file.file)
-            scidx_file = scidx_file.retry_get()
-    except:
-        exit_error('cannot not retrieve scidx_file.')
+            finp = storage.get_file(scidx_uri)
+            scidx_file.set_file_data(finp.read())
+    except a2pyutils.storage.StorageError as se:
+        exit_error('cannot not retrieve scidx_file. error:'+se.message)
     if not scidx_file:
         exit_error('cannot not retrieve scidx_file.')
     return scidx_file
@@ -142,13 +125,11 @@ def write_image(img_file, scidx_file, clip_max, palette_id, norm_vector=None):
         exit_error('cannot write image file.')
 
 
-def upload_image(img_uri, img_file, bucket):
+def upload_image(img_uri, img_file, storage):
     try:
-        k = bucket.new_key(img_uri)
-        k.set_contents_from_filename(img_file)
-        k.set_acl('public-read')
-    except:
-        exit_error('cannot upload image file.')
+        storage.put_file_path(img_uri, img_file, acl='public-read')
+    except a2pyutils.storage.StorageError as se:
+        exit_error('cannot upload image file. error:'+se.message)
 
 
 def update_db(db, clip_max, palette_id, soundscape_id, normalized):
@@ -159,7 +140,9 @@ def update_db(db, clip_max, palette_id, soundscape_id, normalized):
                 SET visual_max_value = %s, visual_palette = %s,
                     normalized = %s
                 WHERE soundscape_id = %s
-            """, [clip_max, palette_id, int(normalized), soundscape_id])
+            """, [
+                clip_max, palette_id, int(normalized), soundscape_id
+            ])
             db.commit()
     except:
         print 'WARNING: Cannot update database soundscape information'
@@ -176,17 +159,17 @@ def run(soundscape_id, clip_max, palette_id, normalized=0):
     sc_data = get_sc_data(db, soundscape_id)
     norm_vector = get_norm_vector(db, sc_data) if normalized else None
 
-    bucket = get_bucket(config)
+    storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
 
     img_uri = sc_data['uri']
     scidx_uri = sc_data['uri'].replace('image.png', 'index.scidx')
-    scidx_file = get_scidx_file(scidx_uri, file_cache, bucket)
+    scidx_file = get_scidx_file(scidx_uri, file_cache, storage)
 
     img_file = file_cache.key2File(img_uri)
 
     write_image(img_file, scidx_file, clip_max, palette_id, norm_vector)
 
-    upload_image(img_uri, img_file, bucket)
+    upload_image(img_uri, img_file, storage)
 
     update_db(db, clip_max, palette_id, soundscape_id, normalized)
 

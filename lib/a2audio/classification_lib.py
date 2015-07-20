@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import os
 import multiprocessing
+import a2pyutils.storage
 from joblib import Parallel, delayed
 import cPickle as pickle
 import csv
@@ -25,7 +26,9 @@ def get_classification_job_data(db,jobId):
                 FROM `jobs` J
                 JOIN `job_params_classification` JP ON JP.job_id = J.job_id
                 WHERE J.`job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             row = cursor.fetchone()
     except:
         exit_error("Could not query database with classification job #{}".format(jobId))
@@ -41,7 +44,9 @@ def get_model_params(db,classifierId,log):
                 FROM `models`m ,`training_sets_roi_set` ts
                 WHERE m.`training_set_id` = ts.`training_set_id`
                   AND `model_id` = %s
-            """, [classifierId])
+            """, [
+                classifierId
+            ])
             db.commit()
             numrows = int(cursor.rowcount)
             if numrows < 1:
@@ -73,7 +78,9 @@ def get_playlist(db,playlistId,log):
                 FROM `recordings` R, `playlist_recordings` PR
                 WHERE R.`recording_id` = PR.`recording_id`
                   AND PR.`playlist_id` = %s
-            """, [playlistId])
+            """, [
+                playlistId
+            ])
             db.commit()
             numrows = int(cursor.rowcount)
             for x in range(0, numrows):
@@ -92,7 +99,9 @@ def set_progress_params(db,progress_steps, jobId):
                 UPDATE `jobs`
                 SET `progress_steps`=%s, progress=0, state="processing"
                 WHERE `job_id` = %s
-            """, [progress_steps*2+5, jobId])
+            """, [
+                progress_steps*2+5, jobId
+            ])
             db.commit()
     except:
         exit_error("Could not set progress params")
@@ -103,14 +112,16 @@ def insert_rec_error(db, recId, jobId):
             cursor.execute("""
                 INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
                 VALUES (%s, %s)
-            """, [recId, jobId])
+            """, [
+                recId, jobId
+            ])
             db.commit()
     except:
         exit_error("Could not insert recording error")
         
 import sys
 classificationCanceled =False
-def classify_rec(rec,mod,workingFolder,log,config,jobId):
+def classify_rec(rec,mod,workingFolder, storage, log,config,jobId):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -135,13 +146,15 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
             useSsim =  mod[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim,16,oldModel,clfFeatsN,useRansac,bIndex )
+        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder, storage,log,False,useSsim,16,oldModel,clfFeatsN,useRansac,bIndex )
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress` = `progress` + 1
                 WHERE `job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             db.commit()       
     except:
         errorProcessing = True
@@ -175,24 +188,15 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
         
-def get_model(model_uri,config,log,workingFolder):
-    log.write('reaching bucket.')
-    modelLocal = workingFolder+'model.mod'
-    bucket = get_bucket(config)
+def get_model(model_uri, storage, log, workingFolder):
+    modelFile = None
     try:
-        log.write('getting aws file key...')
-        k = bucket.get_key(model_uri, validate=False)
-        log.write('contents to filename...')
-        k.get_contents_to_filename(modelLocal)
-    except:
-        exit_error('fatal error model '+str(model_uri)+' not found in aws',-1,log)
-    log.write('model in local file system.')
-    mod = None
-    log.write('loading model to memory...')
-    if os.path.isfile(modelLocal):
-        mod = pickle.load(open(modelLocal, "rb"))
-    else:
-        exit_error('fatal error cannot load model',-1,log)
+        log.write('getting model from storage...')
+        modelFile = storage.get_file(model_uri)
+    except a2pyutils.storage.StorageError as se:
+        exit_error('fatal error model '+str(model_uri)+' not found in aws. error:' + se.message,-1,log)
+    log.write('loading model...')
+    mod = pickle.load(modelFile)
     log.write('model was loaded to memory.')
     return mod
 
@@ -210,14 +214,11 @@ def write_vector(recUri,tempFolder,featvector):
         exit_error('cannot create featVector')
     return vectorLocal
 
-def upload_vector(uri,filen,config):
+def upload_vector(uri, filen, storage):
     try:
-        bucket = get_bucket(config)
-        k = bucket.new_key(uri)
-        k.set_contents_from_filename(filen)
-        k.set_acl('public-read')
-    except:
-        exit_error('cannot upload vector file.')
+        storage.put_file_path(uri, filen, acl='public-read')
+    except a2pyutils.storage.StorageError as se:
+        exit_error('cannot upload vector file. error:' + se.message)
 
 def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
     try:
@@ -230,12 +231,14 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
                 ) VALUES (%s, %s, %s, %s, %s,
                     %s
                 )
-            """, [jId, recId, species, songtype, presence, maxV])
+            """, [
+                jId, recId, species, songtype, presence, maxV
+            ])
             db.commit()
     except:
         exit_error('cannot insert results to database.')
         
-def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
+def processResults(res, workingFolder, config, modelUri, jobId, species, songtype, db, storage):
     minVectorVal = 9999999.0
     maxVectorVal = -9999999.0
     processed = 0
@@ -246,7 +249,9 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                     UPDATE `jobs`
                     SET `progress` = `progress` + 1
                     WHERE `job_id` = %s
-                """, [jobId])
+                """, [
+                    jobId
+                ])
                 db.commit()   
             if r and 'id' in r:
                 processed = processed + 1
@@ -262,13 +267,13 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                 vectorUri = '{}/classification_{}_{}.vector'.format(
                         modelUri.replace('.mod', ''), jobId, recName
                 )
-                upload_vector(vectorUri,localFile,config)
+                upload_vector(vectorUri, localFile, storage)
                 insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
     except:
         exit_error('cannot process results.')
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
    
-def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
+def run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, log, config, ncpu, storage):
     global classificationCanceled
     try:
         num_cores = multiprocessing.cpu_count()
@@ -282,7 +287,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
         cancelStatus(db,jobId,workingFolder)
         set_progress_params(db,len(recsToClassify), jobId)
         log.write('job progress set to start.')
-        mod = get_model(model_uri,config,log,workingFolder)
+        mod = get_model(model_uri, storage, log, workingFolder)
         cancelStatus(db,jobId,workingFolder)
         log.write('model was fetched.')
     except:
@@ -290,7 +295,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
     log.write('starting parallel for.')
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
+            delayed(classify_rec)(rec,mod,workingFolder, storage, log,config,jobId) for rec in recsToClassify
         )
     except:
         if classificationCanceled:
@@ -299,7 +304,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
     log.write('done parallel execution.')
     cancelStatus(db,jobId,workingFolder)
     try:
-        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db)
+        jsonStats = processResults(resultsParallel, workingFolder, config, model_uri, jobId, species, songtype, db, storage)
     except:
         return False
     log.write('computed stats.')
@@ -313,14 +318,18 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
             cursor.execute("""
                 INSERT INTO `classification_stats` (`job_id`, `json_stats`)
                 VALUES (%s, %s)
-            """, [jobId, json.dumps(statsJson)])
+            """, [
+                jobId, json.dumps(statsJson)
+            ])
             db.commit()
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress` = `progress_steps`, `completed` = 1,
                     state="completed", `last_update` = now()
                 WHERE `job_id` = %s
-            """, [jobId])
+            """, [
+                jobId
+            ])
             db.commit()
         return True
     except:
@@ -333,7 +342,7 @@ def run_classification(jobId):
         log.also_print = True    
         configuration = Config()
         config = configuration.data()
-        bucketName = config[4]
+        storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
         db = get_db(config)
         log.write('database connection succesful')
         (
@@ -346,8 +355,10 @@ def run_classification(jobId):
     except:
         return False
     if model_type_id in [4]:
-        retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
-        db.close()
+        try:
+            retValue = run_pattern_matching(db, jobId, model_uri, species, songtype, playlistId, log, config, ncpu, storage)
+        finally:
+            db.close()
         return retValue
     elif model_type_id in [-1]:
         pass
