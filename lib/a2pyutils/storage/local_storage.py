@@ -1,11 +1,12 @@
 import storage
 
 class LocalFile(object):
-    def __init__(self, fd):
-        self.fd = fd
+    def __init__(self, file):
+        self.file = file
+        self.fd = open(file)
 
     def read(self, size=None):
-        pass
+       return self.fd.read()
             
     @staticmethod
     def line_reader(fd):
@@ -17,12 +18,13 @@ class LocalFile(object):
 class LocalStorage(storage.AbstractStorage):
     def __init__(self, folder):
         self.folder = folder
+        self.fd = None
         
     def get_file_uri(self, file):
-        pass
+        return self.folder
         
     def get_file(self, file):
-        pass
+        return  LocalFile(self.folder+'/'+file)
     
     def put_file(self, file, filedata, acl=None):
         pass

@@ -36,7 +36,7 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
     log.also_print = True
     local_storage = True
     if local_storage:
-        storage = a2pyutils.storage.LocalStorage("folder")
+        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
     else:
         storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
@@ -109,7 +109,7 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     recId = int(line[5])
     local_storage = True
     if local_storage:
-        storage = a2pyutils.storage.LocalStorage("folder")
+        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
     else:
         storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = None
@@ -832,7 +832,7 @@ def run_training(jobId,save_model=True):
         local_storage = True
         log.write('fectching storage.')
         if local_storage:
-            storage = a2pyutils.storage.LocalStorage("folder")
+            storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
         else:
             storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
         log.write('storage fetched.')
