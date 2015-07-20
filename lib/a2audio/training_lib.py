@@ -434,10 +434,10 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
 def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db,save_model=True):
     rois = None
     """Roigenerator"""
-    try:
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model) for line in trainingData)
-    except:
-        exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
+    #try:
+    rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model) for line in trainingData)
+    #except:
+        #exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
         
     if rois is None or len(rois) == 0 :
         exit_error('cannot create rois from recordings',-1,log,jobId,db,workingFolder)
@@ -824,14 +824,18 @@ def run_training(jobId,save_model=True):
         retValue = False
         start_time = time.time()   
         log = Logger(jobId, 'training.py', 'main')
-        log.also_print = True    
+        log.also_print = True
+        log.write('fetching config.')
         configuration = Config()
         config = configuration.data()
+        log.write('config fetched.')
         local_storage = True
+        log.write('fectching storage.')
         if local_storage:
             storage = a2pyutils.storage.LocalStorage("folder")
         else:
             storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
+        log.write('storage fetched.')
         db = get_db(config)
         log.write('database connection succesful')
         model_type_id = get_job_model_type(db,jobId)
