@@ -4,7 +4,7 @@ import sys
 from a2audio.training_lib import run_training
 
 
-USAGE = """Runs a training job.
+USAGE = """Runs a validation job.
 {prog} job_id
     job_id - job id in database
 """.format(prog=sys.argv[0])

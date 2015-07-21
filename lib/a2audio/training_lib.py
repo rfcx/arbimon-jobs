@@ -597,9 +597,15 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
 
     log.write("k fold validation")
     validation_k_fold = True
+    foldesn = 10
     if validation_k_fold:
-        model.k_fold_validation(folds=10)
-        
+        totalData,totalPos ,totalNeg ,accuracy_score,precision_score,sensitivity_score,specificity_score = model.k_fold_validation(folds=foldesn)
+        with closing(db.cursor()) as cursor:
+            cursor.execute("""INSERT INTO `k_fold_Validations`(`job_id`, `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity`)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            [jobId,totalData,totalPos ,totalNeg ,foldesn,accuracy_score,precision_score,sensitivity_score,specificity_score ])
+            db.commit()
+
     log.write("done")
 
     return modelStats
@@ -820,28 +826,28 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True):
 
 def run_training(jobId,save_model=True):
     
-    try:
-        retValue = False
-        start_time = time.time()   
-        log = Logger(jobId, 'training.py', 'main')
-        log.also_print = True
-        log.write('fetching config.')
-        configuration = Config()
-        config = configuration.data()
-        log.write('config fetched.')
-        local_storage = True
-        log.write('fectching storage.')
-        if local_storage:
-            storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
-        else:
-            storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
-        log.write('storage fetched.')
-        db = get_db(config)
-        log.write('database connection succesful')
-        model_type_id = get_job_model_type(db,jobId)
-        log.write('job model type fetched.')
-    except:
-        return False
+    #try:
+    retValue = False
+    start_time = time.time()   
+    log = Logger(jobId, 'training.py', 'main')
+    log.also_print = True
+    log.write('fetching config.')
+    configuration = Config()
+    config = configuration.data()
+    log.write('config fetched.')
+    local_storage = True
+    log.write('fectching storage.')
+    if local_storage:
+        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
+    else:
+        storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
+    log.write('storage fetched.')
+    db = get_db(config)
+    log.write('database connection succesful')
+    model_type_id = get_job_model_type(db,jobId)
+    log.write('job model type fetched.')
+   #except:
+     #   return False
     if model_type_id in [4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
         retValue = train_pattern_matching(db,jobId,log,config, storage,save_model)

@@ -102,14 +102,17 @@ class Model:
         precision_score = 0.0
         sensitivity_score = 0.0
         specificity_score  = 0.0
-        
+        totalPos = 0
+        totalNeg = 0
         for i in range(len(testCl)):
             if str(testCl[i])=='1':
+                totalPos = totalPos + 1
                 if testCl[i] == predicCl[i]:
                     tp = tp + 1.0
                 else:
                     fn = fn + 1.0
             else:
+                totalNeg = totalNeg + 1
                 if testCl[i] == predicCl[i]:
                     tn = tn + 1.0
                 else:
@@ -130,7 +133,8 @@ class Model:
         print 'specificity_score ',specificity_score
         print '-----------------------------------------------------------------------------------------'
         print 'end validation'
-        
+        return totalData,totalPos ,totalNeg ,accuracy_score,precision_score,sensitivity_score,specificity_score
+    
     def validate(self):
         classSubset = [self.classes[i] for i in self.validationDataIndices]
         classSubsetTraining = [self.classes[i] for i in self.trainDataIndices]
