@@ -39,9 +39,9 @@ for i in range(len(uris)):
     if not os.path.exists(folderDest):
         os.makedirs(folderDest)
     f = None
-    f = storage.get_file(uris[i])
     localfilename = folderDest+'/'+uriP[(len(uriP)-1)]
     if not os.path.exists(localfilename):
+        f = storage.get_file(uris[i])
         print "copying to local storage",uris[i]
         with open(localfilename, "wb") as local_file:
             local_file.write(f.read())
