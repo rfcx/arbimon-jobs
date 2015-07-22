@@ -1,5 +1,5 @@
 {
-    "host"     : "10.0.0.15"        ,
+    "host"     : "localhost"        ,
     "user"     : "rafa"   ,
     "password" : "splp420",
     "database" : "arbimon2",

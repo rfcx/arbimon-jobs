@@ -33,7 +33,6 @@ db.close()
 storage = a2pyutils.storage.BotoBucketStorage(config_source[7], config_source[4], config_source[5],config_source[6])
 
 for i in range(len(uris)):
-    print uris[i]
     uriP = uris[i].split('/')
     folderDest ='/'.join(uriP[0:(len(uriP)-1)])
     folderDest = folder+folderDest
@@ -43,8 +42,11 @@ for i in range(len(uris)):
     f = storage.get_file(uris[i])
     localfilename = folderDest+'/'+uriP[(len(uriP)-1)]
     if not os.path.exists(localfilename):
+        print "copying to local storage",uris[i]
         with open(localfilename, "wb") as local_file:
             local_file.write(f.read())
+    else:
+        print "already in local storage", uris[i]
     f = None
 
 print 'done'
