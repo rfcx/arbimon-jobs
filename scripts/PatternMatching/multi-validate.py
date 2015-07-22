@@ -7,7 +7,11 @@ from a2pyutils.config import Config
 import json
 from contextlib import closing
 
-model_type = 4
+if len(sys.argv) < 2:
+    print "specify model type id"
+    sys.exit()
+
+model_type = int(sys.argv[1])
 configuration = Config()
 config = configuration.data()
 db = get_db(config)

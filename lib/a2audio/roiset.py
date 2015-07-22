@@ -8,6 +8,7 @@ import math
 from skimage.measure import structural_similarity as ssim
 from samplerates import *
 import warnings
+import json
 
 class Roiset:   
 
@@ -92,7 +93,7 @@ class Roiset:
         print self.rows,self.maxColumns
         surface = numpy.zeros(shape=self.biggestRoi.shape)
         weights = numpy.zeros(shape=self.biggestRoi.shape)
-        freqs = [i for i in reversed(get_freqs(bIndex))]
+        freqs =  json.load(file('scripts/data/freqs44100.json'))['freqs']
         for roi in self.roi:
             high_index = 0
             low_index = 0

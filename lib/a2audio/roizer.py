@@ -44,11 +44,11 @@ class Roizer:
         if self.logs:
             logs.write("Roizer: "+str(uri))
         if  'HasAudioData' in recording.status:
-            if float(recording.sample_rate) not in analysis_sample_rates:
-                self.status = "SampleRateNotSupported"
-                if self.logs:
-                    logs.write("Roizer: "+str(recording.sample_rate)+" is not supported")
-                return None              
+            #if float(recording.sample_rate) not in analysis_sample_rates:
+            #    self.status = "SampleRateNotSupported"
+            #    if self.logs:
+            #        logs.write("Roizer: "+str(recording.sample_rate)+" is not supported")
+            #    return None              
             self.original = recording.original
             self.sample_rate = recording.sample_rate
             self.recording_sample_rate = recording.sample_rate
@@ -97,25 +97,20 @@ class Roizer:
         endSample = int(math.floor(float((self.endT)) * float((self.sample_rate))))
         if endSample >= len(self.original):
            endSample = len(self.original) - 1
-           
-        if self.logs:
-            self.logs.write("Roizer.py: sampleRate "+str(self.sample_rate))
-            self.logs.write("Roizer.py: Init time: "+str(self.iniT)+" = "+str(initSample)+ " sample ")
-            self.logs.write("Roizer.py: End time: "+str(self.endT)+" = "+str(endSample)+ " sample ")
-        freqsFull = get_freqs(self.bIndex)
+
+        freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
         maxHertzInRec = float(self.sample_rate)/2.0
-        nfft = get_nfft(self.sample_rate,self.bIndex)
-        real_sample_Rate = self.sample_rate
-        
-        targetrows = len(freqsFull)
+        nfft = 512
+        targetrows = 512
+
         data = self.original[initSample:endSample]
-        Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=real_sample_Rate, noverlap=nfft)
+        Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
+
         dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:
             Pxx[i,:] = 0 
             i = i + 1
-        j = i
         #calculate decibeles in the passband
         while freqs[i] < self.highF:
             Pxx[i,:] =  10. * numpy.log10(Pxx[i,:].clip(min=0.0000000001))
@@ -125,9 +120,8 @@ class Roizer:
             Pxx[i,:] = 0
             i = i + 1
         Z = numpy.flipud(Pxx[1:(Pxx.shape[0]-1),:])
-        z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
-        z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
-
-        self.spec = z
+        #z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
+        #z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
+        self.spec = Z
  
 

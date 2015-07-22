@@ -461,7 +461,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
     classes = {}
     """Align rois"""
     log.write('rois 2 surface')
-    try:
+    if True:#try:
         for roi in rois:
             if 'err' not in roi:
                 classid = roi[1]
@@ -479,8 +479,8 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
         for i in classes:
             classes[i].alignSamples(bIndex)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
-    except:
-         exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
+    #except:
+         #exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
             
     cancelStatus(db,jobId,workingFolder)
     

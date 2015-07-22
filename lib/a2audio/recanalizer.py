@@ -22,6 +22,7 @@ import cv2
 from cv import *
 import a2pyutils.storage
 from contextlib import closing
+import random
 
 analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
@@ -94,7 +95,7 @@ class Recanalizer:
             if self.high >= maxFreqInRec:
                 self.status = 'RoiOutsideRecMaxFreq'
             else:
-                if not self.oldModel and float(self.rec.sample_rate) not in analysis_sample_rates:
+                if False:#not self.oldModel and float(self.rec.sample_rate) not in analysis_sample_rates:
                     self.status = "SampleRateNotSupported"
                 else:
                     start_time = time.time()
@@ -108,10 +109,10 @@ class Recanalizer:
                         if self.logs:
                             self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                         start_time = time.time()
-                        if model_type_id == 4:
+                        if self.model_type_id == 4:
                             self.featureVector_search()
                         else:
-                            pass
+                            self.featureVector()
                         
                         if self.db:
                             elapsed = time.time() - start_time_all
@@ -185,7 +186,114 @@ class Recanalizer:
                     ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
                     ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         return ffs
-               
+    
+    def featureVector(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.logs:
+               self.logs.write("featureVector start")
+            if self.logs:
+               self.logs.write(self.uri)    
+            pieces = self.uri.split('/')
+            self.distances = []
+            currColumns = self.spec.shape[1]
+            step = self.step
+            if self.logs:
+               self.logs.write("featureVector start")
+            self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
+           # self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            winSize = min(self.matrixSurfacComp.shape)
+            winSize = min(winSize,7)
+            if winSize %2 == 0:
+                winSize = winSize - 1
+            spec = self.spec;
+            print spec.shape , self.matrixSurfacComp.shape,self.rec.sample_rate
+            if self.model_type_id == 3:
+                if self.logs:
+                    self.logs.write("using search match")
+                self.computeGFTT(numpy.copy(self.matrixSurfacComp),numpy.copy(spec),currColumns)
+            else:
+                if self.model_type_id == 1:
+                    if self.logs:
+                        self.logs.write("using ssim")
+                    for j in range(0,currColumns - self.columns,step):
+                        val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                        if val < 0:
+                           val = 0
+                        self.distances.append(  val   )
+                else: #if self.model_type_id == 2:
+                    if self.logs:
+                        self.logs.write("not using ssim")
+                    threshold = Thresholder()
+                    matrixSurfacCompCopy = threshold.apply(numpy.copy(self.matrixSurfacComp))
+                    specCopy = threshold.apply(numpy.copy(spec))
+                    maxnormforsize = numpy.linalg.norm( numpy.ones(shape=matrixSurfacCompCopy.shape) )
+                    for j in range(0,currColumns - self.columns,step):
+                        val = numpy.linalg.norm( numpy.multiply ( (specCopy[: , j:(j+self.columns)]), matrixSurfacCompCopy ) )/maxnormforsize
+                        self.distances.append(  val )
+            if self.logs:
+               self.logs.write("featureVector end")
+ 
+    def computeGFTT(self,pat,spec,currColumns):
+        currColumns = self.spec.shape[1]
+        spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+        spec = spec.astype('uint8')
+        self.distances = numpy.zeros(spec.shape[1])
+        pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+        pat = pat.astype('uint8')
+        self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
+        th, tw = pat.shape[:2]
+        result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
+        #self.logs.write(str(result))
+        #self.logs.write(str(len(result)))
+        #self.logs.write(str(len(result[0])))
+        #self.logs.write(str(numpy.max(result)))
+        #self.logs.write(str(numpy.mean(result)))
+        #self.logs.write(str(numpy.min(result)))
+        (_, _, minLoc, maxLoc) = cv2.minMaxLoc(result)
+        #self.logs.write(str(minLoc)+' '+str(maxLoc))
+        threshold = numpy.percentile(result,98.5)
+        loc = numpy.where(result >= threshold)
+        winSize = min(pat.shape)
+        winSize = min(winSize,7)
+        step = 16
+        if winSize %2 == 0:
+            winSize = winSize - 1
+        ssimCalls = 0
+        #if self.logs:
+               #self.logs.write("searching locations : "+str(len(loc[0])))
+               #self.logs.write(str(loc))
+        xs = []
+        s = -999
+        for pt in zip(*loc[::-1]):
+            if abs(pt[0] - s)>step/2 :
+                xs.append(pt[0])
+            s = pt[0]
+        self.logs.write(str(xs))
+        xs_smpl = [ xs[i] for i in sorted(random.sample(xrange(len(xs)), min(4,len(xs)))) ]
+        self.logs.write(str(xs_smpl))
+        for pts in xs_smpl:
+            if pts+math.floor((pat.shape[1]*1.33))<=currColumns:
+                for pt in range(max(0,pts-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,pts+int(math.floor((pat.shape[1]*1.33)))),step):
+                    ssimCalls = ssimCalls + 1
+                    val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+                    if val < 0:
+                        val = 0
+                    self.distances[pt+tw/2] = val
+        # for pt in range(max(0,maxLoc[0]-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,maxLoc[0]+int(math.floor((pat.shape[1]*1.33)))),step):
+        #     ssimCalls = ssimCalls + 1
+        #     val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+        #     if val < 0:
+        #         val = 0
+        #     self.distances[pt+tw/2] = val
+        if maxLoc[0]+tw<=currColumns:
+            ssimCalls = ssimCalls + 1
+            val = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
+            if val < 0:
+                val=0
+            self.distances[maxLoc[0]+tw/2] = val
+        self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
+        
     def featureVector_search(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -196,8 +304,9 @@ class Recanalizer:
 
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
             removeUnwanted = self.matrixSurfacComp == -10000
-            if len(removeUnwanted) > 0  :
-                self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
+            
+           # if len(removeUnwanted) > 0  :
+              #  self.matrixSurfacComp[self.matrixSurfacComp[:,:]==-10000] = numpy.min(self.matrixSurfacComp[self.matrixSurfacComp != -10000])
             spec = self.spec
             currColumns = self.spec.shape[1]
             spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
@@ -206,7 +315,7 @@ class Recanalizer:
             pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
             pat = pat.astype('uint8')
             th, tw = pat.shape[:2]
-            
+            print pat.shape,spec.shape,self.rec.sample_rate
             result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF_NORMED)
 
             self.distances = numpy.mean(result,axis=0)
@@ -225,62 +334,47 @@ class Recanalizer:
         return self.spec
     
     def spectrogram(self):
-        freqsmaxRange = get_freqs(self.bIndex)
+        freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
         maxHertzInRec = float(self.rec.sample_rate)/2.0
-        if self.oldModel:
-            nfft = self.speciesSurface.shape[0]
-        else:
-            nfft = get_nfft(self.rec.sample_rate,self.bIndex)
+        i = 0
+        nfft = 512
+        #if self.rec.sample_rate <= 44100:
+        #    while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+        #        i = i + 1
+        #    nfft = i
         start_time = time.time()
-        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft*2, Fs=self.rec.sample_rate , noverlap=nfft )
+
+        Pxx, freqs, bins = mlab.specgram(self.rec.original, NFFT=nfft *2, Fs=self.rec.sample_rate , noverlap=nfft )
+        #if self.rec.sample_rate < 44100:
+        #    self.rec.sample_rate = 44100
         dims =  Pxx.shape
         if self.logs:
             self.logs.write("mlab.specgram --- seconds ---" + str(time.time() - start_time))
+
         i = 0
         j = 0
         start_time = time.time()
         while freqs[i] < self.low:
             j = j + 1
             i = i + 1
-        Pxx =  10. * np.log10( Pxx)    
+        
+        Pxx =  10. * np.log10( Pxx.clip(min=0.0000000001))
         while (i < len(freqs)) and (freqs[i] < self.high):
             i = i + 1
  
         if i >= dims[0]:
             i = dims[0] - 1
-        
-        if model_type_id == 4:
+            
+        if self.model_type_id == 4:
             Z= Pxx[(j-2):(i+2),:]
         else:
             Z= Pxx[(j):(i),:]
-
-        self.highIndex = dims[0]-j
-        self.lowIndex = dims[0]-i
         
-        if self.lowIndex < 0:
-            self.lowIndex = 0
-            
-        if self.highIndex >= dims[0]:
-            self.highIndex = dims[0] - 1
-
-        i = len(freqsmaxRange ) - 1
-        j = i
-        while freqsmaxRange[i] > self.high and i>=0:
-            j = j -1 
-            i = i -1
-            
-        while freqsmaxRange[j] > self.low and j>=0:
-            j = j -1
-        self.speclow = len(freqsmaxRange) - j - 2
-        self.spechigh = len(freqsmaxRange) - i - 2
-        if self.speclow >= len(freqsmaxRange):
-            self.speclow = len(freqsmaxRange)-1
-        if self.spechigh < 0:
-            self.spechigh = 0
+        self.speclow = len(freqs)-j
+        self.spechigh = len(freqs)-i
         Z = np.flipud(Z)
         if self.logs:
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
-            
         self.spec = Z
 
     
