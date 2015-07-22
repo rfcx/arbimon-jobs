@@ -36,7 +36,7 @@ class Roizer:
         if lowFreq>=highFreq :
             raise ValueError("lowFreq must be less than highFreq")
         self.spec = None
-        recording = Rec(uri,tempFolder,storage,logs)
+        recording = Rec(uri,tempFolder,storage,logs, removeFile=True , test=False,resample=False)
         self.logs = logs
         self.ssim = useSsim
         self.bIndex = bIndex

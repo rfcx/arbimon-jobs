@@ -28,7 +28,7 @@ analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
 
 class Recanalizer:
     
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, storage, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0,db=None,rec_id=None,job_id=None):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, storage, logs=None,test=False,useSsim = True,step=16,oldModel =False,numsoffeats=41,ransakit=False,bIndex=0,db=None,rec_id=None,job_id=None,model_type_id=4):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(speciesSurface) is not numpy.ndarray:
@@ -72,6 +72,7 @@ class Recanalizer:
         self.db =db
         self.rec_id = rec_id
         self.job_id = job_id
+        self.model_type_id = model_type_id
         if self.logs:
            self.logs.write("processing: "+self.uri)    
         if self.logs :
@@ -107,7 +108,11 @@ class Recanalizer:
                         if self.logs:
                             self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                         start_time = time.time()
-                        self.featureVector_search()
+                        if model_type_id == 4:
+                            self.featureVector_search()
+                        else:
+                            pass
+                        
                         if self.db:
                             elapsed = time.time() - start_time_all
                             print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
@@ -129,7 +134,7 @@ class Recanalizer:
         return self.rec
     
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.storage,self.logs,True,False,True)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.storage,self.logs,True,False,False)
         self.hasrec = True
         
     def getVector(self ):
@@ -243,8 +248,11 @@ class Recanalizer:
  
         if i >= dims[0]:
             i = dims[0] - 1
-            
-        Z= Pxx[(j-2):(i+2),:]
+        
+        if model_type_id == 4:
+            Z= Pxx[(j-2):(i+2),:]
+        else:
+            Z= Pxx[(j):(i),:]
 
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i

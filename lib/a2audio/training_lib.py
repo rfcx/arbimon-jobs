@@ -97,7 +97,7 @@ def insertRecError(db,jobId,recId):
     db.close()
     db = None
     
-def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0,save_model=True):
+def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0,save_model=True,model_type_id=4):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -155,7 +155,7 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     key_prefix = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
     #try:
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId)
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId,model_type_id=model_type_id)
     #except:
         #log.write('error analyzing: Recanalizer is wrong')
         #insertRecError(db,jobId,recId)
@@ -491,13 +491,13 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
         
     return classes,patternSurfaces
 
-def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model):
+def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model,model_type_id):
     results = None
     """Recnilize"""
     log.write("analizing recordings")
     
     #try:
-    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model) for line in validationData)
+    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id) for line in validationData)
     #except:
         #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
@@ -731,7 +731,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
 
-def train_pattern_matching(db,jobId,log,config, storage,save_model=True):
+def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_type_id=4):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -776,7 +776,7 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True):
     
     cancelStatus(db,jobId,workingFolder)
     
-    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model)
+    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -848,9 +848,9 @@ def run_training(jobId,save_model=True):
     log.write('job model type fetched.')
    #except:
      #   return False
-    if model_type_id in [4]:
+    if model_type_id in [1,2,3,4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model)
+        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id)
         db.close()
         return retValue
     else:
