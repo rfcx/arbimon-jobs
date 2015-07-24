@@ -69,6 +69,11 @@ for model_type in model_Types:
             row1 = None
         else:
             print 'job failed'
+        f = open('/home/rafa/Desktop/results'+str(model_type),'w')
+        f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time'])+"\n")
+        for r in rows:
+            f.write(r+'\n') # python will convert \n to os.linesep
+        f.close() # you can omit in most cases as the destructor will call it
 
 print ','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time'])
 for r in rows:
