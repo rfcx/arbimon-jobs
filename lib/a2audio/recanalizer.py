@@ -251,7 +251,8 @@ class Recanalizer:
         self.distances = numpy.zeros(spec.shape[1])
         pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
         pat = pat.astype('uint8')
-        self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
+        if self.logs:
+            self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
         th, tw = pat.shape[:2]
         result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
         #self.logs.write(str(result))
@@ -279,9 +280,10 @@ class Recanalizer:
             if abs(pt[0] - s)>step/2 :
                 xs.append(pt[0])
             s = pt[0]
-        self.logs.write(str(xs))
+            
+        ##self.logs.write(str(xs))
         xs_smpl = [ xs[i] for i in sorted(random.sample(xrange(len(xs)), min(4,len(xs)))) ]
-        self.logs.write(str(xs_smpl))
+        #self.logs.write(str(xs_smpl))
         for pts in xs_smpl:
             if pts+math.floor((pat.shape[1]*1.33))<=currColumns:
                 for pt in range(max(0,pts-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,pts+int(math.floor((pat.shape[1]*1.33)))),step):
@@ -302,17 +304,18 @@ class Recanalizer:
             if val < 0:
                 val=0
             self.distances[maxLoc[0]+tw/2] = val
-        self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
+        if self.logs:
+         self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
         
     def computeGFTT_nans(self,pat,spec,currColumns):
         currColumns = self.spec.shape[1]
         spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
         spec = spec.astype('uint8')
-        self.distances = numpy.zeros(spec.shape[1])
-        self.distances[:] = numpy.NAN
+        self.distances = []# numpy.zeros(spec.shape[1])
+        #self.distances[:] = numpy.NAN
         pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
         pat = pat.astype('uint8')
-        self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
+        #self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
         th, tw = pat.shape[:2]
         result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
         #self.logs.write(str(result))
@@ -340,15 +343,16 @@ class Recanalizer:
             if abs(pt[0] - s)>step/2 :
                 xs.append(pt[0])
             s = pt[0]
-        self.logs.write(str(xs))
+        #self.logs.write(str(xs))
         xs_smpl = [ xs[i] for i in sorted(random.sample(xrange(len(xs)), min(4,len(xs)))) ]
-        self.logs.write(str(xs_smpl))
+        #self.logs.write(str(xs_smpl))
         for pts in xs_smpl:
             if pts+math.floor((pat.shape[1]*1.33))<=currColumns:
                 for pt in range(max(0,pts-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,pts+int(math.floor((pat.shape[1]*1.33)))),step):
                     ssimCalls = ssimCalls + 1
                     val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
-                    self.distances[pt+tw/2] = val
+                    #self.distances[pt+tw/2] = val
+                    self.distances.append( val)
         # for pt in range(max(0,maxLoc[0]-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,maxLoc[0]+int(math.floor((pat.shape[1]*1.33)))),step):
         #     ssimCalls = ssimCalls + 1
         #     val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
@@ -358,8 +362,10 @@ class Recanalizer:
         if maxLoc[0]+tw<=currColumns:
             ssimCalls = ssimCalls + 1
             val = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
-            self.distances[maxLoc[0]+tw/2] = val
-        self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
+            #self.distances[maxLoc[0]+tw/2] = val
+            self.distances.append( val)
+        if self.logs:
+            self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
         
     def featureVector_search(self):
         with warnings.catch_warnings():
