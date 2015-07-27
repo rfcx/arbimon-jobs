@@ -202,7 +202,10 @@ class Model:
         with open(filename, 'wb') as output:
             pickler = pickle.Pickler(output, -1)
             pickle.dump([self.clf,self.speciesSpec,l,h,c,usesSsim,usesRansac,bIndex], output, -1)
-            
+    
+    def getPatternDim(self):
+        return self.speciesSpec.shape
+    
     def getSpec(self):
         return self.speciesSpec
    

@@ -590,20 +590,24 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
         exit_error('error saving model file to local storage',-1,log,jobId,db,workingFolder)
         
     modelStats = None
+    dimsPat = None
     try:
         modelStats = model.modelStats()
+        dimsPat = model.getPatternDim()
     except :
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
 
+    
+    
     log.write("k fold validation")
     validation_k_fold = True
     foldesn = 10
     if validation_k_fold:
         totalData,totalPos ,totalNeg ,accuracy_score,precision_score,sensitivity_score,specificity_score = model.k_fold_validation(folds=foldesn)
         with closing(db.cursor()) as cursor:
-            cursor.execute("""INSERT INTO `k_fold_Validations`(`job_id`, `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity`)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-            [jobId,totalData,totalPos ,totalNeg ,foldesn,accuracy_score,precision_score,sensitivity_score,specificity_score ])
+            cursor.execute("""INSERT INTO `k_fold_Validations`(`job_id`, `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity`,`w`,`h`)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            [jobId,totalData,totalPos ,totalNeg ,foldesn,accuracy_score,precision_score,sensitivity_score,specificity_score,dimsPat[1],dimsPat[0] ])
             db.commit()
 
     log.write("done")

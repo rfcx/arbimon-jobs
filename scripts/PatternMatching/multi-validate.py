@@ -57,24 +57,24 @@ for model_type in model_Types:
         row1= None
         if retVal:
             with closing(db.cursor()) as cursor:    
-                cursor.execute("SELECT  `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity`  FROM `k_fold_Validations` WHERE `job_id` = "+str(j))
+                cursor.execute("SELECT  `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity` ,`w`,`h` FROM `k_fold_Validations` WHERE `job_id` = "+str(j))
                 row = cursor.fetchone()
                 db.commit()
             with closing(db.cursor()) as cursor:    
                 cursor.execute("select avg(exec_time) as time from recanalizer_stats where job_id = "+str(j)+"")
                 row1 = cursor.fetchone()
                 db.commit()        
-            rows.append(','.join([str(model_type),r['name'],str(row['totaln']),str(row['pos_n']),str(row['neg_n']),str(row['k_folds']),str(row['accuracy']),str(row['precision']),str(row['sensitivity']),str(row['specificity']),str(row1['time'])]))
+            rows.append(','.join([str(model_type),r['name'],str(row['totaln']),str(row['pos_n']),str(row['neg_n']),str(row['k_folds']),str(row['accuracy']),str(row['precision']),str(row['sensitivity']),str(row['specificity']),str(row1['time']),str(row['w']),str(row['h']) , str(int(row['h'])*int(row['w']))]))
             row = None
             row1 = None
         else:
             print 'job failed'
         f = open('/home/rafa/Desktop/results'+str(model_type),'w')
-        f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time'])+"\n")
+        f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])+"\n")
         for r in rows:
-            f.write(r+'\n') # python will convert \n to os.linesep
-        f.close() # you can omit in most cases as the destructor will call it
+            f.write(r+'\n')
+        f.close() 
 
-print ','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time'])
+print ','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])
 for r in rows:
     print r
