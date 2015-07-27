@@ -34,6 +34,8 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
     jobId = int(jobId)
     log = Logger(jobId, 'training.py', 'roigen')
     log.also_print = True
+    if not save_model:
+        log = None
     local_storage = True
     if local_storage:
         storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
@@ -56,8 +58,9 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
     lowFreq = float(line[5])
     highFreq = float(line[6])
     recuri = line[7]
-    log.write("roigen: processing "+recuri)
-    log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
+    if log:
+        log.write("roigen: processing "+recuri)
+        log.write("roigen: cutting at "+str(initTime)+" to "+str(endingTime)+ " and filtering from "+str(lowFreq)+" to " + str(highFreq))
     roi = Roizer(recuri,tempFolder, storage,initTime,endingTime,lowFreq,highFreq,log,useSsim,bIndex,save_model)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
@@ -69,7 +72,8 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
         ])
         db.commit()
     if "NoAudio" in roi.status:
-        log.write("roigen: no audio err " + str(recuri))
+        if log:
+            log.write("roigen: no audio err " + str(recuri))
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `recordings_errors` (`recording_id`, `job_id`) 
@@ -81,7 +85,8 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
         db.close()
         return 'err'
     else:
-        log.write("roigen: done")
+        if log:
+            log.write("roigen: done")
         db.close()
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
 
@@ -117,7 +122,8 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     try:
         db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
     except:
-        log.write('error analyzing: Cannot connect to database')
+        if log:
+            log.write('error analyzing: Cannot connect to database')
         return 'err'
     with closing(db.cursor()) as cursor:
         cursor.execute("""
@@ -322,8 +328,8 @@ def get_training_recordings(jobId,training_set_id,workingFolder,log,config,progr
     
     if len(trainingData) == 0 :
         exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
-    
-    log.write('training data gathered')
+    if log:
+        log.write('training data gathered')
     
     return trainingData,progress_steps,speciesSongtype,numSpeciesSongtype,maxBand
 
@@ -426,8 +432,8 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
         exit_error('cannot create validation csvs files or access validation data from db',-1,log,jobId,db)
     
     db.close()
-    
-    log.write('validation data gathered')
+    if log:
+        log.write('validation data gathered')
     
     return validationData,validationId
    
@@ -451,8 +457,8 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
         exit_error('cannot create rois from recordings (all err)',-1,log,jobId,db,workingFolder)
         
     cancelStatus(db,jobId,workingFolder)
-    
-    log.write('rois generated')
+    if log:
+        log.write('rois generated')
     
     return rois
 from pylab import *
@@ -460,7 +466,8 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
     patternSurfaces = {}
     classes = {}
     """Align rois"""
-    log.write('rois 2 surface')
+    if log:
+        log.write('rois 2 surface')
     if True:#try:
         for roi in rois:
             if 'err' not in roi:
@@ -495,7 +502,8 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
 def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model,model_type_id):
     results = None
     """Recnilize"""
-    log.write("analizing recordings")
+    if log:
+        log.write("analizing recordings")
     
     #try:
     results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id) for line in validationData)
@@ -504,8 +512,8 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
 
     if results is None:
         exit_error('cannot analyze recordings',-1,log,jobId,db,workingFolder)
-    
-    log.write("recs analized")
+    if log:
+        log.write("recs analized")
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -525,7 +533,8 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
 
 def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
     models = {}
-    log.write('adding samples to model')
+    if log:
+        log.write('adding samples to model')
     try:
         for res in results:
             if 'err' not in res:
@@ -539,7 +548,8 @@ def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
         exit_error('cannot add samples to model',-1,log,jobId,db,workingFolder)
     
     cancelStatus(db,jobId,workingFolder)
-    log.write('model has samples')
+    if log:
+        log.write('model has samples')
     return models
 
 def balance_validation_samples(useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent, presentsCount,ausenceCount):
@@ -559,7 +569,8 @@ def balance_validation_samples(useTrainingPresent,useValidationPresent,useTraini
     return   useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent
 
 def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent,log,jobId,db,workingFolder,useSsim,useRansac,bIndex,patternSurfaces,classId):
-    log.write("training model")
+    if log:
+        log.write("training model")
     modelFilesLocation = workingFolder
     resultSplit = False
     try:
@@ -583,8 +594,8 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
            exit_error('error validating model',-1,log,jobId,db,workingFolder)
            
     modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(classId)+".mod"
-    
-    log.write("saving model to file")
+    if log:
+        log.write("saving model to file")
     try:
         model.save(modFile,patternSurfaces[2] ,patternSurfaces[3],patternSurfaces[4],useSsim,useRansac,bIndex)
     except:
@@ -599,8 +610,8 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
 
     
-    
-    log.write("k fold validation")
+    if log:
+        log.write("k fold validation")
     validation_k_fold = True
     foldesn = 10
     if validation_k_fold:
@@ -610,13 +621,14 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             [jobId,totalData,totalPos ,totalNeg ,foldesn,accuracy_score,precision_score,sensitivity_score,specificity_score,dimsPat[1],dimsPat[0] ])
             db.commit()
-
-    log.write("done")
+    if log:
+        log.write("done")
 
     return modelStats
 from pylab import *
 def prepare_png_data(data,log,jobId,db,workingFolder):
-    log.write('preparing png data')
+    if log:
+        log.write('preparing png data')
 
     if True:#try:
         specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
@@ -634,7 +646,8 @@ def prepare_png_data(data,log,jobId,db,workingFolder):
         matrix = 255*(1-((specToShow - smin)/(smax-smin)))
     #except:
         #exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
-    log.write('png data prepared')
+    if log:
+        log.write('png data prepared')
     return matrix 
 
 def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces,pngKey,modelname,model_type_id,modKey,project_id,user_id,valiId,log,workingFolder):
@@ -827,8 +840,8 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
             patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
             
             png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-            
-        log.write("model saved")
+        if log:  
+            log.write("model saved")
         modelSaved = True
     
     if os.path.exists(workingFolder):
@@ -862,6 +875,8 @@ def run_training(jobId,save_model=True):
      #   return False
     if model_type_id in [1,2,3,4]:
         log.write("Pattern Matching (modified Alvarez thesis)")
+        if not save_model:
+            log = None
         retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id)
         db.close()
         return retValue
