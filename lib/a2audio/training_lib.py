@@ -873,7 +873,7 @@ def run_training(jobId,save_model=True):
     log.write('job model type fetched.')
    #except:
      #   return False
-    if model_type_id in [1,2,3,4]:
+    if model_type_id in [1,2,3,4,5,6]:
         log.write("Pattern Matching (modified Alvarez thesis)")
         if not save_model:
             log = None

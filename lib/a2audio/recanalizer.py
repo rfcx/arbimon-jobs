@@ -210,20 +210,30 @@ class Recanalizer:
             #print spec.shape , self.matrixSurfacComp.shape,self.rec.sample_rate
             if self.model_type_id == 3:
                 if self.logs:
-                    self.logs.write("using search match")
+                    self.logs.write("using search match with zeros")
                 self.computeGFTT(numpy.copy(self.matrixSurfacComp),numpy.copy(spec),currColumns)
+            elif self.model_type_id == 6:
+                if self.logs:
+                    self.logs.write("using search match with nans")
+                self.computeGFTT_nans(numpy.copy(self.matrixSurfacComp),numpy.copy(spec),currColumns)
             else:
                 if self.model_type_id == 1:
                     if self.logs:
-                        self.logs.write("using ssim")
+                        self.logs.write("using ssim no negatives")
                     for j in range(0,currColumns - self.columns,step):
                         val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
                         if val < 0:
                            val = 0
                         self.distances.append(  val   )
-                else: #if self.model_type_id == 2:
+                if self.model_type_id == 5:
                     if self.logs:
-                        self.logs.write("not using ssim")
+                        self.logs.write("using ssim with negatives")
+                    for j in range(0,currColumns - self.columns,step):
+                        val = ssim( numpy.copy(spec[: , j:(j+self.columns)]) , self.matrixSurfacComp , win_size=winSize)
+                        self.distances.append(  val   )
+                if self.model_type_id == 2:
+                    if self.logs:
+                        self.logs.write("not using ssim - using matrix operations")
                     threshold = Thresholder()
                     matrixSurfacCompCopy = threshold.apply(numpy.copy(self.matrixSurfacComp))
                     specCopy = threshold.apply(numpy.copy(spec))
@@ -291,6 +301,63 @@ class Recanalizer:
             val = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
             if val < 0:
                 val=0
+            self.distances[maxLoc[0]+tw/2] = val
+        self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
+        
+    def computeGFTT_nans(self,pat,spec,currColumns):
+        currColumns = self.spec.shape[1]
+        spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
+        spec = spec.astype('uint8')
+        self.distances = numpy.zeros(spec.shape[1])
+        self.distances[:] = numpy.NAN
+        pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
+        pat = pat.astype('uint8')
+        self.logs.write("shape:"+str(spec.shape)+''+str(pat.shape)+' '+str(self.distances.shape))
+        th, tw = pat.shape[:2]
+        result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF)
+        #self.logs.write(str(result))
+        #self.logs.write(str(len(result)))
+        #self.logs.write(str(len(result[0])))
+        #self.logs.write(str(numpy.max(result)))
+        #self.logs.write(str(numpy.mean(result)))
+        #self.logs.write(str(numpy.min(result)))
+        (_, _, minLoc, maxLoc) = cv2.minMaxLoc(result)
+        #self.logs.write(str(minLoc)+' '+str(maxLoc))
+        threshold = numpy.percentile(result,98.5)
+        loc = numpy.where(result >= threshold)
+        winSize = min(pat.shape)
+        winSize = min(winSize,7)
+        step = 16
+        if winSize %2 == 0:
+            winSize = winSize - 1
+        ssimCalls = 0
+        #if self.logs:
+               #self.logs.write("searching locations : "+str(len(loc[0])))
+               #self.logs.write(str(loc))
+        xs = []
+        s = -999
+        for pt in zip(*loc[::-1]):
+            if abs(pt[0] - s)>step/2 :
+                xs.append(pt[0])
+            s = pt[0]
+        self.logs.write(str(xs))
+        xs_smpl = [ xs[i] for i in sorted(random.sample(xrange(len(xs)), min(4,len(xs)))) ]
+        self.logs.write(str(xs_smpl))
+        for pts in xs_smpl:
+            if pts+math.floor((pat.shape[1]*1.33))<=currColumns:
+                for pt in range(max(0,pts-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,pts+int(math.floor((pat.shape[1]*1.33)))),step):
+                    ssimCalls = ssimCalls + 1
+                    val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+                    self.distances[pt+tw/2] = val
+        # for pt in range(max(0,maxLoc[0]-int(math.floor(pat.shape[1]/3))),min(currColumns - self.columns,maxLoc[0]+int(math.floor((pat.shape[1]*1.33)))),step):
+        #     ssimCalls = ssimCalls + 1
+        #     val = ssim( numpy.copy(spec[:,pt:(pt+tw)]) , pat, win_size=winSize)
+        #     if val < 0:
+        #         val = 0
+        #     self.distances[pt+tw/2] = val
+        if maxLoc[0]+tw<=currColumns:
+            ssimCalls = ssimCalls + 1
+            val = ssim( numpy.copy(spec[:,maxLoc[0]:(maxLoc[0]+tw)]) , pat, win_size=winSize)
             self.distances[maxLoc[0]+tw/2] = val
         self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
         

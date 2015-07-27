@@ -11,7 +11,7 @@ import json
 from contextlib import closing
 
 
-model_Types = [1,2,3,4]
+model_Types = [1,2,3,4,5,6]
 
 if len(sys.argv) > 1:
     model_Types=[]
