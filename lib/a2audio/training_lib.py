@@ -455,7 +455,7 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
     log.write('rois generated')
     
     return rois
-
+from pylab import *
 def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
     patternSurfaces = {}
     classes = {}
@@ -479,6 +479,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
         for i in classes:
             classes[i].alignSamples(bIndex)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
+
     #except:
          #exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
             
@@ -613,25 +614,26 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
     log.write("done")
 
     return modelStats
-
+from pylab import *
 def prepare_png_data(data,log,jobId,db,workingFolder):
     log.write('preparing png data')
-    try:
+
+    if True:#try:
         specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
         rowsInSpec = data.shape[0]
         spec = numpy.copy(data)
-        if sum(sum(spec == -10000))>0:
+        if  numpy.sum(numpy.sum(spec == -10000))>0:
             spec[spec == -10000] = numpy.nan
         for j in range(0,rowsInSpec):
             if abs(numpy.nansum(spec[j,:])) > 0.0:
                 specToShow = numpy.vstack((specToShow,numpy.copy(spec[j,:])))
-        if sum(sum(numpy.isnan(specToShow)))>0:
+        if numpy.sum(numpy.sum(numpy.isnan(specToShow)))>0:
             specToShow[numpy.isnan(specToShow)] = numpy.nanmean(numpy.nanmean(specToShow))
-        smin = min([min((specToShow[j])) for j in range(specToShow.shape[0])])
-        smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
+        smin = numpy.min(numpy.min(specToShow))#numpy.min([numpy.min((specToShow[j])) for j in range(specToShow.shape[0])])
+        smax = numpy.max(numpy.max(specToShow))# numpy.max([numpy.max((specToShow[j])) for j in range(specToShow.shape[0])])
         matrix = 255*(1-((specToShow - smin)/(smax-smin)))
-    except:
-        exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
+    #except:
+        #exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
     log.write('png data prepared')
     return matrix 
 
@@ -819,7 +821,13 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
             upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
         
             save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
-                        
+        else:
+            pngFilename = '/home/rafa/Desktop/'+'job_'+str(jobId)+'_'+str(classId)+'.png'
+
+            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+            
+            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+            
         log.write("model saved")
         modelSaved = True
     

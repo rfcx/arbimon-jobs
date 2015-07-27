@@ -1,11 +1,15 @@
 #! .env/bin/python
 
 import sys
+
+sys.path.append("/home/rafa/node/arbimon2-jobs-stable_new/lib/")
+
 from a2audio.training_lib import run_training
 from soundscape.set_visual_scale_lib import get_db
 from a2pyutils.config import Config
 import json
 from contextlib import closing
+
 
 model_Types = [1,2,3,4]
 

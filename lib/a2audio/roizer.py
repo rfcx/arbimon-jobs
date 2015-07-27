@@ -98,14 +98,12 @@ class Roizer:
         if endSample >= len(self.original):
            endSample = len(self.original) - 1
 
-        freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
         maxHertzInRec = float(self.sample_rate)/2.0
         nfft = 512
         targetrows = 512
 
         data = self.original[initSample:endSample]
         Pxx, freqs, bins = mlab.specgram(data, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
-
         dims =  Pxx.shape
         i =0
         while freqs[i] < self.lowF:
@@ -119,7 +117,9 @@ class Roizer:
         while i <  dims[0]:
             Pxx[i,:] = 0
             i = i + 1
-        Z = numpy.flipud(Pxx[1:(Pxx.shape[0]-1),:])
+
+        Z = numpy.flipud(Pxx[0:(Pxx.shape[0]-1),:])
+
         #z = numpy.zeros(shape=(targetrows,Pxx.shape[1]))
         #z[(targetrows-Pxx.shape[0]+1):(targetrows-1),:] = Z
         self.spec = Z

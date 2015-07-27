@@ -130,7 +130,7 @@ class Rec:
             self.status = 'CorruptedFile'
             return None
         
-        if self.doresample and float(self.sample_rate) not in analysis_sample_rates:
+        if False:#self.doresample and float(self.sample_rate) not in analysis_sample_rates:
             self.resample()
           
         self.status = 'HasAudioData'

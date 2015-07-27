@@ -116,7 +116,7 @@ class Recanalizer:
                         
                         if self.db:
                             elapsed = time.time() - start_time_all
-                            print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
+                            #print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
                             with closing(self.db.cursor()) as cursor:
                                 cursor.execute("""
                                     INSERT INTO `recanalizer_stats` (job_id, rec_id, exec_time) 
@@ -207,7 +207,7 @@ class Recanalizer:
             if winSize %2 == 0:
                 winSize = winSize - 1
             spec = self.spec;
-            print spec.shape , self.matrixSurfacComp.shape,self.rec.sample_rate
+            #print spec.shape , self.matrixSurfacComp.shape,self.rec.sample_rate
             if self.model_type_id == 3:
                 if self.logs:
                     self.logs.write("using search match")
@@ -334,7 +334,6 @@ class Recanalizer:
         return self.spec
     
     def spectrogram(self):
-        freqs44100 = json.load(file('scripts/data/freqs44100.json'))['freqs']
         maxHertzInRec = float(self.rec.sample_rate)/2.0
         i = 0
         nfft = 512

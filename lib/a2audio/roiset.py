@@ -90,10 +90,9 @@ class Roiset:
         return self.meanSurface
     
     def alignSamples(self,bIndex=0):
-        print self.rows,self.maxColumns
         surface = numpy.zeros(shape=self.biggestRoi.shape)
         weights = numpy.zeros(shape=self.biggestRoi.shape)
-        freqs =  json.load(file('scripts/data/freqs44100.json'))['freqs']
+        freqs = [i for i in reversed(json.load(file('scripts/data/freqs44100.json'))['freqs']) ]
         for roi in self.roi:
             high_index = 0
             low_index = 0
@@ -104,7 +103,6 @@ class Roiset:
                 low_index  = low_index  + 1
             distances = []
             currColumns = roi.spec.shape[1]
-            
             for jj in range(self.maxColumns -currColumns ): 
                 subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
                 distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
@@ -112,7 +110,7 @@ class Roiset:
                 j = distances.index(min(distances))
             else:
                 j = 0
-
+        
             surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
                 
             weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
