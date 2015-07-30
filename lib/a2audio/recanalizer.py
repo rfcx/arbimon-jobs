@@ -175,16 +175,7 @@ class Recanalizer:
                 kurtosis(xf),acf[0] ,acf[1] ,acf[2]]
         hist = histogram(self.distances,6)[0]
         cfs =  cumfreq(self.distances,6)[0]
-        ffs = [numpy.mean(self.distances), (max(self.distances)-min(self.distances)),
-                    max(self.distances), min(self.distances)
-                    , numpy.std(self.distances) , numpy.median(self.distances),skew(self.distances),
-                    kurtosis(self.distances),moment(self.distances,1),moment(self.distances,2)
-                    ,moment(self.distances,3),moment(self.distances,4),moment(self.distances,5)
-                    ,moment(self.distances,6),moment(self.distances,7),moment(self.distances,8)
-                    ,moment(self.distances,9),moment(self.distances,10)
-                    ,cfs[0],cfs[1],cfs[2],cfs[3],cfs[4],cfs[5]
-                    ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
-                    ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
+        ffs = [fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         return ffs
     
     def featureVector(self):
@@ -388,7 +379,7 @@ class Recanalizer:
             pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
             pat = pat.astype('uint8')
             th, tw = pat.shape[:2]
-            print pat.shape,spec.shape,self.rec.sample_rate
+            #print pat.shape,spec.shape,self.rec.sample_rate
             result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF_NORMED)
 
             self.distances = numpy.mean(result,axis=0)

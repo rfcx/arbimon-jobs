@@ -21,7 +21,7 @@ class Model:
         
         self.classid = classid
         self.speciesSpec = speciesSpec
-        self.data  = numpy.zeros(shape=(0,41),dtype=numpy.dtype('float64'))
+        self.data  = [] 
         self.classes = []
         self.uris = []
         self.minv = 9999999
@@ -36,7 +36,12 @@ class Model:
             self.minv =  row[3]
         if self.maxv < row[2]:
             self.maxv = row[2]
-        self.data = numpy.vstack((self.data,row))
+        
+        if len(self.data)>0:
+            self.data = numpy.vstack((self.data,row))
+        else:
+            self.data = numpy.zeros(shape=(0,len(row)),dtype=numpy.dtype('float64'))
+            self.data = numpy.vstack((self.data,row))
     
     def getDataIndices(self):
         return {"train":self.trainDataIndices ,"validation": self.validationDataIndices}
