@@ -175,6 +175,10 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         vectorFile = workingFolder+recName
         if save_model:
             storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
+        else:
+            f = open('/home/rafa/Desktop/vectors_'+str(model_type_id)+'_'+str(jobId)+'.csv','a')
+            f.write(str(line[3])+','.join(str(x) for x in vector)+"\n")
+            f.close()
             
         infos = []
         infos.append(line[4])
@@ -531,7 +535,7 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
         
     return results,presentsCount,ausenceCount
 
-def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
+def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces,model_type=4):
     models = {}
     if log:
         log.write('adding samples to model')
@@ -542,7 +546,7 @@ def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces):
                 if classid in models:
                     models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
                 else:
-                    models[classid] = Model(classid,patternSurfaces[classid][0],jobId)
+                    models[classid] = Model(classid,patternSurfaces[classid][0],jobId,model_type)
                     models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
     except:
         exit_error('cannot add samples to model',-1,log,jobId,db,workingFolder)
@@ -799,7 +803,7 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     
     cancelStatus(db,jobId,workingFolder)
     
-    models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces)
+    models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces,model_type_id)
 
     cancelStatus(db,jobId,workingFolder)
     

@@ -11,7 +11,7 @@ import csv
 
 class Model:
 
-    def __init__(self,classid,speciesSpec,jobid):
+    def __init__(self,classid,speciesSpec,jobid,model_type=4):
         if type(classid) is not str and type(classid) is not int:
             raise ValueError("classid must be a string or int. Input was a "+str(type(classid)))
         if type(speciesSpec) is not numpy.ndarray:
@@ -27,6 +27,7 @@ class Model:
         self.minv = 9999999
         self.maxv = -9999999
         self.jobId = jobid
+        self.model_type = model_type
         
     def addSample(self,present,row,uri):
         self.classes.append(str(present))
@@ -76,6 +77,12 @@ class Model:
         kf = cross_validation.KFold(n=totalData, n_folds=folds)
         testCl = []
         predicCl = []
+        knum = 1
+        with open('/home/rafa/Desktop/variables'+str(self.model_type)+'_'+str(self.jobId)+'.pickle', 'wb') as output:
+            pickle.dump([self.data,self.classes], output, -1)
+            
+        f = open('/home/rafa/Desktop/importances'+str(self.model_type)+'_'+str(self.jobId)+'.csv','w')
+        
         for train_index, test_index in kf:
             trainData = self.data[train_index]
             testData = self.data[test_index]
@@ -83,6 +90,7 @@ class Model:
             testClasses = [self.classes[i] for i in test_index]
             clf = RandomForestClassifier(n_estimators=1000,n_jobs=-1)
             clf.fit(trainData, trainClasses)
+            f.write(','.join([ str(i) for i  in clf.feature_importances_])+"\n")
             predictions = clf.predict(testData)
             for i in testClasses:
                 testCl.append(i)
@@ -93,7 +101,9 @@ class Model:
             del trainClasses
             del testData
             del testClasses
-            
+            knum = 1 + knum
+        
+        f.close()    
         tp = 0.0
         fp = 0.0
         tn = 0.0
