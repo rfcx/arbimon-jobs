@@ -58,7 +58,7 @@ with open(filen, 'rb') as csvfile:
      for row in spamreader:
          importance_data.append([float(i) for i in row])
 first = True
-firstNvars = 5
+firstNvars = 10
 a = None
 #f = open('/home/rafa/Desktop/allvarss.csv','a')
 
