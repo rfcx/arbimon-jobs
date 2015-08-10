@@ -56,16 +56,15 @@ except MySQLdb.Error as e:
 
 def exit_error(db, workingFolder, log, jobId, msg):
     with closing(db.cursor()) as cursor:
-        query = """
+        cursor.execute("""
             UPDATE `jobs`
-            SET `remarks` = "Error: '+str(msg)+'",
+            SET `remarks` = %s,
                 `state`="error",
                 `progress` = `progress_steps`,
                 `completed` = 1 ,
                 `last_update` = now()
-            WHERE `job_id` = '+str(jobId)
-        """
-        cursor.execute(query)
+            WHERE `job_id` = %s
+        """, ['Error: '+str(msg), int(jobId)])
         db.commit()
 
     log.write(msg)
