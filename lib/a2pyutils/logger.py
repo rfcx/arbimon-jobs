@@ -31,6 +31,7 @@ class Logger:
               
             self.log_file_handle = open(self.filePath,'w')
             self.write(script+' log file')
+            self.script = script
             if self.log_file_handle:
                 self.log_file_handle.close()
             self.log_file_handle = None
@@ -41,15 +42,15 @@ class Logger:
         if self.logON:
             currTime = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             if self.log_file_handle:
-                self.log_file_handle.write(currTime +':\t'+message+'\n')
+                self.log_file_handle.write(self.script+": "+currTime +':\t'+message+'\n')
             else :
                 self.log_file_handle = open(self.filePath,'a')
-                self.log_file_handle.write(currTime +':\t'+message+'\n')
+                self.log_file_handle.write(self.script+": "+currTime +':\t'+message+'\n')
             if self.log_file_handle:
                 self.log_file_handle.close()
                 self.log_file_handle = None
             if self.also_print:
-                print "#LOG:" + currTime + ':\t'+message
+                print "#LOG:" +self.script+": "+ currTime + ':\t'+message
 
     def time_delta(self, message, start):
         self.write("{} --- seconds --- {}".format(

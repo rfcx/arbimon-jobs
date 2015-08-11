@@ -11,7 +11,7 @@ import a2pyutils.storage
 import os
 import shutil
 
-def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
+def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None,doExit=True):
     print '<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg)
     if log:
         log.write('\n<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg))
@@ -24,12 +24,14 @@ def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None):
             """, [
                 "Error: " + str(msg) , jobId
             ])
-            db.commit() 
-        log.write(msg)
+            db.commit()
+        if log:
+            log.write(msg)
     if workingFolder:
         if os.path.exists(workingFolder):
            shutil.rmtree(workingFolder)
-    sys.exit(code)
+    if doExit:
+        sys.exit(code)
 
 
 def get_db(config,cursor=True):

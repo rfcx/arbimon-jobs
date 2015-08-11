@@ -344,7 +344,8 @@ def run_classification(jobId):
         config = configuration.data()
         storage = a2pyutils.storage.BotoBucketStorage(**configuration.awsConfig)
         db = get_db(config)
-        log.write('database connection succesful')
+        log.write('classification job id'+str(jobId))
+        log.write('classification database connection succesful')
         (
             classifierId, projectId, userId,
             classificationName, playlistId, ncpu   

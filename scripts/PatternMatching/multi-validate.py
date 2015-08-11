@@ -2,7 +2,9 @@
 
 import sys
 
-sys.path.append("/home/rafa/node/arbimon2-jobs-stable_new/lib/")
+sys.path.append("/home/rafa/node/arbimon2-jobs-stable/lib/")
+
+local_storage_folder="/home/rafa/recs/"
 
 from a2audio.training_lib import run_training
 from soundscape.set_visual_scale_lib import get_db
@@ -56,7 +58,7 @@ for model_type in model_Types:
     for i in range(len(validation_data)):
         r = validation_data[i]
         j = job_ids[i]
-        retVal = run_training(int(j),False)
+        retVal = run_training(int(j),False,use_local_storage=True,local_storage_folder=local_storage_folder)
         row = None
         row1= None
         if retVal:
@@ -73,7 +75,7 @@ for model_type in model_Types:
             row1 = None
         else:
             print 'job failed'
-        f = open('/home/rafa/Desktop/results'+str(model_type),'w')
+        f = open(local_storage_folder+'/results_'+str(j)+"_"+str(model_type)+".csv",'w')
         f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])+"\n")
         for r in rows:
             f.write(r+'\n')

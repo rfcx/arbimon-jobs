@@ -27,7 +27,7 @@ import json
 
 classificationCanceled =False
 
-def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
+def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True,use_local_storage=False,local_storage_folder=None):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -36,9 +36,8 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True):
     log.also_print = True
     if not save_model:
         log = None
-    local_storage = True
-    if local_storage:
-        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
+    if use_local_storage:
+        storage = a2pyutils.storage.LocalStorage(local_storage_folder)
     else:
         storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
@@ -102,7 +101,7 @@ def insertRecError(db,jobId,recId):
     db.close()
     db = None
     
-def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0,save_model=True,model_type_id=4):
+def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None,bIndex=0,save_model=True,model_type_id=4,use_local_storage=False,local_storage_folder=None):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -112,9 +111,8 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         log.write('error analyzing: config is wrong')
         return 'err'
     recId = int(line[5])
-    local_storage = True
-    if local_storage:
-        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
+    if use_local_storage:
+        storage = a2pyutils.storage.LocalStorage(local_storage_folder)
     else:
         storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
     db = None
@@ -160,12 +158,12 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         return 'err'
     key_prefix = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
-    #try:
-    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId,model_type_id=model_type_id)
-    #except:
-        #log.write('error analyzing: Recanalizer is wrong')
-        #insertRecError(db,jobId,recId)
-        #return 'err'
+    try:
+        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId,model_type_id=model_type_id)
+    except:
+        log.write('error analyzing: Recanalizer is wrong')
+        insertRecError(db,jobId,recId)
+        return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
@@ -176,7 +174,10 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         if save_model:
             storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
         else:
-            f = open('/home/rafa/Desktop/vectors_'+str(model_type_id)+'_'+str(jobId)+'.csv','a')
+            fold = local_storage_folder+"/validation-data/job"+str(jobId)
+            if not os.path.exists():
+                os.makedirs(fold)
+            f = open(fold+'/vectors_'+str(model_type_id)+'_'+str(jobId)+'.csv','a')
             f.write(str(line[3])+','.join(str(x) for x in vector)+"\n")
             f.close()
             
@@ -441,13 +442,13 @@ def get_validation_recordings(workingFolder,jobId,progress_steps,config, storage
     
     return validationData,validationId
    
-def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db,save_model=True):
+def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bIndex,log,db,save_model=True,use_local_storage=False,local_storage_folder=None):
     rois = None
     """Roigenerator"""
-    #try:
-    rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model) for line in trainingData)
-    #except:
-        #exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
+    try:
+        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model,use_local_storage,local_storage_folder) for line in trainingData)
+    except:
+        exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
         
     if rois is None or len(rois) == 0 :
         exit_error('cannot create rois from recordings',-1,log,jobId,db,workingFolder)
@@ -458,7 +459,7 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
             errRoi = errRoi +1
             
     if errRoi == len(rois):
-        exit_error('cannot create rois from recordings (all err)',-1,log,jobId,db,workingFolder)
+        exit_error('cannot create rois from recordings (all error)',-1,log,jobId,db,workingFolder)
         
     cancelStatus(db,jobId,workingFolder)
     if log:
@@ -472,7 +473,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
     """Align rois"""
     if log:
         log.write('rois 2 surface')
-    if True:#try:
+    try:
         for roi in rois:
             if 'err' not in roi:
                 classid = roi[1]
@@ -491,8 +492,8 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
             classes[i].alignSamples(bIndex)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
 
-    #except:
-         #exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
+    except:
+         exit_error('cannot align rois',-1,log,jobId,db,workingFolder)
             
     cancelStatus(db,jobId,workingFolder)
     
@@ -509,10 +510,10 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
     if log:
         log.write("analizing recordings")
     
-    #try:
-    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id) for line in validationData)
-    #except:
-        #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
+    try:
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id) for line in validationData)
+    except:
+        exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
     if results is None:
         exit_error('cannot analyze recordings',-1,log,jobId,db,workingFolder)
@@ -613,7 +614,6 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
     except :
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
 
-    
     if log:
         log.write("k fold validation")
     validation_k_fold = True
@@ -634,7 +634,7 @@ def prepare_png_data(data,log,jobId,db,workingFolder):
     if log:
         log.write('preparing png data')
 
-    if True:#try:
+    try:
         specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
         rowsInSpec = data.shape[0]
         spec = numpy.copy(data)
@@ -648,8 +648,8 @@ def prepare_png_data(data,log,jobId,db,workingFolder):
         smin = numpy.min(numpy.min(specToShow))#numpy.min([numpy.min((specToShow[j])) for j in range(specToShow.shape[0])])
         smax = numpy.max(numpy.max(specToShow))# numpy.max([numpy.max((specToShow[j])) for j in range(specToShow.shape[0])])
         matrix = 255*(1-((specToShow - smin)/(smax-smin)))
-    #except:
-        #exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
+    except:
+        exit_error('cannot prepare png data',-1,log,jobId,db,workingFolder)
     if log:
         log.write('png data prepared')
     return matrix 
@@ -754,7 +754,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
 
-def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_type_id=4):
+def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_type_id=4,use_local_storage=False,local_storage_folder=None):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -791,7 +791,7 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     
     cancelStatus(db,jobId,workingFolder)
     
-    rois =  generate_rois(training_recordings,num_cores,config,workingFolder,jobId,ssim_flag,bIndex,log,db,save_model)
+    rois =  generate_rois(training_recordings,num_cores,config,workingFolder,jobId,ssim_flag,bIndex,log,db,save_model,use_local_storage,local_storage_folder)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -839,7 +839,10 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
         
             save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
         else:
-            pngFilename = '/home/rafa/Desktop/'+'job_'+str(jobId)+'_'+str(classId)+'.png'
+            fold = local_storage_folder+"/pattern-data/job"+str(jobId)
+            if not os.path.exists(fold):
+                os.makedirs(fold)
+            pngFilename = fold+'/'+'job_'+str(jobId)+'_'+str(classId)+'.png'
 
             patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
             
@@ -853,38 +856,41 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     
     return modelSaved 
 
-def run_training(jobId,save_model=True):
+def run_training(jobId,save_model=True,use_local_storage=False,local_storage_folder=None):
     
-    #try:
-    retValue = False
-    start_time = time.time()   
-    log = Logger(jobId, 'training.py', 'main')
-    log.also_print = True
-    log.write('fetching config.')
-    configuration = Config()
-    config = configuration.data()
-    log.write('config fetched.')
-    local_storage = True
-    log.write('fectching storage.')
-    if local_storage:
-        storage = a2pyutils.storage.LocalStorage("/home/rafa/recs/")
-    else:
-        storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
-    log.write('storage fetched.')
-    db = get_db(config)
-    log.write('database connection succesful')
-    model_type_id = get_job_model_type(db,jobId)
-    log.write('job model type fetched.')
-   #except:
-     #   return False
+    try:
+        configuration = Config()
+        config = configuration.data()
+        db = get_db(config)
+        retValue = False
+        start_time = time.time()   
+        log = Logger(jobId, 'training.py', 'main')
+        log.also_print = True
+        log.write('training job id'+str(jobId))
+        log.write('fetching config.')
+        log.write('config fetched.')
+        log.write('fectching storage.')
+        if use_local_storage:
+            storage = a2pyutils.storage.LocalStorage(local_storage_folder)
+        else:
+            storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
+        log.write('storage fetched.')
+        log.write('training database connection succesful')
+        model_type_id = get_job_model_type(db,jobId)
+        log.write('job model type fetched.')
+    except:
+        exit_error('There was an error initializing job', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
+        return False
     if model_type_id in [1,2,3,4,5,6]:
         log.write("Pattern Matching (modified Alvarez thesis)")
         if not save_model:
             log = None
-        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id)
+        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id,use_local_storage,local_storage_folder)
+        exit_error('There was an error running pattern matching job', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
         db.close()
         return retValue
     else:
         log.write("incorrect model type")
+        exit_error('Error: incorrect model type', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
         db.close()
         return False
