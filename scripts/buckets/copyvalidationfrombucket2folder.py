@@ -1,8 +1,10 @@
+import sys
+import os
+sys.path.append("/home/rafa/node/arbimon2-jobs-stable/lib")
 import boto
 from a2pyutils.config import Config
 from soundscape.set_visual_scale_lib import get_bucket
-import sys
-import os
+
 
 if len(sys.argv)<2:
     print "need a validation list (project_1234/validations/job_1234.csv)"

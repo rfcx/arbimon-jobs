@@ -1,5 +1,9 @@
 [
-    {"t_set":138,"name": "Thamnophilus schistaceus", "present":15,"not_present":15,"absent":15,"not_absent":15}
+    {"t_set":155,"name": "Eleutherodactylus brittoni", "present":8,"not_present":10,"absent":9,"not_absent":11},
+    {"t_set":154,"name": "Eleutherodactylus cochranae", "present":15,"not_present":12,"absent":15,"not_absent":12},
+    {"t_set":153,"name": "Incognitus primus", "present":11,"not_present":13,"absent":11,"not_absent":13},
+    {"t_set":152,"name": "Eleutherodactylus juanariveroi", "present":7,"not_present":10,"absent":7,"not_absent":11},
+    {"t_set":151,"name": "Eleutherodactylus coqui", "present":20,"not_present":6,"absent":21,"not_absent":6}
 ]
 
 

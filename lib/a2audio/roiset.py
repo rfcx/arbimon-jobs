@@ -89,33 +89,76 @@ class Roiset:
     def getSurface(self):
         return self.meanSurface
     
-    def alignSamples(self,bIndex=0):
+    def alignSamples(self,bIndex=0,number_of_rois_to_align=None):
+        print "number_of_rois_to_align",number_of_rois_to_align
         surface = numpy.zeros(shape=self.biggestRoi.shape)
         weights = numpy.zeros(shape=self.biggestRoi.shape)
         freqs = [i for i in reversed(json.load(file('scripts/data/freqs44100.json'))['freqs']) ]
-        for roi in self.roi:
-            high_index = 0
-            low_index = 0
-            while freqs[high_index] >= roi.highFreq:
-                high_index = high_index + 1
-                low_index  = low_index  + 1
-            while freqs[low_index ] >=  roi.lowFreq:
-                low_index  = low_index  + 1
-            distances = []
-            currColumns = roi.spec.shape[1]
-            for jj in range(self.maxColumns -currColumns ): 
-                subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
-                distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
-            if len(distances) > 0:
-                j = distances.index(min(distances))
-            else:
-                j = 0
-        
-            surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
-                
-            weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+        aln = 0
+        if number_of_rois_to_align is None:
+            print 'is none?'
+            for roi in self.roi:
+                aln = aln + 1
+                high_index = 0
+                low_index = 0
+                while freqs[high_index] >= roi.highFreq:
+                    high_index = high_index + 1
+                    low_index  = low_index  + 1
+                while freqs[low_index ] >=  roi.lowFreq:
+                    low_index  = low_index  + 1
+                distances = []
+                currColumns = roi.spec.shape[1]
+                for jj in range(self.maxColumns -currColumns ): 
+                    subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
+                    distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
+                if len(distances) > 0:
+                    j = distances.index(min(distances))
+                else:
+                    j = 0
             
-        self.meanSurface = numpy.divide(surface,weights)
+                surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
+                    
+                weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+                
+            self.meanSurface = numpy.divide(surface,weights)
+        elif number_of_rois_to_align == 1:
+            print 'only one'
+            aln = 1
+            self.meanSurface = self.biggestRoi
+        else:
+            print 'not all, not one'
+            surface = self.biggestRoi
+            number_of_rois_to_align = number_of_rois_to_align - 1
+            aln = aln + 1
+            weights = numpy.ones(shape=self.biggestRoi.shape)
+            for roiIndex in range(len(self.roi)):
+                if roiIndex is not self.biggestIndex and number_of_rois_to_align > 0:
+                    print 'roiIndex is not self.biggestIndex'
+                    aln = aln + 1
+                    roi = self.roi[roiIndex]
+                    high_index = 0
+                    low_index = 0
+                    while freqs[high_index] >= roi.highFreq:
+                        high_index = high_index + 1
+                        low_index  = low_index  + 1
+                    while freqs[low_index ] >=  roi.lowFreq:
+                        low_index  = low_index  + 1
+                    distances = []
+                    currColumns = roi.spec.shape[1]
+                    for jj in range(self.maxColumns -currColumns ): 
+                        subMatrix =   self.biggestRoi[high_index:low_index, jj:(jj+currColumns)]
+                        distances.append(numpy.linalg.norm(subMatrix  - roi.spec[high_index:low_index,:]) )
+                    if len(distances) > 0:
+                        j = distances.index(min(distances))
+                    else:
+                        j = 0
+                
+                    surface[high_index:low_index, j:(j+currColumns)] = surface[high_index:low_index, j:(j+currColumns)] + roi.spec[high_index:low_index, :]            
+                        
+                    weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+                    number_of_rois_to_align = number_of_rois_to_align - 1
+                
+            self.meanSurface = numpy.divide(surface,weights)         
         self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
     
     def showSurface(self):

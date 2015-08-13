@@ -10,6 +10,7 @@ import sys
 import a2pyutils.storage
 import os
 import shutil
+import boto.s3.connection
 
 def exit_error(msg, code=-1, log=None,jobId=None,db=None,workingFolder=None,doExit=True):
     print '<<<ERROR>>>\n{}\n<<<\ERROR>>>'.format(msg)
@@ -52,6 +53,26 @@ def get_db(config,cursor=True):
         exit_error("cannot connect to database.")
     return db
 
+def get_bucket(config):
+    bucketName = config[4]
+    awsKeyId = config[5]
+    awsKeySecret = config[6]
+    conn = None
+    bucket = None
+    try:
+        conn = boto.s3.connection.S3Connection(awsKeyId, awsKeySecret)
+    except:
+        exit_error('cannot not connect to aws.')
+    if not conn:
+        exit_error('cannot not connect to aws, no connection.')
+    else:
+        try:
+            bucket = conn.get_bucket(bucketName, validate=False)
+        except Exception, ex:
+            exit_error('cannot not connect to bucket.')
+        if not bucket:
+            exit_error('cannot not connect to bucket.')
+    return bucket
 
 def get_sc_data(db, soundscape_id):
     sc_data = None

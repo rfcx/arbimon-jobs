@@ -1,7 +1,8 @@
+import sys
+sys.path.append("/home/rafa/node/arbimon2-jobs-stable/lib")
 from a2pyutils.config import Config
 import os
 from soundscape.set_visual_scale_lib import get_db
-import sys
 from contextlib import closing
 
 if len(sys.argv)<3:
@@ -35,8 +36,6 @@ for filename in content:
         cursor.execute(q)
         row = cursor.fetchone()
         rid = row['rid']
-                  
-
     with closing(db.cursor()) as cursor:
         cursor.execute(""" INSERT INTO `recording_validations` ( `recording_id`, `project_id`, `user_id`, `species_id`, `songtype_id`, `present`) 
         VALUES (%s,33,1,%s,1,%s) ; """ , [str(rid),str(speciedId),str(press)])

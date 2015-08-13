@@ -26,7 +26,7 @@ class BotoBucketFile(object):
         
 class BotoBucketStorage(storage.AbstractStorage):
     def __init__(self, region, bucketName, accessKeyId=None, secretAccessKey=None, **kwdargs):
-        print 'bucketName',bucketName
+       # print 'bucketName',bucketName
         params = {'region_name': region};
         if accessKeyId:
             params['aws_access_key_id'] = accessKeyId

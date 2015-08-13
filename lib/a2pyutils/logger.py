@@ -16,6 +16,7 @@ class Logger:
         
         self.logON = logON
         self.also_print = False
+        self.script = script
         if self.logON:
             tempFolders = tempfile.gettempdir()
             self.workingFolder = tempFolders+"/logs/job_"+str(jobId)

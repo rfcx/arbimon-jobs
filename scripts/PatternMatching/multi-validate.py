@@ -13,11 +13,15 @@ import json
 from contextlib import closing
 
 
-model_Types = [1,2,3,4,5,6]
+model_Types = [1,2,3,4]
 
 if len(sys.argv) > 1:
     model_Types=[]
     model_Types.append(int(sys.argv[1]))
+    
+numOfRois = 4
+if len(sys.argv) > 2:
+    numOfRois = (int(sys.argv[2]))
     
 configuration = Config()
 config = configuration.data()
@@ -58,7 +62,7 @@ for model_type in model_Types:
     for i in range(len(validation_data)):
         r = validation_data[i]
         j = job_ids[i]
-        retVal = run_training(int(j),False,use_local_storage=True,local_storage_folder=local_storage_folder)
+        retVal = run_training(int(j),False,use_local_storage=True,local_storage_folder=local_storage_folder,number_of_rois_to_align=numOfRois)
         row = None
         row1= None
         if retVal:

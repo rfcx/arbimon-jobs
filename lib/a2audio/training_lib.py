@@ -28,6 +28,7 @@ import json
 classificationCanceled =False
 
 def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True,use_local_storage=False,local_storage_folder=None):
+    #print 'roigen'
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -84,6 +85,7 @@ def roigen(line,config,tempFolder,jobId,useSsim,bIndex,save_model=True,use_local
         db.close()
         return 'err'
     else:
+        #print 'roigen done'
         if log:
             log.write("roigen: done")
         db.close()
@@ -105,13 +107,16 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
     global classificationCanceled
     if classificationCanceled:
         return None
+    #print 'recnilize'
     if log:
         log.write('analyzing one recording')
     if len(config) < 7:
+        #print 'recnilize config error'
         log.write('error analyzing: config is wrong')
         return 'err'
     recId = int(line[5])
     if use_local_storage:
+        #print 'using local storage'
         storage = a2pyutils.storage.LocalStorage(local_storage_folder)
     else:
         storage = a2pyutils.storage.BotoBucketStorage(config[7], config[4], config[5], config[6])
@@ -153,17 +158,18 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
             pid = None
     if pid is None:
         insertRecError(db,jobId,recId)
+        #print 'recnilize no pid error'
         if log:
             log.write('error analyzing: pid is wrong')
         return 'err'
     key_prefix = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
     recAnalized = None
-    try:
-        recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId,model_type_id=model_type_id)
-    except:
-        log.write('error analyzing: Recanalizer is wrong')
-        insertRecError(db,jobId,recId)
-        return 'err'
+    #try:
+    recAnalized = Recanalizer(line[0] , pattern[0] ,pattern[2] , pattern[3] ,workingFolder, storage,log,False,useSsim,step=16,oldModel =False,numsoffeats=41,ransakit=useRansac,bIndex=bIndex,db=db,rec_id=recId,job_id=jobId,model_type_id=model_type_id)
+    #except:
+        #log.write('error analyzing: Recanalizer is wrong')
+        #insertRecError(db,jobId,recId)
+        #return 'err'
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
@@ -175,8 +181,6 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
             storage.put_file(vectorUri, ','.join(str(x) for x in vector), acl='public-read')
         else:
             fold = local_storage_folder+"/validation-data/job"+str(jobId)
-            if not os.path.exists():
-                os.makedirs(fold)
             f = open(fold+'/vectors_'+str(model_type_id)+'_'+str(jobId)+'.csv','a')
             f.write(str(line[3])+','.join(str(x) for x in vector)+"\n")
             f.close()
@@ -190,8 +194,10 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         infos.append(pattern[1])
         infos.append(line[0])
         db.close()
+        #print 'recnilize done'
         return {"fets":fets,"info":infos}
     else:
+        #print 'recnilize done with error'
         if log:
             log.write('error analyzing: recording cannot be analized. status: '+str(recAnalized.status))
         insertRecError(db,jobId,recId)
@@ -467,7 +473,7 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
     
     return rois
 from pylab import *
-def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
+def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder,number_of_rois_to_align=None):
     patternSurfaces = {}
     classes = {}
     """Align rois"""
@@ -489,7 +495,7 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
                     classes[classid] = Roiset(classid,float(sample_rate) ,log, (not useSsim))
                     classes[classid].addRoi(float(lowFreq),float(highFreq),float(sample_rate),spec,rows,columns)
         for i in classes:
-            classes[i].alignSamples(bIndex)
+            classes[i].alignSamples(bIndex,number_of_rois_to_align)
             patternSurfaces[i] = [classes[i].getSurface(),classes[i].setSampleRate,classes[i].lowestFreq ,classes[i].highestFreq,classes[i].maxColumns]
 
     except:
@@ -504,16 +510,16 @@ def rois_2_surface(rois,log,bIndex,useSsim,db,jobId,workingFolder):
         
     return classes,patternSurfaces
 
-def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model,model_type_id):
+def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,patternSurfaces,useSsim,useRansac,bIndex,db,save_model,model_type_id,use_local_storage=False,local_storage_folder=None):
     results = None
     """Recnilize"""
     if log:
         log.write("analizing recordings")
     
-    try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id) for line in validationData)
-    except:
-        exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
+    #try:
+    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id,use_local_storage,local_storage_folder) for line in validationData)
+    #except:
+        #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
     if results is None:
         exit_error('cannot analyze recordings',-1,log,jobId,db,workingFolder)
@@ -754,7 +760,7 @@ def save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces
         exit_error('error saving model into database',-1,log,jobId,db,workingFolder)
         
 
-def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_type_id=4,use_local_storage=False,local_storage_folder=None):
+def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_type_id=4,use_local_storage=False,local_storage_folder=None,number_of_rois_to_align=None):
     (
         project_id, user_id,
         model_type_id, training_set_id,
@@ -772,7 +778,15 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     num_cores = multiprocessing.cpu_count()
     if int(ncpu) > 0:
         num_cores = int(ncpu)
-        
+    
+    if use_local_storage:
+        fold = local_storage_folder+"/validation-data/job"+str(jobId)
+        if not os.path.exists(fold):
+            try:
+                os.makedirs(fold)
+            except:
+                pass
+            
     progress_steps = 0
     
     workingFolder = create_temp_dir(jobId,log)
@@ -795,11 +809,11 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     
     cancelStatus(db,jobId,workingFolder)
     
-    classes,patternSurfaces = rois_2_surface(rois,log,bIndex,ssim_flag,db,jobId,workingFolder)
+    classes,patternSurfaces = rois_2_surface(rois,log,bIndex,ssim_flag,db,jobId,workingFolder,number_of_rois_to_align)
     
     cancelStatus(db,jobId,workingFolder)
     
-    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id)
+    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id,use_local_storage,local_storage_folder)
     
     cancelStatus(db,jobId,workingFolder)
     
@@ -853,11 +867,10 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     
     if os.path.exists(workingFolder):
         shutil.rmtree(workingFolder)
-    
     return modelSaved 
 
-def run_training(jobId,save_model=True,use_local_storage=False,local_storage_folder=None):
-    
+def run_training(jobId,save_model=True,use_local_storage=False,local_storage_folder=None,number_of_rois_to_align=None):
+    log=None
     try:
         configuration = Config()
         config = configuration.data()
@@ -885,8 +898,9 @@ def run_training(jobId,save_model=True,use_local_storage=False,local_storage_fol
         log.write("Pattern Matching (modified Alvarez thesis)")
         if not save_model:
             log = None
-        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id,use_local_storage,local_storage_folder)
-        exit_error('There was an error running pattern matching job', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
+        retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id,use_local_storage,local_storage_folder,number_of_rois_to_align)
+        if not retValue:
+            exit_error('There was an error running pattern matching job', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
         db.close()
         return retValue
     else:

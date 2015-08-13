@@ -85,11 +85,13 @@ class Recanalizer:
             self.status = 'TestRun'
     
     def process(self):
+       # print 'processing recording 1'
         start_time = time.time()
         if not self.hasrec:
             self.instanceRec()
         if self.logs:
             self.logs.write("retrieving recording from storage --- seconds ---" + str(time.time() - start_time))
+        #print self.rec.status
         if self.rec.status == 'HasAudioData':
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
@@ -130,7 +132,8 @@ class Recanalizer:
                         self.status = 'Processed'
         else:
             self.status = 'NoData'
-
+        #print self.status
+        
     def getRec(self):
         return self.rec
     
