@@ -9,6 +9,8 @@ from skimage.measure import structural_similarity as ssim
 from samplerates import *
 import warnings
 import json
+import cPickle as pickle
+import os
 
 class Roiset:   
 
@@ -90,6 +92,7 @@ class Roiset:
         return self.meanSurface
     
     def alignSamples(self,bIndex=0,number_of_rois_to_align=None):
+        print self.sampleRates
         print "number_of_rois_to_align",number_of_rois_to_align
         surface = numpy.zeros(shape=self.biggestRoi.shape)
         weights = numpy.zeros(shape=self.biggestRoi.shape)
@@ -124,6 +127,26 @@ class Roiset:
         elif number_of_rois_to_align == 1:
             print 'only one'
             aln = 1
+            
+            roidata = None
+            high_index = 0
+            low_index = 0
+            while freqs[high_index] >= self.highestFreq:
+                high_index = high_index + 1
+                low_index  = low_index  + 1
+            while freqs[low_index ] >=  self.lowestFreq:
+                low_index  = low_index  + 1
+                    
+            if os.path.exists("/home/rafa/Desktop/rios_all.pickle"):
+                with open("/home/rafa/Desktop/rios_all.pickle", 'rb') as inputs:
+                    roidata = pickle.load(inputs)
+            else:
+                roidata = []
+                
+            roidata.append([self.biggestRoi,self.lowestFreq,self.highestFreq,low_index,high_index ])
+            with open("/home/rafa/Desktop/rios_all.pickle", 'wb') as output:
+                pickle.dump(roidata, output, -1)
+    
             self.meanSurface = self.biggestRoi
         else:
             print 'not all, not one'

@@ -19,7 +19,7 @@ if len(sys.argv) > 1:
     model_Types=[]
     model_Types.append(int(sys.argv[1]))
     
-numOfRois = 4
+numOfRois = 1
 if len(sys.argv) > 2:
     numOfRois = (int(sys.argv[2]))
     
@@ -63,27 +63,27 @@ for model_type in model_Types:
         r = validation_data[i]
         j = job_ids[i]
         retVal = run_training(int(j),False,use_local_storage=True,local_storage_folder=local_storage_folder,number_of_rois_to_align=numOfRois)
-        row = None
-        row1= None
-        if retVal:
-            with closing(db.cursor()) as cursor:    
-                cursor.execute("SELECT  `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity` ,`w`,`h` FROM `k_fold_Validations` WHERE `job_id` = "+str(j))
-                row = cursor.fetchone()
-                db.commit()
-            with closing(db.cursor()) as cursor:    
-                cursor.execute("select avg(exec_time) as time from recanalizer_stats where job_id = "+str(j)+"")
-                row1 = cursor.fetchone()
-                db.commit()        
-            rows.append(','.join([str(model_type),r['name'],str(row['totaln']),str(row['pos_n']),str(row['neg_n']),str(row['k_folds']),str(row['accuracy']),str(row['precision']),str(row['sensitivity']),str(row['specificity']),str(row1['time']),str(row['w']),str(row['h']) , str(int(row['h'])*int(row['w']))]))
-            row = None
-            row1 = None
-        else:
-            print 'job failed'
-        f = open(local_storage_folder+'/results_'+str(j)+"_"+str(model_type)+".csv",'w')
-        f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])+"\n")
-        for r in rows:
-            f.write(r+'\n')
-        f.close() 
+        # row = None
+        # row1= None
+        # if retVal:
+        #     with closing(db.cursor()) as cursor:    
+        #         cursor.execute("SELECT  `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity` ,`w`,`h` FROM `k_fold_Validations` WHERE `job_id` = "+str(j))
+        #         row = cursor.fetchone()
+        #         db.commit()
+        #     with closing(db.cursor()) as cursor:    
+        #         cursor.execute("select avg(exec_time) as time from recanalizer_stats where job_id = "+str(j)+"")
+        #         row1 = cursor.fetchone()
+        #         db.commit()        
+        #     rows.append(','.join([str(model_type),r['name'],str(row['totaln']),str(row['pos_n']),str(row['neg_n']),str(row['k_folds']),str(row['accuracy']),str(row['precision']),str(row['sensitivity']),str(row['specificity']),str(row1['time']),str(row['w']),str(row['h']) , str(int(row['h'])*int(row['w']))]))
+        #     row = None
+        #     row1 = None
+        # else:
+        #     print 'job failed'
+        # f = open(local_storage_folder+'/results_'+str(j)+"_"+str(model_type)+".csv",'w')
+        # f.write(','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])+"\n")
+        # for r in rows:
+        #     f.write(r+'\n')
+        # f.close() 
 
 print ','.join(['model_type','species','total_n','pos','neg','k','accuracy','precision','sensitivity','specificity','exec_time','width','height','total_pixels'])
 for r in rows:
