@@ -619,15 +619,26 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
     try:
         modelStats = model.modelStats()
         dimsPat = model.getPatternDim()
+        specpat = model.getSpec()
     except :
         exit_error('cannot get stats from model',-1,log,jobId,db,workingFolder)       
-
+    spid = classId.split('_')[0]
     if log:
         log.write("k fold validation")
     validation_k_fold = True
     foldesn = 10
     if validation_k_fold:
-        totalData,totalPos ,totalNeg ,accuracy_score,precision_score,sensitivity_score,specificity_score = model.k_fold_validation(folds=foldesn)
+        data = specpat
+        specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
+        rowsInSpec = data.shape[0]
+        spec = numpy.copy(data)
+        if  numpy.sum(numpy.sum(spec == -10000))>0:
+            spec[spec == -10000] = numpy.nan
+        for j in range(0,rowsInSpec):
+            if abs(numpy.nansum(spec[j,:])) > 0.0:
+                specToShow = numpy.vstack((specToShow,numpy.copy(spec[j,:])))
+        
+        totalData,totalPos ,totalNeg ,accuracy_score,precision_score,sensitivity_score,specificity_score = model.k_fold_validation(folds=foldesn,db=db,jobId=jobId,pshape=specToShow.shape,speciesId=spid)
         with closing(db.cursor()) as cursor:
             cursor.execute("""INSERT INTO `k_fold_Validations`(`job_id`, `totaln`, `pos_n`, `neg_n`, `k_folds`, `accuracy`, `precision`, `sensitivity`, `specificity`,`w`,`h`)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
@@ -812,64 +823,64 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
     cancelStatus(db,jobId,workingFolder)
 
     classes,patternSurfaces = rois_2_surface(rois,log,bIndex,ssim_flag,db,jobId,workingFolder,number_of_rois_to_align)
-    # 
-    # cancelStatus(db,jobId,workingFolder)
-    # 
-    # recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id,use_local_storage,local_storage_folder)
-    # 
-    # cancelStatus(db,jobId,workingFolder)
-    # 
-    # models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces,model_type_id)
-    # 
-    # cancelStatus(db,jobId,workingFolder)
-    # 
-    # use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent = balance_validation_samples(use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent, presentsCount,ausenceCount)
-    # 
-    # cancelStatus(db,jobId,workingFolder)    
-    # 
-    # modelSaved = False
-    # for classId in models:
-    #     modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
-    #     
-    #     if save_model:
-    #         pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
-    #        
-    #         patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
-    #         
-    #         png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-    #         
-    #         pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
-    #         modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
-    #         files2upload = {
-    #             'model':{'key':modKey ,
-    #                      'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
-    #                      'public':False},
-    #             'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
-    #                           'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
-    #                           'public':False},
-    #             'png':{'key': pngKey ,
-    #                    'file':pngFilename,
-    #                    'public':True}
-    #         }
-    #         upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
-    #     
-    #         save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
-    #     else:
-    #         fold = local_storage_folder+"/pattern-data/job"+str(jobId)
-    #         if not os.path.exists(fold):
-    #             os.makedirs(fold)
-    #         pngFilename = fold+'/'+'job_'+str(jobId)+'_'+str(classId)+'.png'
-    # 
-    #         patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
-    #         
-    #         png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
-    #     if log:  
-    #         log.write("model saved")
-    #     modelSaved = True
-    # 
-    # if os.path.exists(workingFolder):
-    #     shutil.rmtree(workingFolder)
-    return True#modelSaved 
+    
+    cancelStatus(db,jobId,workingFolder)
+    
+    recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id,use_local_storage,local_storage_folder)
+    
+    cancelStatus(db,jobId,workingFolder)
+    
+    models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces,model_type_id)
+    
+    cancelStatus(db,jobId,workingFolder)
+    
+    use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent = balance_validation_samples(use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent, presentsCount,ausenceCount)
+    
+    cancelStatus(db,jobId,workingFolder)    
+    
+    modelSaved = False
+    for classId in models:
+        modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
+        
+        if save_model:
+            pngFilename = workingFolder+'job_'+str(jobId)+'_'+str(classId)+'.png'
+           
+            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+            
+            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+            
+            pngKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.png'
+            modKey = 'project_'+str(project_id)+'/models/job_'+str(jobId)+'_'+str(classId)+'.mod'
+            files2upload = {
+                'model':{'key':modKey ,
+                         'file':workingFolder+"model_"+str(jobId)+"_"+str(classId)+".mod",
+                         'public':False},
+                'validation':{'key':'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv',
+                              'file':workingFolder+'job_'+str(jobId)+'_vals.csv',
+                              'public':False},
+                'png':{'key': pngKey ,
+                       'file':pngFilename,
+                       'public':True}
+            }
+            upload_files_2storage(storage, files2upload,log,jobId,db,workingFolder)
+        
+            save_model_to_db(classId,db,jobId,training_set_id,modelStats,patternSurfaces[classId],pngKey,name,model_type_id,modKey,project_id,user_id,validationId,log,workingFolder)
+        else:
+            fold = local_storage_folder+"/pattern-data/job"+str(jobId)
+            if not os.path.exists(fold):
+                os.makedirs(fold)
+            pngFilename = fold+'/'+'job_'+str(jobId)+'_'+str(classId)+'.png'
+    
+            patternPngMatrix = prepare_png_data(modelStats[4],log,jobId,db,workingFolder)
+            
+            png.from_array(patternPngMatrix, 'L;8').save(pngFilename)
+        if log:  
+            log.write("model saved")
+        modelSaved = True
+    
+    if os.path.exists(workingFolder):
+        shutil.rmtree(workingFolder)
+    return modelSaved 
 
 def run_training(jobId,save_model=True,use_local_storage=False,local_storage_folder=None,number_of_rois_to_align=None):
     log=None

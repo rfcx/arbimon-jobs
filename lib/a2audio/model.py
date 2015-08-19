@@ -8,6 +8,8 @@ import cPickle as pickle
 from itertools import izip as zip, count
 import random
 import csv
+import MySQLdb
+from contextlib import closing
 
 class Model:
 
@@ -76,10 +78,10 @@ class Model:
         self.clf.fit(data, classSubset)
         self.obbScore = self.clf.oob_score_
     
-    def k_fold_validation(self,folds=10):
+    def k_fold_validation(self,folds=10,db=None,jobId=None,pshape=None,speciesId=None):
         print 'stating validation'
         totalData = len(self.classes)
-        kf = cross_validation.KFold(n=totalData, n_folds=folds)
+        kf = cross_validation.KFold(n=totalData, n_folds=folds,shuffle=True)
         testCl = []
         predicCl = []
         knum = 1
@@ -97,6 +99,42 @@ class Model:
             clf.fit(trainData, trainClasses)
             f.write(','.join([ str(i) for i  in clf.feature_importances_])+"\n")
             predictions = clf.predict(testData)
+            
+            tp = 0.0
+            fp = 0.0
+            tn = 0.0
+            fn = 0.0
+            accuracy_score = 0.0
+            precision_score = 0.0
+            sensitivity_score = 0.0
+            specificity_score  = 0.0
+            for i in range(len(testClasses)):
+                if str(testClasses[i])=='1':
+                    if testClasses[i] == predictions[i]:
+                        tp = tp + 1.0
+                    else:
+                        fn = fn + 1.0
+                else:
+                    if testClasses[i] == predictions[i]:
+                        tn = tn + 1.0
+                    else:
+                        fp = fp + 1.0
+            
+            if (tp+fp+tn+fn) >0:
+                accuracy_score = (tp +  tn)/(tp+fp+tn+fn)
+            if (tp+fp) > 0:
+                precision_score = tp/(tp+fp)
+            if (tp+fn) > 0:
+                sensitivity_score = tp/(tp+fn)
+            if (tn+fp) > 0:
+                specificity_score  = tn/(tn+fp)          
+            if db:
+                with closing(db.cursor()) as cursor:
+                    cursor.execute("""INSERT INTO `individual_k_fold_Validations`(`job_id`, `fold`, `accuracy`, `precision`, `sensitivity`, `specificity`,`w`,`h`,`species`)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    [jobId,knum,accuracy_score ,precision_score,sensitivity_score,specificity_score,pshape[1],pshape[0],str(speciesId)])
+                    db.commit()
+            
             for i in testClasses:
                 testCl.append(i)
             for i in predictions:
