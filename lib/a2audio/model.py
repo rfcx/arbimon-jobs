@@ -10,6 +10,7 @@ import random
 import csv
 import MySQLdb
 from contextlib import closing
+import os
 
 class Model:
 
@@ -26,14 +27,16 @@ class Model:
         self.data  = [] 
         self.classes = []
         self.uris = []
+        self.ids=[]
         self.minv = 9999999
         self.maxv = -9999999
         self.jobId = jobid
         self.model_type = model_type
         
-    def addSample(self,present,row,uri):
+    def addSample(self,present,row,uri,ids):
         self.classes.append(str(present))
         self.uris.append(uri)
+        self.ids.append(int(ids))
         if self.minv >  row[3]:
             self.minv =  row[3]
         if self.maxv < row[2]:
@@ -82,6 +85,24 @@ class Model:
         print 'stating validation'
         totalData = len(self.classes)
         kf = cross_validation.KFold(n=totalData, n_folds=folds,shuffle=True)
+        recsIdOrdering = []
+        
+        valiKFile = "/home/rafa/Desktop/kfolds_ids_"+str(speciesId)+".pickle"
+        if os.path.exists(valiKFile):
+            #print 'file exists'
+            with open(valiKFile, 'rb') as inputs:
+                recsIdOrdering = pickle.load(inputs)
+            #print len(self.ids),self.ids
+            #print recsIdOrdering
+        else:
+            for train_index, test_index in kf:
+                trainids = [self.ids[i] for i in train_index]
+                testids = [self.ids[i] for i in test_index]
+                recsIdOrdering.append({'train':trainids , 'test':testids})
+            #print len(self.ids),self.ids
+            #print recsIdOrdering
+            with open(valiKFile, 'wb') as output:
+                pickle.dump(recsIdOrdering, output, -1)
         testCl = []
         predicCl = []
         knum = 1
@@ -90,7 +111,15 @@ class Model:
             
         f = open('/home/rafa/Desktop/importances'+str(self.model_type)+'_'+str(self.jobId)+'.csv','w')
         
-        for train_index, test_index in kf:
+        for idskf in recsIdOrdering:
+            trainids = idskf['train']
+            testids = idskf['test']
+            train_index = []
+            test_index = []
+            for i in trainids:
+                train_index.append(self.ids.index(i))
+            for i in testids:
+                test_index.append(self.ids.index(i))        
             trainData = self.data[train_index]
             testData = self.data[test_index]
             trainClasses = [self.classes[i] for i in train_index]

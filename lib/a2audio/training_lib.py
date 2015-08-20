@@ -194,6 +194,7 @@ def recnilize(line,config,workingFolder,jobId,pattern,useSsim,useRansac,log=None
         infos.append(pattern[3])
         infos.append(pattern[1])
         infos.append(line[0])
+        infos.append(recId)
         db.close()
         #print 'recnilize done'
         return {"fets":fets,"info":infos}
@@ -453,7 +454,7 @@ def generate_rois(trainingData,num_cores,config,workingFolder,jobId,useSsim,bInd
     rois = None
     """Roigenerator"""
     try:
-        rois = Parallel(n_jobs=num_cores)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model,use_local_storage,local_storage_folder) for line in trainingData)
+        rois = Parallel(n_jobs=2)(delayed(roigen)(line,config,workingFolder,jobId,useSsim,bIndex,save_model,use_local_storage,local_storage_folder) for line in trainingData)
     except:
         exit_error('roigenerator failed',-1,log,jobId=jobId,db=db,workingFolder=workingFolder)
         
@@ -519,7 +520,7 @@ def analyze_recordings(validationData,log,num_cores,config,workingFolder,jobId,p
         log.write("analizing recordings")
     
     #try:
-    results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id,use_local_storage,local_storage_folder) for line in validationData)
+    results = Parallel(n_jobs=2)(delayed(recnilize)(line,config,workingFolder,jobId,(patternSurfaces[line[4]]),useSsim,useRansac,log,bIndex,save_model,model_type_id,use_local_storage,local_storage_folder) for line in validationData)
     #except:
         #exit_error('cannot terminate parallel loop (analyzing recordings)',-1,log,jobId,db,workingFolder)
 
@@ -553,10 +554,10 @@ def add_samples_to_model(results,jobId,db,workingFolder,log,patternSurfaces,mode
             if 'err' not in res:
                 classid = res['info'][0]
                 if classid in models:
-                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6],res['info'][7])
                 else:
                     models[classid] = Model(classid,patternSurfaces[classid][0],jobId,model_type)
-                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6])
+                    models[classid].addSample(res['info'][1],res['fets'],res['info'][6],res['info'][7])
     except:
         exit_error('cannot add samples to model',-1,log,jobId,db,workingFolder)
     
@@ -582,6 +583,7 @@ def balance_validation_samples(useTrainingPresent,useValidationPresent,useTraini
     return   useTrainingPresent,useValidationPresent,useTrainingNotPresent,useValidationNotPresent
 
 def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent,log,jobId,db,workingFolder,useSsim,useRansac,bIndex,patternSurfaces,classId):
+    print "train models"
     if log:
         log.write("training model")
     modelFilesLocation = workingFolder
@@ -592,7 +594,7 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
         exit_error('error spliting data for validation',-1,log,jobId,db,workingFolder)
     if not resultSplit:
         return None
-
+    print "model train"
     try:
         model.train()
     except:
@@ -605,7 +607,8 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
             model.saveValidations(validationsLocalFile)
         except:
            exit_error('error validating model',-1,log,jobId,db,workingFolder)
-           
+    
+    print "model save"   
     modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(classId)+".mod"
     if log:
         log.write("saving model to file")
@@ -627,6 +630,7 @@ def train_model(model,useTrainingPresent,useTrainingNotPresent,useValidationPres
         log.write("k fold validation")
     validation_k_fold = True
     foldesn = 10
+    print "k fold"
     if validation_k_fold:
         data = specpat
         specToShow = numpy.zeros(shape=(0,int(data.shape[1])))
@@ -801,43 +805,43 @@ def train_pattern_matching(db,jobId,log,config, storage,save_model=True,model_ty
                 pass
             
     progress_steps = 0
-    
+    print "create temp dir"
     workingFolder = create_temp_dir(jobId,log)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print "get training recordings"
     training_recordings,progress_steps,speciesSongtype,numSpeciesSongtype,maxBand = get_training_recordings(jobId,training_set_id,workingFolder,log,config,progress_steps)
     
     cancelStatus(db,jobId,workingFolder)
-
+    print "get validation recordings"
     validation_recordings,validationId = get_validation_recordings(workingFolder,jobId,progress_steps,config, storage, log,speciesSongtype,numSpeciesSongtype,project_id,user_id,name,use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent,save_model)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print "band 2 index"
     bIndex = band2index(maxBand)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print "generate rois"
     rois =  generate_rois(training_recordings,num_cores,config,workingFolder,jobId,ssim_flag,bIndex,log,db,save_model,use_local_storage,local_storage_folder)
     
     cancelStatus(db,jobId,workingFolder)
-
+    print "rois to surface"
     classes,patternSurfaces = rois_2_surface(rois,log,bIndex,ssim_flag,db,jobId,workingFolder,number_of_rois_to_align)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print "analyze recordings"
     recordings_results,presentsCount,ausenceCount = analyze_recordings(validation_recordings ,log,num_cores,config,workingFolder,jobId,patternSurfaces,ssim_flag,ransac_flag,bIndex,db,save_model,model_type_id,use_local_storage,local_storage_folder)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print  "add samples to model"
     models = add_samples_to_model(recordings_results,jobId,db,workingFolder,log,patternSurfaces,model_type_id)
     
     cancelStatus(db,jobId,workingFolder)
-    
+    print "balance validation"
     use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent = balance_validation_samples(use_in_training_present,use_in_validation_present,use_in_training_notpresent,use_in_validation_notpresent, presentsCount,ausenceCount)
     
     cancelStatus(db,jobId,workingFolder)    
-    
+    print "for models"
     modelSaved = False
     for classId in models:
         modelStats = train_model(models[classId],use_in_training_present,use_in_training_notpresent,use_in_validation_present,use_in_validation_notpresent,log,jobId,db,workingFolder,ssim_flag,ransac_flag,bIndex,patternSurfaces[classId],classId)
@@ -909,8 +913,8 @@ def run_training(jobId,save_model=True,use_local_storage=False,local_storage_fol
         return False
     if model_type_id in [1,2,3,4,5,6]:
         log.write("Pattern Matching (modified Alvarez thesis)")
-        if not save_model:
-            log = None
+        #if not save_model:
+            #log = None
         retValue = train_pattern_matching(db,jobId,log,config, storage,save_model,model_type_id,use_local_storage,local_storage_folder,number_of_rois_to_align)
         if not retValue:
             exit_error('There was an error running pattern matching job', code=-1, log=log,jobId=jobId,db=db,workingFolder=None,doExit=False)
