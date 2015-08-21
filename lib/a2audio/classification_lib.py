@@ -269,9 +269,11 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
         exit_error('cannot process results.')
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
    
-def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
+def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
     global classificationCanceled
+    db = None
     try:
+        db = get_db(config)
         num_cores = multiprocessing.cpu_count()
         if int(ncpu)>0:
             num_cores = int(ncpu)
@@ -289,6 +291,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
     except:
         return False
     log.write('starting parallel for.')
+    db.close()
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
             delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
@@ -298,6 +301,7 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
             log.write('job cancelled')
         return False
     log.write('done parallel execution.')
+    db = get_db(config)
     cancelStatus(db,jobId,workingFolder)
     try:
         jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db)
@@ -323,8 +327,10 @@ def run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,conf
                 WHERE `job_id` = %s
             """, [jobId])
             db.commit()
+        db.close()
         return True
     except:
+        db.close()
         return False
     
 def run_classification(jobId):
@@ -344,17 +350,15 @@ def run_classification(jobId):
         log.write('job data fetched.')
         model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
         log.write('model params fetched.')
+        db.close()
     except:
         return False
     if model_type_id in [4]:
-        retValue = run_pattern_matching(db,jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
-        db.close()
+        retValue = run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
         return retValue
     elif model_type_id in [-1]:
         pass
         """Entry point for new model types"""
     else:
         log.write("Unkown model type")
-        db.close()
         return False
-		
