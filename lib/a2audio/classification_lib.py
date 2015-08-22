@@ -208,19 +208,21 @@ def write_vector(recUri,tempFolder,featvector):
         wr.writerow(featvector)
         myfileWrite.close()
     except:
-        exit_error('cannot create featVector')
+        return None
     return vectorLocal
 
-def upload_vector(uri,filen,config):
+def upload_vector(uri,filen,config,rid,db,jobId):
     try:
         bucket = get_bucket(config)
         k = bucket.new_key(uri)
         k.set_contents_from_filename(filen)
         k.set_acl('public-read')
+        os.remove(filen)
     except:
-        exit_error('cannot upload vector file.')
+        insert_rec_error(db, rid, jobId)
 
 def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
+    db = None
     try:
         db = get_db(config)
         with closing(db.cursor()) as cursor:
@@ -234,7 +236,8 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
             """, [jId, recId, species, songtype, presence, maxV])
             db.commit()
     except:
-        exit_error('cannot insert results to database.')
+        insert_rec_error(db, recId, jobId)
+    db.close()
         
 def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
     minVectorVal = 9999999.0
@@ -254,17 +257,20 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                 recName = r['uri'].split('/')
                 recName = recName[len(recName)-1]
                 localFile = write_vector(r['uri'],workingFolder,r['f'])
-                maxv = max(r['f'])
-                minv = min(r['f'])
-                if minVectorVal > float(minv):
-                    minVectorVal = minv
-                if maxVectorVal < float(maxv):
-                    maxVectorVal = maxv
-                vectorUri = '{}/classification_{}_{}.vector'.format(
-                        modelUri.replace('.mod', ''), jobId, recName
-                )
-                upload_vector(vectorUri,localFile,config)
-                insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
+                if localFile is not None:
+                    maxv = max(r['f'])
+                    minv = min(r['f'])
+                    if minVectorVal > float(minv):
+                        minVectorVal = minv
+                    if maxVectorVal < float(maxv):
+                        maxVectorVal = maxv
+                    vectorUri = '{}/classification_{}_{}.vector'.format(
+                            modelUri.replace('.mod', ''), jobId, recName
+                    )
+                    upload_vector(vectorUri,localFile,config,r['id'],db,jobId)
+                    insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
+                else:
+                    insert_rec_error(db, r['id'], jobId)
     except:
         exit_error('cannot process results.')
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
