@@ -97,6 +97,10 @@ if not job:
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
     threshold, pid, uid, name, frequency , normalized ,ncpu
 ) = job
+(
+    compute_index_h,
+    compute_index_aci
+) = (False, True)
 num_cores = multiprocessing.cpu_count()
 if int(ncpu) > 0:
     num_cores = int(ncpu)
@@ -274,25 +278,31 @@ try:
                 for i in range(len(ff)):
                     freqs.append(ff[i]['f'])
                     amps.append(ff[i]['a'])
-                proc = subprocess.Popen([
-                   '/usr/bin/Rscript', currDir+'/h.R',
-                   localFile
-                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = proc.communicate()
-                
-                hvalue = None
-                if stdout and 'err' not in stdout:
-                    hvalue = float(stdout)
+                if compute_index_h:
+                    proc = subprocess.Popen([
+                    '/usr/bin/Rscript', currDir+'/h.R',
+                    localFile
+                    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout, stderr = proc.communicate()
                     
-                proc = subprocess.Popen([
-                   '/usr/bin/Rscript', currDir+'/aci.R',
-                   localFile
-                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = proc.communicate()
-                
-                acivalue = None
-                if stdout and 'err' not in stdout:
+                    hvalue = None
+                    if stdout and 'err' not in stdout:
+                        hvalue = float(stdout)
+                else:
+                    hvalue=-1
+                    
+                if compute_index_aci:
+                    proc = subprocess.Popen([
+                       '/usr/bin/Rscript', currDir+'/aci.R',
+                       localFile
+                    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout, stderr = proc.communicate()
+                    
+                    acivalue = None
+                    if stdout and 'err' not in stdout:
                     acivalue = float(stdout)
+                else:
+                    acivalue=-1
                     
                 proc = subprocess.Popen([
                    '/usr/bin/soxi', '-r',
