@@ -300,7 +300,7 @@ try:
                     
                     acivalue = None
                     if stdout and 'err' not in stdout:
-                    acivalue = float(stdout)
+                        acivalue = float(stdout)
                 else:
                     acivalue=-1
                     
