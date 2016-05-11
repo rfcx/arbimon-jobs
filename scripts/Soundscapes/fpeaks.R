@@ -1,13 +1,15 @@
+
+
 args = commandArgs(TRUE)
 
 suppressMessages(suppressWarnings(library(seewave)))
 suppressMessages(suppressWarnings(library(tuneR)))
 
-work_fpeaks = function(argss, norm.meanspec = F, norm.channel=T){
+work_fpeaks = function(filename, threshold, bin.size, frequency, norm.channel=T, norm.meanspec = F){
     archivo = FALSE
 
     tryCatch({
-        archivo <- readWave(argss[1])
+        archivo <- readWave(filename)
     },
     error = function(e){
         return('err0')
@@ -30,7 +32,7 @@ work_fpeaks = function(argss, norm.meanspec = F, norm.channel=T){
         }
         
         if(length(data)>archivo@samp.rate){ # at least one second of audio
-            bin_size = as.numeric(argss[3])
+            bin_size = as.numeric(bin.size)
             picos = c()
             spec = c()
             srate = archivo@samp.rate
@@ -52,13 +54,13 @@ work_fpeaks = function(argss, norm.meanspec = F, norm.channel=T){
             });
             
             epsilonValue = 0.00001
-            if(as.numeric(argss[2]) > 0.00001){
-                epsilonValue = as.numeric(argss[2])
+            if(as.numeric(threshold) > 0.00001){
+                epsilonValue = as.numeric(threshold)
             }
              
             tryCatch({
                 #,amp=c(0.01,0.01)
-                picos<-fpeaks(spec,freq=as.numeric(argss[4]),plot=FALSE,threshold=epsilonValue)
+                picos<-fpeaks(spec,freq=as.numeric(frequency),plot=FALSE,threshold=epsilonValue)
             },
             error = function(e){
                 return('err2')
@@ -101,8 +103,11 @@ work_fpeaks = function(argss, norm.meanspec = F, norm.channel=T){
 }
 
 if(length(args) >=4){
-    cat(work_fpeaks(args))
+    cat(work_fpeaks(args[1], args[2], args[3], args[4], 
+        length(args) < 5 || as.logical(args[5]), 
+        length(args) >= 6 && as.logical(args[6])
+    ))
 } else {
-    cat('Usage:\n    fpeaks.R file threshold bin_size frequency\n')
+    cat('Usage:\n    fpeaks.R file threshold bin_size frequency [normch] [normms]\n')
     quit(save="no",status=-1,runLast=FALSE)
 }
