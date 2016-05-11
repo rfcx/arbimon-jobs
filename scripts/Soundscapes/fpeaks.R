@@ -104,4 +104,7 @@ work_fpeaks = function(argss)
 if(length(args) >=4)
 {
     cat(work_fpeaks(args))
+} else {
+    cat('Usage:\n    fpeaks.R file threshold bin_size frequency\n')
+    quit(save="no",status=-1,runLast=FALSE)
 }
