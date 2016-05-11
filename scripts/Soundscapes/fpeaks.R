@@ -1,8 +1,7 @@
 args = commandArgs(TRUE)
 suppressMessages(suppressWarnings(library(seewave)))
 suppressMessages(suppressWarnings(library(tuneR)))
-work_fpeaks = function(argss)
-{
+work_fpeaks = function(argss, norm.meanspec = F, norm.channel=T){
     archivo = FALSE
     tryCatch(
         {
@@ -27,6 +26,9 @@ work_fpeaks = function(argss)
         {
             data = archivo@.Data
         }
+        if(norm.channel && archivo@pcm){
+            data = data / (2**(archivo@bit - 1))
+        }
         if(length(data)>archivo@samp.rate)# at least one second of audio
         {
             bin_size = as.numeric(argss[3])
@@ -43,7 +45,7 @@ work_fpeaks = function(argss)
             windowsize = n + 1
             tryCatch(
                 {
-                    spec <- meanspec(archivo, f=srate, plot=FALSE,wl=windowsize)
+                    spec <- meanspec(archivo, f=srate, plot=FALSE,wl=windowsize, norm=norm.meanspec)
                 }
                 ,
                 error = function(e)
