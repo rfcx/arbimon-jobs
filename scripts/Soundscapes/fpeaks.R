@@ -2,6 +2,7 @@
 
 args = commandArgs(TRUE)
 
+library(methods)
 suppressMessages(suppressWarnings(library(seewave)))
 suppressMessages(suppressWarnings(library(tuneR)))
 
@@ -27,8 +28,19 @@ work_fpeaks = function(filename, threshold, bin.size, frequency, norm.channel=T,
             data = archivo@.Data
         }
         
-        if(norm.channel && archivo@pcm){
-            data = data / (2**(archivo@bit - 1))
+        if(archivo@pcm){
+            channel.max = 2**(archivo@bit - 1)
+        } else {
+            channel.max = 1.0
+        }
+        
+        if(norm.channel){
+            data <- data / channel.max
+            if(class(archivo) == 'Wave'){
+                archivo@left <- data
+            } else {
+                archivo@.Data <- data
+            }
         }
         
         if(length(data)>archivo@samp.rate){ # at least one second of audio
