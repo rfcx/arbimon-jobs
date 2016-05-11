@@ -236,7 +236,7 @@ try:
             proc = subprocess.Popen([
                 '/usr/bin/Rscript', currDir+'/fpeaks.R',
                 localFile,
-                str(threshold),
+                0, # str(threshold),
                 str(bin_size),
                 str(frequency)
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -355,7 +355,7 @@ try:
                     max_hertz = result['recMaxHertz']
         max_bins = int(max_hertz / bin_size)
         log.write('max_bins '+str(max_bins))
-        scp = soundscape.Soundscape(aggregation, bin_size, max_bins)
+        scp = soundscape.Soundscape(aggregation, bin_size, max_bins, amplitude_th=threshold)
         start_time_all = time.time()
         for result in resultsParallel:
             if result is not None:
