@@ -27,13 +27,13 @@ aggregations = {
 
 
 class Soundscape():
-    def __init__(self, aggregation, bin_size, max_bins, finp=None):
+    def __init__(self, aggregation, bin_size, max_bins, finp=None, amplitude_th=None):
         "Constructs a soundscape from a peaks file"
         self.aggregation = aggregation
         self.start_bin = 0
         self.max_bins = max_bins
         self.bin_size = bin_size
-        self.amplitude_th = None
+        self.amplitude_th = amplitude_th
         self.max_list_global = None
         self.norm_vector = None
         bins = {}
