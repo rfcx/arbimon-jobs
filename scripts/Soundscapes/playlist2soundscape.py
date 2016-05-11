@@ -236,7 +236,7 @@ try:
             proc = subprocess.Popen([
                 '/usr/bin/Rscript', currDir+'/fpeaks.R',
                 localFile,
-                0, # str(threshold),
+                '0', # str(threshold),
                 str(bin_size),
                 str(frequency)
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
