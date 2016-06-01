@@ -116,13 +116,19 @@ def get_scidx_file(scidx_uri, file_cache, bucket):
     return scidx_file
 
 
-def write_image(img_file, scidx_file, clip_max, palette_id, norm_vector=None):
+def write_image(img_file, scidx_file, clip_max, palette_id, norm_vector=None,
+                amplitude_th=0, amplitude_th_type='absolute'):
     try:
         sc = soundscape.Soundscape.read_from_index(scidx_file['path'])
         if clip_max is not None:
             sc.stats['max_count'] = clip_max
         if norm_vector is not None:
             sc.norm_vector = norm_vector
+        if amplitude_th:
+            sc.amplitude_th = amplitude_th
+        if amplitude_th_type:
+            sc.threshold_type = amplitude_th_type            
+
         sc.write_image(img_file, a2pyutils.palette.get_palette(palette_id))
     except:
         exit_error('cannot write image file.')
@@ -137,22 +143,27 @@ def upload_image(img_uri, img_file, bucket):
         exit_error('cannot upload image file.')
 
 
-def update_db(db, clip_max, palette_id, soundscape_id, normalized):
-    print [clip_max, palette_id, soundscape_id, normalized]
+def update_db(db, clip_max, palette_id, soundscape_id, normalized,
+              amplitude_th, amplitude_th_type):
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `soundscapes`
                 SET visual_max_value = %s, visual_palette = %s,
-                    normalized = %s
+                    normalized = %s, threshold = %s,
+                    threshold_type = %s
                 WHERE soundscape_id = %s
-            """, [clip_max, palette_id, int(normalized), soundscape_id])
+            """, [
+                clip_max, palette_id, int(normalized), amplitude_th,
+                amplitude_th_type,
+                soundscape_id
+            ])
             db.commit()
     except:
         print 'WARNING: Cannot update database soundscape information'
 
 
-def run(soundscape_id, clip_max, palette_id, normalized=0):
+def run(soundscape_id, clip_max, palette_id, normalized=0, amplitude_th=0.0, amplitude_th_type='absolute'):
     configuration = Config()
     config = configuration.data()
 
@@ -171,10 +182,11 @@ def run(soundscape_id, clip_max, palette_id, normalized=0):
 
     img_file = file_cache.key2File(img_uri)
 
-    write_image(img_file, scidx_file, clip_max, palette_id, norm_vector)
+    write_image(img_file, scidx_file, clip_max, palette_id, norm_vector,
+                amplitude_th, amplitude_th_type)
 
     upload_image(img_uri, img_file, bucket)
 
-    update_db(db, clip_max, palette_id, soundscape_id, normalized)
+    update_db(db, clip_max, palette_id, soundscape_id, normalized, amplitude_th, amplitude_th_type)
 
     db.close()
