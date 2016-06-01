@@ -77,7 +77,7 @@ with closing(db.cursor()) as cursor:
     cursor.execute("""
     SELECT JP.playlist_id, JP.max_hertz, JP.bin_size,
         JP.soundscape_aggregation_type_id,
-        SAT.identifier as aggregation, JP.threshold,
+        SAT.identifier as aggregation, JP.threshold, JP.threshold_type,
         J.project_id, J.user_id, JP.name, JP.frequency , JP.normalize ,J.ncpu
     FROM jobs J
     JOIN job_params_soundscape JP ON J.job_id = JP.job_id
@@ -95,7 +95,7 @@ if not job:
 
 (
     playlist_id, max_hertz, bin_size, agrrid, agr_ident,
-    threshold, pid, uid, name, frequency , normalized ,ncpu
+    threshold, threshold_type, pid, uid, name, frequency , normalized ,ncpu
 ) = job
 (
     compute_index_h,
@@ -355,7 +355,7 @@ try:
                     max_hertz = result['recMaxHertz']
         max_bins = int(max_hertz / bin_size)
         log.write('max_bins '+str(max_bins))
-        scp = soundscape.Soundscape(aggregation, bin_size, max_bins, amplitude_th=threshold)
+        scp = soundscape.Soundscape(aggregation, bin_size, max_bins, amplitude_th=threshold, threshold_type=threshold_type)
         start_time_all = time.time()
         for result in resultsParallel:
             if result is not None:
