@@ -14,6 +14,7 @@ class Config(object):
 
         self.load('aws')
         self.load('db')
+        self.load('path')
 
     @classmethod
     def for_path(cls, basepath):
@@ -29,8 +30,7 @@ class Config(object):
             self.dbConfig['database'],
             self.awsConfig['bucketName'],
             self.awsConfig['accessKeyId'],
-            self.awsConfig['secretAccessKey'],
-            self.awsConfig['region']
+            self.awsConfig['secretAccessKey']
         ]
 
     def load(self, cfg):
@@ -40,7 +40,7 @@ class Config(object):
             cfgpath = cfgbasepath + '.local.json'
         else:
             cfgpath = cfgbasepath + '.json'
-    
+
         with open(cfgpath) as filedata:
             config = json.load(filedata)
 

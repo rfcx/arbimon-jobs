@@ -1,20 +1,11 @@
 from pylab import *
 import numpy
 numpy.seterr(all='ignore')
-numpy.seterr(divide='ignore', invalid='ignore')
-import cPickle as pickle
 import scipy
 import math
-from skimage.measure import structural_similarity as ssim
-from samplerates import *
-import warnings
-
 class Roiset:   
 
-    def __init__(self, classId,setSRate,logs=None,useDynamicRanging=False):
-        
-        """useDynamicRanging when ROI matrices are of zeros and ones (boolean matrices from the thresholder)"""
-        
+    def __init__(self, classId,setSRate):
         if type(classId) is not str and type(classId) is not int:
             raise ValueError("classId must be a string or int. Input was a "+str(type(classId)))
         if type(setSRate) is not int and  type(setSRate) is not float:
@@ -26,61 +17,58 @@ class Roiset:
         self.rows = 0
         self.sampleRates = []
         self.setSampleRate = setSRate
-        self.logs = logs
-        self.useDynamicRanging = useDynamicRanging
         
     def addRoi(self,lowFreq,highFreq,sample_rate,spec,rows,columns):
-        if len(self.sampleLengths) < 1:
-            self.maxColumns = columns
-            self.biggestIndex = 0
-            self.varlengthsIndeces = []
-            self.maxIndeces = []
-            self.maxrois = []
-            self.varlengths = set()
-            self.maxrois.append(spec)
-            self.maxIndeces.append(self.roiCount)
-            self.lowestFreq = lowFreq
-            self.highestFreq = highFreq
-            self.highestlowestFreq = lowFreq
-            self.lowesthighestFreq = highFreq
-            self.biggestRoi = spec
-            self.highestBand = highFreq - lowFreq
-        else:
-            highestBand = highFreq - lowFreq
-            if self.maxColumns < columns:
-                self.biggestIndex = self.roiCount + 1
-                self.biggestRoi = spec
-            if self.highestBand <= highestBand and self.maxColumns < columns:
-                self.biggestRoi = spec
-            if self.lowestFreq > lowFreq:
-                self.lowestFreq = lowFreq
-            if self.highestFreq < highFreq:
-                self.highestFreq = highFreq
-            if self.highestlowestFreq  < lowFreq:
-                self.highestlowestFreq  = lowFreq
-            if self.lowesthighestFreq > highFreq:
-                self.lowesthighestFreq = highFreq
-            if self.maxColumns < columns:
-                self.varlengths.add(self.maxColumns)
+        if self.setSampleRate == sample_rate:
+            if len(self.sampleLengths) < 1:
                 self.maxColumns = columns
-                for i in self.maxIndeces:
-                    self.varlengthsIndeces.append(i)
+                self.varlengthsIndeces = []
                 self.maxIndeces = []
-                self.maxIndeces.append(self.roiCount)
                 self.maxrois = []
+                self.varlengths = set()
                 self.maxrois.append(spec)
-            elif self.maxColumns == columns:
                 self.maxIndeces.append(self.roiCount)
-                self.maxrois.append(spec)
+                self.lowestFreq = lowFreq
+                self.highestFreq = highFreq
+                self.highestlowestFreq = lowFreq
+                self.lowesthighestFreq = highFreq
+                self.biggestRoi = spec
+                self.highestBand = highFreq - lowFreq
             else:
-                self.varlengthsIndeces.append(self.roiCount)
-                self.varlengths.add(columns)
-        self.sampleRates.append(sample_rate)    
-        self.sampleLengths.append(columns)
-        self.setSampleRate = max(self.sampleRates)
-        self.rows = None
-        self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec))
-        self.roiCount = self.roiCount + 1
+                highestBand = highFreq - lowFreq
+                if self.maxColumns < columns:
+                    self.biggestRoi = spec
+                if self.highestBand <= highestBand and self.maxColumns < columns:
+                    self.biggestRoi = spec
+                if self.lowestFreq > lowFreq:
+                    self.lowestFreq = lowFreq
+                if self.highestFreq < highFreq:
+                    self.highestFreq = highFreq
+                if self.highestlowestFreq  < lowFreq:
+                    self.highestlowestFreq  = lowFreq
+                if self.lowesthighestFreq > highFreq:
+                    self.lowesthighestFreq = highFreq
+                if self.maxColumns < columns:
+                    self.varlengths.add(self.maxColumns)
+                    self.maxColumns = columns
+                    for i in self.maxIndeces:
+                        self.varlengthsIndeces.append(i)
+                    self.maxIndeces = []
+                    self.maxIndeces.append(self.roiCount)
+                    self.maxrois = []
+                    self.maxrois.append(spec)
+                elif self.maxColumns == columns:
+                    self.maxIndeces.append(self.roiCount)
+                    self.maxrois.append(spec)
+                else:
+                    self.varlengthsIndeces.append(self.roiCount)
+                    self.varlengths.add(columns)
+                    
+            self.sampleRates.append(sample_rate)    
+            self.sampleLengths.append(columns)
+            self.rows = rows
+            self.roi.append(Roi(lowFreq,highFreq,sample_rate,spec)) 
+            self.roiCount = self.roiCount + 1
     
     def getData(self):
         return [self.roi,self.rows,self.roiCount,self.biggestRoi,self.lowestFreq,self.highestFreq,self.maxColumns]
@@ -88,11 +76,10 @@ class Roiset:
     def getSurface(self):
         return self.meanSurface
     
-    def alignSamples(self,bIndex=0):
-        print self.rows,self.maxColumns
-        surface = numpy.zeros(shape=self.biggestRoi.shape)
-        weights = numpy.zeros(shape=self.biggestRoi.shape)
-        freqs = [i for i in reversed(get_freqs(bIndex))]
+    def alignSamples(self):
+        surface = numpy.zeros(shape=(self.rows,self.maxColumns))
+        weights = numpy.zeros(shape=(self.rows,self.maxColumns))
+        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,surface.shape[0]))]
         for roi in self.roi:
             high_index = 0
             low_index = 0
@@ -118,7 +105,50 @@ class Roiset:
             
         self.meanSurface = numpy.divide(surface,weights)
         self.meanSurface[numpy.isnan(self.meanSurface)]   = -10000
-    
+        
+    def alignSamples2(self):
+        self.surface = numpy.sum(self.maxrois,axis=0)
+        weights = numpy.zeros(shape=(self.rows,self.maxColumns))
+        freqs = [self.setSampleRate/2/(self.rows-1)*i for i in reversed(range(0,self.surface.shape[0]))]
+        high_index = 0
+        low_index = 0
+        while freqs[high_index] >= self.highestFreq:
+            high_index = high_index + 1
+            low_index  = low_index  + 1
+        while freqs[low_index ] >=  self.lowestFreq:
+            low_index  = low_index  + 1
+        
+        weights[high_index:low_index ,:] = weights[high_index:low_index ,:] + len(self.maxrois)
+        
+        for i in self.varlengthsIndeces:
+            distances = []
+            currColumns = self.roi[i].spec.shape[1]
+            for j in range(self.maxColumns -currColumns ): 
+                subMatrix =  self.surface[:, j:(j+currColumns)]
+                distances.append(numpy.linalg.norm(subMatrix  - self.roi[i].spec) )
+            j = distances.index(min(distances))
+            temp = numpy.zeros(shape=(self.rows,self.maxColumns))
+            temp[:, j:(j+currColumns)] = self.roi[i].spec
+            self.maxrois.append(temp)
+            self.surface[:, j:(j+currColumns)] = self.surface[:, j:(j+currColumns)] + self.roi[i].spec
+            
+            high_index = 0
+            low_index = 0
+            
+            while freqs[high_index] >= self.roi[i].highFreq:
+                high_index = high_index + 1
+                low_index  = low_index  + 1
+                
+            while freqs[low_index ] >=  self.roi[i].lowFreq:
+                low_index  = low_index  + 1
+                
+            weights[high_index:low_index, j:(j+currColumns)] = weights[high_index:low_index, j:(j+currColumns)]  + 1
+            
+
+        self.meanSurface = numpy.sum(self.maxrois,axis=0)
+        self.meanSurface = numpy.divide(self.meanSurface,weights)
+        self.stdSurface = numpy.std([self.maxrois[j] for j in range(self.roiCount)],axis=0)
+            
     def showSurface(self):
         ax1 = subplot(111)
         im = ax1.imshow(self.surface, None)
@@ -142,7 +172,7 @@ class Roiset:
 
 class Roi:
 
-    def __init__(self,lowFreq,highFreq,sample_rate,spec,bigflag=False):
+    def __init__(self,lowFreq,highFreq,sample_rate,spec):
         if type(lowFreq) is not int and  type(lowFreq) is not float:
             raise ValueError("lowFreq must be a number")
         if type(highFreq) is not int and  type(highFreq) is not float:
@@ -157,7 +187,6 @@ class Roi:
         self.highFreq = highFreq
         self.sample_rate = sample_rate
         self.spec = spec
-        self.biggest = bigflag
     
     def getData(self):
         return [self.lowFreq,self.highFreq,self.sample_rate,self.spec]

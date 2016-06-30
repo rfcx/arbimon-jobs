@@ -27,13 +27,14 @@ aggregations = {
 
 
 class Soundscape():
-    def __init__(self, aggregation, bin_size, max_bins, finp=None):
+    def __init__(self, aggregation, bin_size, max_bins, finp=None, amplitude_th=None, threshold_type=None):
         "Constructs a soundscape from a peaks file"
         self.aggregation = aggregation
         self.start_bin = 0
         self.max_bins = max_bins
         self.bin_size = bin_size
-        self.amplitude_th = None
+        self.amplitude_th = amplitude_th
+        self.threshold_type = threshold_type
         self.max_list_global = None
         self.norm_vector = None
         bins = {}
@@ -43,6 +44,8 @@ class Soundscape():
         stats = {
             'min_idx': float('inf'),
             'max_idx': float('-inf'),
+            'min_amp': float('inf'),
+            'max_amp': 0,
             'max_count': 0
         }
 
@@ -54,6 +57,8 @@ class Soundscape():
                 amp = i.get('amplitude', 255)
                 stats['min_idx'] = min(stats['min_idx'], i_idx)
                 stats['max_idx'] = max(stats['max_idx'], i_idx)
+                stats['min_amp'] = min(stats['min_amp'], amp)
+                stats['max_amp'] = max(stats['max_amp'], amp)
 
                 recs = self.insert_rec_entry(
                     i_id, i_bin, i_idx, recordings, bins,
@@ -86,6 +91,8 @@ class Soundscape():
                 i_id, i_bin, idx, self.recstemp, self.bins,
                 amp
             )
+            self.stats['min_amp'] = min(self.stats['min_amp'], amp)
+            self.stats['max_amp'] = max(self.stats['max_amp'], amp)
 
             if not max_list or len(max_list) < len(recs):
                 max_list = recs
@@ -148,7 +155,7 @@ class Soundscape():
             if bin and x in bin:
                 cell = bin[x]
                 if amp_th:
-                    v = len([x for x in cell if cell[x] > amp_th])
+                    v = reduce(lambda _, amp: _ + (1 if amp > amp_th else 0), cell.values(), 0)
                 else:
                     v = len(cell) if cell else 0
             else:
@@ -186,6 +193,7 @@ class Soundscape():
             scale = 1
 
         scalefn = lambda x, col: max(0, min(int(x * 255.0 / scale), 255))
+
         if self.norm_vector:
             scale = 1
             sfn = scalefn
@@ -193,14 +201,17 @@ class Soundscape():
             def nv_scalefn(x, col):
                 nv = float(self.norm_vector.get(col, 1) or 1)
                 v = sfn(x / nv, col)
-                #print v
                 return v
             scalefn = nv_scalefn
+            
+        amplitude_th = self.amplitude_th
+        if self.amplitude_th and self.threshold_type == 'relative-to-peak-maximum':
+            amplitude_th = self.amplitude_th * self.stats['max_amp']
 
         fout = file(imgout, "wb")
         w.write(fout, self.rows_gen(
             self.bins, scalefn,
-            0, height, offsetx, offsetx + width, self.amplitude_th
+            0, height, offsetx, offsetx + width, amplitude_th
         ))
 
     def write_index(self, indexout):
@@ -233,6 +244,8 @@ class Soundscape():
         obj.recordings = recordings
         obj.stats = {
             "max_count": max(len(bins[x][y]) for x in bins for y in bins[x]),
+            "min_amp": min(amp for row in bins.values() for cell in row.values() for amp in cell.values()),
+            "max_amp": max(amp for row in bins.values() for cell in row.values() for amp in cell.values()),
             "min_idx": aggregation["range"][0],
             "max_idx": aggregation["range"][1]
         }

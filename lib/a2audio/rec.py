@@ -11,11 +11,7 @@ with warnings.catch_warnings():
 import contextlib
 import numpy as np
 from a2pyutils.logger import Logger
-import a2pyutils.storage
-from scikits.samplerate import resample
-from pylab import *
-import numpy
-import math
+
 encodings = {
     "pcms8":8,
     "pcm16":16,
@@ -40,8 +36,6 @@ encodings = {
     "dpcm8":8
 }
 
-analysis_sample_rates = [16000.0,32000.0,48000.0,96000.0,192000.0]
-
 class Rec:
 
     filename = ''
@@ -50,7 +44,7 @@ class Rec:
     channs = 0
     status = 'NotProcessed'
     
-    def __init__(self, uri, tempFolder, storage, logs=None, removeFile=True , test=False,resample=True):
+    def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -60,8 +54,8 @@ class Rec:
             raise ValueError("invalid tempFolder")
         elif not os.access(tempFolder, os.W_OK):
             raise ValueError("invalid tempFolder")
-        if not isinstance(storage, a2pyutils.storage.AbstractStorage):
-            raise ValueError("invalid storage instance")
+        if type(bucketName) is not str:
+            raise ValueError("bucketName must be a string")
         if logs is not None and not isinstance(logs,Logger):
             raise ValueError("logs must be a a2pyutils.Logger object")
         if type(removeFile) is not bool:
@@ -71,7 +65,7 @@ class Rec:
         start_time = time.time()
         self.logs = logs
         self.localFiles = tempFolder
-        self.storage = storage    
+        self.bucket = bucketName    
         self.uri = uri
         self.removeFile = removeFile
         self.original = []
@@ -79,20 +73,17 @@ class Rec:
         self.filename = tempfilename[len(tempfilename)-1]
         self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
         self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
-        self.doresample = resample
         while os.path.isfile(self.localfilename):
             self.seed = "%.16f" % ((sys.maxint*np.random.rand(1)))
             self.localfilename = self.localFiles+self.filename.replace(" ","_")+self.seed
         if self.logs :
-            self.logs.write("Rec.py : init completed:" + str(time.time() - start_time))
+            self.logs.write("init completed:" + str(time.time() - start_time))
             
         if not test:
             start_time = time.time()
             self.process()
             if self.logs :
-                self.logs.write("Rec.py : process completed:" + str(time.time() - start_time))
-        else:
-            self.status = 'TestRun'
+                self.logs.write("process completed:" + str(time.time() - start_time))          
         
     def process(self):
         start_time = time.time()
@@ -100,23 +91,18 @@ class Rec:
            self.status = 'KeyNotFound'
            return None  
         if self.logs :
-            self.logs.write("Rec.py : getAudioFromUri:" + str(time.time() - start_time))
+            self.logs.write("getAudioFromUri:" + str(time.time() - start_time))
         
         start_time = time.time()
         if not self.readAudioFromFile():
             self.status = 'CorruptedFile'
-            return None
-        
-        if float(self.sample_rate) > 192000.0:
-            self.status = 'SamplingRateNotSupported'
-            return None
-        
+            return None  
         if self.logs :
-            self.logs.write("Rec.py : readAudioFromFile:" + str(time.time() - start_time))
+            self.logs.write("readAudioFromFile:" + str(time.time() - start_time))
         
         if not self.removeFiles():
             if self.logs :
-                self.logs.write("Rec.py : removeFiles: warning some files could not be removed")
+                self.logs.write("removeFiles: warning some files could not be removed")
         
         if self.channs> 1:
             self.status = 'StereoNotSupported'
@@ -125,78 +111,44 @@ class Rec:
         if self.samples == 0:
             self.status = 'NoData'
             return None
-        
+ 
         if self.samples != len(self.original):
-            self.status = 'CorruptedFile'
+            self.status = 'CorruptedFileLength'
             return None
-        
-        if self.doresample and float(self.sample_rate) not in analysis_sample_rates:
-            self.resample()
-          
+                    
         self.status = 'HasAudioData'
-    
-    def resample(self):
-        plotBA = False
-        if type(self.original) is list:
-            self.original = numpy.asarray(self.original)
-        if self.logs :
-            self.logs.write("Rec.py : resampling recording")
-
-        aa,b,c=mlab.specgram(self.original,NFFT=256,Fs=self.sample_rate)
-
-        to_sample = self.calc_resample_factor()
-        self.original   = resample(self.original, float(to_sample)/float(self.sample_rate) , 'sinc_best')
-        if plotBA:
-            a,b,c=mlab.specgram(self.original,NFFT=256,Fs=to_sample)
-            figure(figsize=(25,15))
-            subplot(211)
-            imshow(20*log10(numpy.flipud(aa)), interpolation='nearest', aspect='auto')
-            subplot(212)
-            imshow(20*log10(numpy.flipud(a)),interpolation='nearest', aspect='auto')
-            savefig(''+self.filename+'.png', dpi=100)
-            close()
-        self.samples = len(self.original)
-        self.sample_rate = to_sample
         
-    def calc_resample_factor(self):
-        for sr in analysis_sample_rates:
-            if self.sample_rate <= sr:
-                return sr
-    
     def getAudioFromUri(self):
         start_time = time.time()
         f = None
         if self.logs :
-            self.logs.write('Rec.py : fetching recording : '+ self.storage.get_file_uri(self.uri))
+            self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
         try:
-            f = self.storage.get_file(self.uri)
+            f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
             if self.logs :
-                self.logs.write('Rec.py : fetch success')
-        except a2pyutils.storage.StorageError, e:
+                self.logs.write('urlopen success')
+        except urllib2.HTTPError, e:
             if self.logs :
-                self.logs.write("Rec.py : storage error:" + str(e.message))
+                self.logs.write("bucket http error:" + str(e.code ))
             return False
-        except:
-            import traceback
-            print "Unhandled exception"
-            traceback.print_exc()
-            raise
+        except urllib2.URLError, e:
+            if self.logs :
+                self.logs.write("bucket url error:" + str(e.reason ))
+            return False  
         if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
-                    if self.logs:
-                        self.logs.write('writing:'+self.localfilename)
                     local_file.write(f.read())
             except:
                 if self.logs :
-                    self.logs.write('Rec.py : error f.read')
+                    self.logs.write('error f.read')
                 return False
         else:
             return False
         
         if self.logs :
-            self.logs.write('Rec.py : f.read success')
-            self.logs.write("Rec.py : retrieve recording:" + str(time.time() - start_time))
+            self.logs.write('f.read success')
+            self.logs.write("retrieve recording:" + str(time.time() - start_time))
         
         status = 'Downloaded'
         
@@ -212,7 +164,7 @@ class Rec:
         try:
             with contextlib.closing(Sndfile(self.localfilename)) as f:
                 if self.logs :
-                    self.logs.write("Rec.py : sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
+                    self.logs.write("sampling rate = {} Hz, length = {} samples, channels = {}".format(f.samplerate, f.nframes, f.channels))
                 self.bps = 16 #self.parseEncoding(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
@@ -222,17 +174,13 @@ class Rec:
             return True
         except:
             if self.logs :
-                self.logs.write("Rec.py : error opening : "+self.filename)
+                self.logs.write("error opening : "+self.filename)
             return False
 
     def removeFiles(self):
-        if self.logs:
-            self.logs.write('removing temp file')
         start_time = time.time()
-        if '.flac' in self.filename: #if flac convert to wav
-            if not self.removeFile:
-                if self.logs:
-                    self.logs.write('file was flac: creating wav copy')
+        if 'flac' in self.filename: #if flac convert to wav
+           if not self.removeFile:
                 try:
                     format = Format('wav')
                     f = Sndfile(self.localfilename+".wav", 'w', format, self.channs, self.sample_rate)
@@ -242,16 +190,14 @@ class Rec:
                     self.localfilename = self.localfilename+".wav"
                 except:
                     if self.logs :
-                        self.logs.write("Rec.py : error creating wav copy : "+self.localfilename) 
+                        self.logs.write("error creating wav copy : "+self.localfilename) 
                     return False
             
         if self.removeFile:
-            if self.logs:
-                self.logs.write('removing tmeporary file '+self.localfilename)
             if os.path.isfile(self.localfilename):
                 os.remove(self.localfilename)
             if self.logs :
-                self.logs.write("Rec.py : removed temporary file:" + str(time.time() - start_time))
+                self.logs.write("remove temporary file:" + str(time.time() - start_time))
         
         return True
 

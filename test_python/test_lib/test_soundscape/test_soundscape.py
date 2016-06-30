@@ -80,20 +80,29 @@ class Test_soundscape(unittest.TestCase):
                     [float(row[7])],
                     int(row[0])
                 )
+          
         with open('test_python/data/scp.recordings.peaks.data.json', 'rb') as fp:
             recordings = json.load(fp)
         with open('test_python/data/scp.bins.peaks.data.json', 'rb') as fp:
-            bins = json.load(fp)
+            bins = dict([
+                (int(i_row), dict([
+                    (int(i_col), dict([
+                        (int(i_cell), cell) for i_cell, cell in col.items()
+                    ])) for i_col, col in row.items()
+                ])) for i_row, row in json.load(fp).items()
+            ])
+
         with open('test_python/data/scp.stats.peaks.data.json', 'rb') as fp:
             stats = json.load(fp)
+        
         self.assertEqual(scp.recordings,recordings,msg="soundscape.Soundscape: scp computed wrong recordings")
-        try:   
-            for i in bins:
-               for j in bins[i]:
-                    for k in bins[i][j]:
-                        self.assertEqual(scp.bins[int(i)][int(j)][int(k)], bins[i][j][k], msg="soundscape.Soundscape: scp returned incorrect index values")
-        except:
-           self.fail("soundscape.scidx.write_scidx: Incorrect number of index values")
+        if scp.bins != bins:
+            for r in scp.bins:
+                if r not in bins:
+                    print ":: ", r, " missing"
+                else:
+                    print ":: ", r, " :: ", (scp.bins[r] == bins)
+            self.assertTrue(False, msg="soundscape.Soundscape: scp computed wrong bins")
         self.assertEqual(scp.stats,stats,msg="soundscape.Soundscape: scp computed wrong stats")
 
     def test_init_with_finp(self):
@@ -130,7 +139,7 @@ class Test_soundscape(unittest.TestCase):
         from soundscape import soundscape
         from soundscape.soundscape import aggregations
         scp = soundscape.Soundscape(aggregations['time_of_day'], 86, 256)
-        scaleFunction = lambda x,col: x
+        scaleFunction = lambda x: x
         dummtBins = {}
         binsLength = []
         binsc = randint(50,100)
@@ -148,7 +157,7 @@ class Test_soundscape(unittest.TestCase):
         from soundscape import soundscape
         from soundscape.soundscape import aggregations
         scp = soundscape.Soundscape(aggregations['time_of_day'], 86, 256)
-        scaleFunction = lambda x,col: x
+        scaleFunction = lambda x: x
         dummtBins = {}
         binsLength = {}
         maxx = randint(25,100)

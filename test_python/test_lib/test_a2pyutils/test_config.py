@@ -50,7 +50,7 @@ class Test_config(unittest.TestCase):
                     with mock.patch('json.load', mock_json_load, create=False):
                         configuration = Config("test_python/data/configs")
                         config = configuration.data()
-                        testData = ['dummy_host_test', 'arbimon2_user_test', 'great_password_test', 'an_arbimon2_test', 'a_bucket_name_somewhere', 'awsAccess_Data_test', 'awsAccess_password_Data_test', 'some_Regions_in_the_us']
+                        testData = ['dummy_host_test', 'arbimon2_user_test', 'great_password_test', 'an_arbimon2_test', 'a_bucket_name_somewhere', 'awsAccess_Data_test', 'awsAccess_password_Data_test']
                         for cc in range(len(config)):
                             self.assertEqual(config[cc],testData[cc],msg="a2pyutils.config loaded wrong configuration data")
 

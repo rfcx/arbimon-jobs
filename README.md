@@ -8,7 +8,7 @@ Bio-Acoustic Analyzer - JOBS
  - All dependencies  in one line
    ```
    sudo apt-get install -y python-pip libmysqlclient-dev python-dev gfortran libopenblas-dev liblapack-dev  libpng12-dev libfreetype6-dev libsndfile1 libsndfile-dev libsamplerate-dev
- python-virtualenv r-base r-base-dev libfftw3-3 libfftw3-dev r-cran-rgl bwidget
+   python-virtualenv r-base r-base-dev libfftw3-3 libfftw3-dev r-cran-rgl bwidget
    ```
    
    
@@ -80,11 +80,12 @@ Bio-Acoustic Analyzer - JOBS
    sudo apt-get install libsndfile-dev
    ```
    
- - OpenCV for python (cv2)
-   ```
-   sudo apt-get install python-opencv
-   ```
    
+ - node global dependencies(`sudo npm install -g <package>`):
+  - bower
+  - grunt-cli
+  
+  
  - individual python dependencies (`sudo pip install`):
     - numpy 
     - scipy
@@ -102,4 +103,3 @@ Bio-Acoustic Analyzer - JOBS
     - networkx
     - scikit-image
     - scikits.samplerate
-

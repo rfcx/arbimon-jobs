@@ -32,18 +32,10 @@ class Indices():
         self.aggregation = aggregation
         self.values = {}
         self.indexVector = None
-        self.yearly = False
-        if type(aggregation['range']) is not str:
-            self.starti = aggregation['range'][0]
-            self.endi =  aggregation['range'][1]
-            for i in range(self.starti,self.endi+1):
-                self.values[i] = []
-        else:
-            self.starti = 1970
-            self.endi =  2020            
-            for i in range(self.starti,self.endi+1):
-                self.values[i] = []
-            self.yearly = True
+        starti = aggregation['range'][0]
+        endi =  aggregation['range'][1]
+        for i in range(starti,endi+1):
+            self.values[i] = []
         self.aggregated = False
         
     def insert_value(self, date, value, rec_id):
@@ -52,10 +44,10 @@ class Indices():
             zip(self.aggregation['date'], self.aggregation['projection'])
         ]))
         self.values[idx].append({"red_id":rec_id,"value":value})
-    
+        
     def aggregate(self):
-        starti = self.starti
-        endi =  self.endi
+        starti = self.aggregation['range'][0]
+        endi =  self.aggregation['range'][1]
         self.indexVector = []
         for i in range(starti,endi+1):
             current_values = self.values[i]
@@ -67,9 +59,6 @@ class Indices():
                 self.indexVector.append(accum)
             else:
                 self.indexVector.append(0.0)
-    
-    def getValues(self):
-        return self.indexVector
     
     def write_index_aggregation(self,filename):          
         if not self.aggregated:

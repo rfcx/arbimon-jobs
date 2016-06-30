@@ -45,18 +45,17 @@ class Test_model(unittest.TestCase):
             for j in range(spec.shape[1]):
                 self.assertEqual(spec[i,j],spec2[i,j],msg="Model.getSpec returned invalid data")
 
-    @unittest.skip("test is broken. #by:@gio: jul 13 2015")
     def test_addSample(self):
         """Test Model addSample function"""
         from a2audio.model import Model
         import numpy
         spec = numpy.random.rand(100,100)
         mod1 = Model(1,spec,1)
-        dummyData = numpy.random.rand(100,41)
+        dummyData = numpy.random.rand(100,6)
         
         for i in range(100):
             r = dummyData[i,]
-            mod1.addSample(i,r,"dummy/uri/"+str(i))
+            mod1.addSample(i,r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
    
         modData = mod1.getData()
         modClasses = mod1.getClasses()
@@ -64,7 +63,7 @@ class Test_model(unittest.TestCase):
             r = dummyData[i,]
             mr = modData[i,]
             mcr = modClasses[i]
-            self.assertEqual(i,mcr,msg="Model.addSample inserted bad data")
+            self.assertEqual(str(i),mcr,msg="Model.addSample inserted bad data")
             for j in range(len(r)):
                 self.assertEqual(r[j],mr[j],msg="Model.getSpec inserted bad data")
 
@@ -75,14 +74,14 @@ class Test_model(unittest.TestCase):
         import numpy
         spec = numpy.random.rand(100,100)
         mod1 = Model(1,spec,1)
-        dummyData0 = numpy.random.rand(100,41)
+        dummyData0 = numpy.random.rand(100,6)
         for i in range(100):
             r = dummyData0[i,]
-            mod1.addSample('0',r,"dummy/uri/"+str(i))
-        dummyData1 = numpy.random.rand(100,41)
+            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
+        dummyData1 = numpy.random.rand(100,6)
         for i in range(100):
             r = dummyData1[i,]
-            mod1.addSample('1',r,"dummy/uri/"+str(i))
+            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         
         #10 random tries
         for tries in range(10):
@@ -124,14 +123,14 @@ class Test_model(unittest.TestCase):
         from sklearn.ensemble import RandomForestClassifier
         spec = numpy.random.rand(100,100)
         mod1 = Model(1,spec,1)
-        dummyData0 = numpy.random.rand(100,41)
+        dummyData0 = numpy.random.rand(100,6)
         for i in range(100):
             r = dummyData0[i,]
-            mod1.addSample('0',r,"dummy/uri/"+str(i))
-        dummyData1 = numpy.random.rand(100,41)+100
+            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
+        dummyData1 = numpy.random.rand(100,6)+100
         for i in range(100):
             r = dummyData1[i,]
-            mod1.addSample('1',r,"dummy/uri/"+str(i))
+            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
 
         #try creating a model 5 times
         for tries in range(5):
@@ -146,7 +145,6 @@ class Test_model(unittest.TestCase):
             self.assertIsInstance( modResult, RandomForestClassifier,msg="Rec.model cannot train model")
             self.assertGreater(mod1.getOobScore(),.9,msg="Rec.model training dataset should have more than .9 oobScore accuracy")
         
-    @unittest.skip("FIX ME: Test is broken - gio Jul 2, 2015")
     def test_validate(self):
         """Test Model.validate function"""
         from random import randint
@@ -158,15 +156,15 @@ class Test_model(unittest.TestCase):
         
         #put data into model
         #class 0 has a mean of around .5
-        dummyData0 = numpy.random.rand(100,41)
+        dummyData0 = numpy.random.rand(100,6)
         for i in range(100):
             r = dummyData0[i,]
-            mod1.addSample('0',r,"dummy/uri/"+str(i))
+            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         #class 1 has a mean of around 100.5
-        dummyData1 = numpy.random.rand(100,41)+100
+        dummyData1 = numpy.random.rand(100,6)+100
         for i in range(100):
             r = dummyData1[i,]
-            mod1.addSample('1',r,"dummy/uri/"+str(i))
+            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
 
         #try creating a GOOD model 5 times
         for tries in range(5):
@@ -193,11 +191,11 @@ class Test_model(unittest.TestCase):
         #clean model and put some bad data
         del mod1
         mod1 = Model(1,spec,1)
-        dummyData0 = numpy.random.rand(100,41)
+        dummyData0 = numpy.random.rand(100,6)
         for i in range(100):
             r = dummyData0[i,]
-            mod1.addSample('0',r,"dummy/uri/"+str(i))
-            mod1.addSample('1',r,"dummy/uri/"+str(i))
+            mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
+            mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
 
         #try creating a BAD model 5 times
         for tries in range(5):
@@ -217,7 +215,6 @@ class Test_model(unittest.TestCase):
                 self.assertGreater(.9,mstats[i],msg="Rec.model training  validation dataset bad stats")
             self.assertGreater(.9,mstats[5],msg="Rec.model training  validation dataset bad stats")
   
-    @unittest.skip("Broken test (jul 1, 2015)")
     def test_save(self):
         """Test Model.save function"""
         from random import randint
@@ -233,15 +230,15 @@ class Test_model(unittest.TestCase):
                 
                 #put data into model
                 #class 0 has a mean of around .5
-                dummyData0 = numpy.random.rand(100,41)
+                dummyData0 = numpy.random.rand(100,6)
                 for i in range(100):
                     r = dummyData0[i,]
-                    mod1.addSample('0',r,"dummy/uri/"+str(i))
+                    mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
                 #class 1 has a mean of around 100.5
-                dummyData1 = numpy.random.rand(100,41)+100
+                dummyData1 = numpy.random.rand(100,6)+100
                 for i in range(100):
                     r = dummyData1[i,]
-                    mod1.addSample('1',r,"dummy/uri/"+str(i))
+                    mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         
                 utp = randint(25,75)
                 utnp = randint(25,75)
@@ -253,7 +250,7 @@ class Test_model(unittest.TestCase):
                 mod1.validate()
         
                 saveFileName = "/tmp/test.model.pickle"
-                mod1.save(saveFileName,1.1,100.1,10000.1,True,1,2)
+                mod1.save(saveFileName,1.1,100.1,10000.1)
                 self.assertTrue(m.called,msg="Rec.model cannot open file")
                 self.assertIsNone( m.assert_called_once_with(saveFileName , 'wb'),  msg="Rec.model cannot write file")                
                 writtenData =  mock_pickle.mock_calls[0]
@@ -283,15 +280,15 @@ class Test_model(unittest.TestCase):
                 
                 #put data into model
                 #class 0 has a mean of around .5
-                dummyData0 = numpy.random.rand(100,41)
+                dummyData0 = numpy.random.rand(100,6)
                 for i in range(100):
                     r = dummyData0[i,]
-                    mod1.addSample('0',r,"dummy/uri/"+str(i))
+                    mod1.addSample('0',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
                 #class 1 has a mean of around 100.5
-                dummyData1 = numpy.random.rand(100,41)+100
+                dummyData1 = numpy.random.rand(100,6)+100
                 for i in range(100):
                     r = dummyData1[i,]
-                    mod1.addSample('1',r,"dummy/uri/"+str(i))
+                    mod1.addSample('1',r[0],r[1],r[2],r[3],r[4],r[5],"dummy/uri/"+str(i))
         
                 utp = randint(25,75)
                 utnp = randint(25,75)
