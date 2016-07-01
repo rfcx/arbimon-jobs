@@ -15,7 +15,7 @@ from boto.s3.connection import S3Connection
 from a2pyutils.config import Config
 
 configuration = Config()
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 config = configuration.data()
 bucketName = config[4]

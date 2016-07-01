@@ -30,7 +30,7 @@ except MySQLdb.Error as e:
     quit()
 log.write('database connection succesful')
 
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathConfig['temp_dir'])
 minVectorVal = 9999999.0
 maxVectorVal = -9999999.0
 print 'results'

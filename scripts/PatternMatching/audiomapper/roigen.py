@@ -23,7 +23,7 @@ num_cores = multiprocessing.cpu_count()
 configuration = Config()
 config = configuration.data()
 
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 
 jobId = -1

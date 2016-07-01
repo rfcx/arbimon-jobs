@@ -1,6 +1,6 @@
 { 
-    "accessKeyId": "awsAccess_Data_test", 
-    "secretAccessKey": "awsAccess_password_Data_test", 
+    "access_key_id": "awsAccess_Data_test", 
+    "secret_access_key": "awsAccess_password_Data_test", 
     "region": "some_Regions_in_the_us",
-    "bucketName" : "a_bucket_name_somewhere"
+    "bucket_name" : "a_bucket_name_somewhere"
 }
