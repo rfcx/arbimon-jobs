@@ -5,9 +5,9 @@ from a2audio.roiset import Roiset
 import numpy
 import csv
 import tempfile
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 
-configuration = Config()
+configuration = EnvironmentConfig()
 tempFolders = str(configuration.pathConfig['temp_dir'])
 
 classes = {}

@@ -2,7 +2,7 @@ import MySQLdb
 import MySQLdb.cursors
 from a2pyutils import colors
 from contextlib import closing
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils import tempfilecache
 import a2pyutils.palette
 import soundscape
@@ -164,7 +164,7 @@ def update_db(db, clip_max, palette_id, soundscape_id, normalized,
 
 
 def run(soundscape_id, clip_max, palette_id, normalized=0, amplitude_th=0.0, amplitude_th_type='absolute'):
-    configuration = Config()
+    configuration = EnvironmentConfig()
     config = configuration.data()
 
     db = get_db(config)

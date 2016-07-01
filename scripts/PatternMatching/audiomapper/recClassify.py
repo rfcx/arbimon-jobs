@@ -15,7 +15,7 @@ from joblib import Parallel, delayed
 from contextlib import closing
 import MySQLdb
 from boto.s3.connection import S3Connection
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils.logger import Logger
 
 
@@ -44,7 +44,7 @@ else:
     else:
         log.write('not using ssim '+str(ssim))
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 log.write('configuration loaded')
 

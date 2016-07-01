@@ -14,13 +14,13 @@ import tempfile
 import os
 from contextlib import closing
 import MySQLdb
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 import multiprocessing
 from joblib import Parallel, delayed
 
 num_cores = multiprocessing.cpu_count()
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 
 tempFolders = str(configuration.pathConfig['temp_dir'])

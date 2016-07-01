@@ -1,8 +1,8 @@
 import os
-from config import Config
+from config import EnvironmentConfig
 import time
 
-configuration = Config()
+configuration = EnvironmentConfig()
 
 
 class Logger:
