@@ -3,7 +3,7 @@ import time
 import re
 import os.path
 from hashlib import sha256
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 
 
 class CacheMiss(object):
@@ -28,7 +28,7 @@ class Cache(object):
 
     def __init__(self, root=None, config=None):
         if not root:
-            config = config if config else Config()
+            config = config if config else EnvironmentConfig()
             root = os.path.realpath(config.tmpfilecacheConfig['path'])
         self.root = root
 

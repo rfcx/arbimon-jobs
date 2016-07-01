@@ -22,7 +22,7 @@ if len(sys.argv) < 2:
 
 job_id = int(sys.argv[1].strip("'"))
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 log.write('configuration loaded')
 log.write('trying database connection')

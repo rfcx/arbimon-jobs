@@ -8,15 +8,15 @@ import tempfile
 from contextlib import closing
 import MySQLdb
 import os
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from boto.s3.connection import S3Connection
 import csv
 import multiprocessing
 from joblib import Parallel, delayed
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 num_cores = multiprocessing.cpu_count()
 

@@ -1,5 +1,5 @@
 from a2pyutils.logger import Logger
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2audio.recanalizer import Recanalizer
 from a2pyutils.jobs_lib import cancelStatus
 from soundscape.set_visual_scale_lib import *
@@ -344,7 +344,7 @@ def run_classification(jobId):
         start_time = time.time()   
         log = Logger(jobId, 'classification.py', 'main')
         log.also_print = True    
-        configuration = Config()
+        configuration = EnvironmentConfig()
         config = configuration.data()
         bucketName = config[4]
         db = get_db(config)

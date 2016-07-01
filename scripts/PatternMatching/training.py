@@ -12,7 +12,7 @@ import MySQLdb
 import json
 from boto.s3.connection import S3Connection
 from contextlib import closing
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 
 
 USAGE = """Runs a model training job.
@@ -26,7 +26,7 @@ if len(sys.argv) < 2:
     sys.exit(-1)
 
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 
 
@@ -87,7 +87,7 @@ if not row:
     name
 ) = row
 modelName = name
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathConfig['temp_dir'])
 
 # select the model_type by its id
 if model_type_id == 1:  # Pattern Matching (modified Alvarez thesis)

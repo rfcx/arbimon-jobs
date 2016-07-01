@@ -24,7 +24,7 @@ def mock_open_custom(filen):
 
 def mock_json_load(filen):
     data = {
-        "aws.json" : {'secretAccessKey': 'awsAccess_password_Data_test', 'region': 'some_Regions_in_the_us', 'bucketName': 'a_bucket_name_somewhere', 'accessKeyId': 'awsAccess_Data_test'},
+        "aws.json" : {'secret_access_key': 'awsAccess_password_Data_test', 'region': 'some_Regions_in_the_us', 'bucket_name': 'a_bucket_name_somewhere', 'access_key_id': 'awsAccess_Data_test'},
         "db.json" : {'timezone': 'config_test', 'host': 'dummy_host_test', 'password': 'great_password_test', 'user': 'arbimon2_user_test', 'database': 'an_arbimon2_test'}
     }
     return data[filen]
