@@ -49,7 +49,7 @@ config = configuration.data()
 log.write('configuration loaded')
 
 models = {}
-tempFolders = str(configuration.pathConfig['temp_dir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 
 log.write('trying database connection')
@@ -133,7 +133,7 @@ def processLine(line, bucket, mod, config, logWorkers, bucketNam, ssimFlag):
     recUri, modelUri, recId, jobId, species, songtype = line.split(',')
     recId = int(recId.strip())
     log.write('new subprocess:'+recUri)
-    tempFolders = str(configuration.pathConfig['temp_dir'])
+    tempFolders = str(configuration.pathsConfig['temp_dir'])
     tempFolder = tempFolders+"/classification_"+str(jobId)+"/"
 
     # get rec from URI and compute feature vector using the spec vocalization

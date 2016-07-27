@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 
 configuration = EnvironmentConfig()
 config = configuration.data()
-tempFolders = str(configuration.pathConfig['temp_dir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 num_cores = multiprocessing.cpu_count()
 

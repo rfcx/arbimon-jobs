@@ -19,7 +19,7 @@ class Logger:
         self.logON = logON
         self.also_print = False
         if self.logON:
-            tempFolders = str(configuration.pathConfig['temp_dir'])
+            tempFolders = str(configuration.pathsConfig['temp_dir'])
             self.workingFolder = tempFolders+"/logs/job_"+str(jobId)
             if not os.path.exists(self.workingFolder):
                 os.makedirs(self.workingFolder)

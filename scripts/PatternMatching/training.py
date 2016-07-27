@@ -87,7 +87,7 @@ if not row:
     name
 ) = row
 modelName = name
-tempFolders = str(configuration.pathConfig['temp_dir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 
 # select the model_type by its id
 if model_type_id == 1:  # Pattern Matching (modified Alvarez thesis)

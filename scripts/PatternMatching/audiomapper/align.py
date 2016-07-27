@@ -8,7 +8,7 @@ import tempfile
 from a2pyutils.config import EnvironmentConfig
 
 configuration = EnvironmentConfig()
-tempFolders = str(configuration.pathConfig['temp_dir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 
 classes = {}
 validations = {}
