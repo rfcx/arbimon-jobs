@@ -31,12 +31,17 @@ class AbstractConfig(object):
         self.cache[cfg] = config
         return config
 
+class CachedConfig(AbstractConfig):
+    def __init__(self, cache):
+        self.cache = cache
+
 class EnvironmentConfig(AbstractConfig):
     scache = {}
 
     def __init__(self, env=None, env_file=None, sample_file=None):
         super(EnvironmentConfig, self).__init__()
         
+        self.__initially_empty_env = not env
         if not env:
             env = os.environ
             
@@ -82,3 +87,17 @@ class EnvironmentConfig(AbstractConfig):
                     node[comp] = {}
                 node = node[comp]
             node[attr] = val
+
+
+import dill
+def unpickle_EnvironmentConfig(files, cache=None):
+    return EnvironmentConfig(None, *files) if files else CachedConfig(cache)
+    
+@dill.register(EnvironmentConfig)
+def pickle_EnvironmentConfig(pickler, config):
+    pickler.save_reduce(unpickle_EnvironmentConfig, (
+        [config.env_file, config.sample_file], 
+    ) if config.__initially_empty_env else (
+        False,
+        config.cache, 
+    ), obj=config)
