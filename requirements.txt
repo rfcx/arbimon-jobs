@@ -1,4 +1,4 @@
-numpy==1.9.1
+numpy==1.11.0
 scikits.audiolab==0.11.0
 Pillow==2.7.0
 networkx==1.9.1
