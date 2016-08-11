@@ -48,7 +48,7 @@ if [ -f "$requirementspath" ]; then
    echo "Installing dependencies from $requirementspath"
    ##"$envpath/bin/pip" install -r "$requirementspath"
    for line in `cat "$requirementspath"`; do
-       "$envpath/bin/pip" install "$line"
+       "$envpath/bin/pip" install --no-binary :all: "$line"
    done
 else
     echo "Not installing dependencies since no requirements file was found in $pkgroot"
