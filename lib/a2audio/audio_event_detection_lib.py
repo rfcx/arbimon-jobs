@@ -10,15 +10,20 @@ import matplotlib.mlab
 @a2pyutils.job.pickleable()
 class AudioEventDetectionJob(a2pyutils.job.Job):
         
-    # def __init__(self, job_id, log=None, configuration=None):
-    #     super(AudioEventDetectionJob, self).__init__(job_id, log, configuration)
-        
+    def __init__(self, job_id, log=None, configuration=None, aed_id=None):
+        super(AudioEventDetectionJob, self).__init__(job_id, log, configuration)
+        self.aed_id = aed_id
+
     def plan_run(self):
         self.fetch_playlist_recordings()
         self.log.write('playlist generated.')
         
         self.plan = a2pyutils.plan.Plan(
-            {"name":"process recordings", 
+            {"name":"creating new audio event detection",
+             "fn"  : self.create_aed_entry,
+             "cost" : 1
+            },
+            {"name":"process recordings",
              "steps": len(self.playlist_recordings),
              "parallelizable" : True,
              "data": self.playlist_recordings,
@@ -70,7 +75,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         p2hz = max_freq / specH
         origin, scale = [0, 0], (p2sec, p2hz)
         
-        with RoiAdder(self.get_db(), self.job_id, self.configuration_id, data['recording_id']) as roi_adder:
+        with RoiAdder(self.get_db(), self.job_id, self.aed_id, data['recording_id']) as roi_adder:
             for i, roi in enumerate(segmenter.segment(
                 spectrum, storage=None, sample_rate=recording.sample_rate
             )):
@@ -90,6 +95,20 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         print "#{} : {} rois".format(subindex, roi_count)
 
         return [subindex, roi_count]
+
+    def create_aed_entry(self, subindex, data, step, inputs):
+        if self.aed_id:
+            return self.aed_id
+            
+        db = self.get_db()
+        with contextlib.closing(db.cursor()) as cursor:
+            cursor.execute("""
+                INSERT INTO audio_event_detections(configuration_id, project_id, name, statistics)
+                VALUES (%s, %s, %s, %s)
+            """, [self.configuration_id, self.project_id, self.name, self.statistics])
+            self.aed_id = cursor.lastrowid
+            db.commit()
+        return self.aed_id
 
     def fetch_job_data(self):
         try:
@@ -161,15 +180,16 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         db.close()
 
     @staticmethod
-    def unpickle(job_id, log, configuration, job_data):
-        return AudioEventDetectionJob(job_id, log, configuration, job_data)
-        
+    def unpickle(job_id, log, configuration, aed_id, job_data):
+        return AudioEventDetectionJob(job_id, log, configuration, job_data, aed_id)
+
     @classmethod
     def pickle(cls, pickler, job):
         pickler.save_reduce(cls.unpickle, (
             job.job_id, 
             job.log,
             job.configuration, 
+            job.aed_id,
             {
                 "name" : job.name,
                 "project_id" : job.project_id,
@@ -184,11 +204,11 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
 
 
 class RoiAdder(object):
-    def __init__(self, db, job_id, configuration_id, recording_id):
+    def __init__(self, db, job_id, aed_id, recording_id):
          self.db = db
          self.cursor=None
          self.job_id = job_id
-         self.configuration_id = configuration_id
+         self.aed_id = aed_id
          self.recording_id = recording_id
 
     def __enter__(self):
@@ -201,10 +221,10 @@ class RoiAdder(object):
         
     def add(self, roi):
         self.cursor.execute("""
-            INSERT INTO recording_audio_events(recording_id, configuration_id, job_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y) 
+            INSERT INTO recording_audio_events(recording_id, aed_id, job_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, [
-            self.recording_id, self.configuration_id, self.job_id, 
+            self.recording_id, self.aed_id, self.job_id,
             roi['t0'], roi['t1'], roi['f0'], roi['f1'],
             roi['bw'], roi['dur'], roi['area'], roi['Cov'], 
             roi['y_max']
