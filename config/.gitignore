@@ -3,3 +3,4 @@
 *.local.json
 
 config.env
+*.env

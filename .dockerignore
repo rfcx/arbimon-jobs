@@ -3,5 +3,6 @@
 *.md
 *.pyc
 experimental/
-config.env
+config/config.env
+config/*.env
 .gitignore
