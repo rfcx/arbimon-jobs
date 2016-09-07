@@ -48,7 +48,9 @@ class EnvironmentConfig(AbstractConfig):
         self.env_file = env_file if env_file else 'config/config.env'
         self.sample_file = sample_file if sample_file else 'config/config.env.sample'
         
-        self.read_env_file(env)
+        if os.path.isfile(self.env_file):
+            self.read_env_file(env)
+        
         self.check_against_sample_file(env)
         self.parse_env(env)
         
