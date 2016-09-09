@@ -8,7 +8,7 @@ import json
 from contextlib import closing
 import MySQLdb
 import tempfile
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils.logger import Logger
 
 jobId = int(sys.argv[1].strip("'").strip(" "))
@@ -18,7 +18,7 @@ log = Logger(int(jobId), 'classificationresults.py', 'reducer')
 log.write('script started')
 
 currDir = os.path.dirname(os.path.abspath(__file__))
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 log.write('configuration loaded')
 log.write('trying database connection')
@@ -30,7 +30,7 @@ except MySQLdb.Error as e:
     quit()
 log.write('database connection succesful')
 
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 minVectorVal = 9999999.0
 maxVectorVal = -9999999.0
 print 'results'
