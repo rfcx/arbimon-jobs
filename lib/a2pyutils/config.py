@@ -3,7 +3,7 @@ import json
 import os
 import os.path
 
-DEFAULT_CONFIG_FOLDER = os.path.abspath(os.path.dirname(__file__), '..', '..', 'config')
+DEFAULT_CONFIG_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
 
 class AbstractConfig(object):
     def __init__(self):
