@@ -16,7 +16,7 @@ from datetime import datetime
 from contextlib import closing
 from soundscape import soundscape
 from indices import indices
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils.logger import Logger
 from a2audio.rec import Rec
 from a2pyutils import palette
@@ -27,7 +27,7 @@ from soundscape.set_visual_scale_lib import get_sc_data
 from soundscape.set_visual_scale_lib import get_db
 
 num_cores = multiprocessing.cpu_count()
-configuration = Config()
+configuration = EnvironmentConfig()
 
 currDir = (os.path.dirname(os.path.realpath(__file__)))
 USAGE = """
