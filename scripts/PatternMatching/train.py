@@ -13,7 +13,7 @@ import json
 from boto.s3.connection import S3Connection
 from contextlib import closing
 from a2audio.training import *
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils.logger import Logger
 import multiprocessing
 from joblib import Parallel, delayed
@@ -37,7 +37,7 @@ if len(sys.argv) < 2:
 jobId = int(sys.argv[1].strip("'"))
 modelName = ''
 project_id = -1
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 log = Logger(jobId, 'train.py', 'main')
 log.also_print = True
@@ -112,7 +112,7 @@ if not row:
     name
 ) = row
 modelName = name
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 # select the model_type by its id
 if model_type_id in [4]:
     """Pattern Matching (modified Alvarez thesis)"""

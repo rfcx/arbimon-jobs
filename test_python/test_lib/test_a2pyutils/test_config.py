@@ -24,7 +24,7 @@ def mock_open_custom(filen):
 
 def mock_json_load(filen):
     data = {
-        "aws.json" : {'secretAccessKey': 'awsAccess_password_Data_test', 'region': 'some_Regions_in_the_us', 'bucketName': 'a_bucket_name_somewhere', 'accessKeyId': 'awsAccess_Data_test'},
+        "aws.json" : {'secret_access_key': 'awsAccess_password_Data_test', 'region': 'some_Regions_in_the_us', 'bucket_name': 'a_bucket_name_somewhere', 'access_key_id': 'awsAccess_Data_test'},
         "db.json" : {'timezone': 'config_test', 'host': 'dummy_host_test', 'password': 'great_password_test', 'user': 'arbimon2_user_test', 'database': 'an_arbimon2_test'}
     }
     return data[filen]
@@ -37,18 +37,18 @@ class Test_config(unittest.TestCase):
     def test_import(self):
         """Test a2pyutils.config module can be imported"""
         try:
-            from a2pyutils.config import Config
+            from a2pyutils.config import EnvironmentConfig
         except ImportError:
             self.fail("Cannot load a2pyutils.config module")
             
     def test_load_config(self):
         """Test a2pyutils.config init arguments"""
-        from a2pyutils.config import Config
+        from a2pyutils.config import EnvironmentConfig
         with mock.patch('os.path.join', mock_os_path_join, create=False):
             with mock.patch('os.path.isfile',mock_os_path_isfile, create=False):
                 with mock.patch('__builtin__.open', mock_open_custom, create=False):
                     with mock.patch('json.load', mock_json_load, create=False):
-                        configuration = Config("test_python/data/configs")
+                        configuration = EnvironmentConfig()
                         config = configuration.data()
                         testData = ['dummy_host_test', 'arbimon2_user_test', 'great_password_test', 'an_arbimon2_test', 'a_bucket_name_somewhere', 'awsAccess_Data_test', 'awsAccess_password_Data_test']
                         for cc in range(len(config)):

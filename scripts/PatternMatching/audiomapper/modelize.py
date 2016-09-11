@@ -12,10 +12,10 @@ import json
 import boto
 import png
 from boto.s3.connection import S3Connection
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 
-configuration = Config()
-tempFolders = str(configuration.pathConfig['tempDir'])
+configuration = EnvironmentConfig()
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 config = configuration.data()
 bucketName = config[4]

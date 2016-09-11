@@ -1,3 +1,6 @@
 # local config files
 
 *.local.json
+
+config.env
+*.env

@@ -1,0 +1,8 @@
+.env/
+.git/
+*.md
+*.pyc
+experimental/
+config/config.env
+config/*.env
+.gitignore

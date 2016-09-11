@@ -15,7 +15,7 @@ from joblib import Parallel, delayed
 from contextlib import closing
 import MySQLdb
 from boto.s3.connection import S3Connection
-from a2pyutils.config import Config
+from a2pyutils.config import EnvironmentConfig
 from a2pyutils.logger import Logger
 
 
@@ -44,12 +44,12 @@ else:
     else:
         log.write('not using ssim '+str(ssim))
 
-configuration = Config()
+configuration = EnvironmentConfig()
 config = configuration.data()
 log.write('configuration loaded')
 
 models = {}
-tempFolders = str(configuration.pathConfig['tempDir'])
+tempFolders = str(configuration.pathsConfig['temp_dir'])
 currDir = os.path.dirname(os.path.abspath(__file__))
 
 log.write('trying database connection')
@@ -133,7 +133,7 @@ def processLine(line, bucket, mod, config, logWorkers, bucketNam, ssimFlag):
     recUri, modelUri, recId, jobId, species, songtype = line.split(',')
     recId = int(recId.strip())
     log.write('new subprocess:'+recUri)
-    tempFolders = str(configuration.pathConfig['tempDir'])
+    tempFolders = str(configuration.pathsConfig['temp_dir'])
     tempFolder = tempFolders+"/classification_"+str(jobId)+"/"
 
     # get rec from URI and compute feature vector using the spec vocalization
