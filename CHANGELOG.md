@@ -6,7 +6,7 @@
 
 ## 1.0.1 - 2016-9-11
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.1)]
-[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/v1.0.1...v1.0.1)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/v1.0.0...v1.0.1)]
 
 ##### Fixed
 - Some scripts still had `Config` instead of `EnvironmentConfig`.
