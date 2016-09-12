@@ -2,7 +2,14 @@
 
 ## [Unreleased]
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/commit/HEAD)]
-[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.1)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.2)]
+
+## 1.0.2 - 2016-9-11
+[[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.2)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/v1.0.1...v1.0.2)]
+
+##### Fixed
+- Some bug preventing AED to work.
 
 ## 1.0.1 - 2016-9-11
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.1)]
