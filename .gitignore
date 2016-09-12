@@ -4,7 +4,7 @@ npm-debug.log
 
 # gedit backup files
 *~
-  
+
 # bower
 bower_components
 
@@ -24,3 +24,6 @@ a2.komodoproject
 
 # docs (?)
 docs
+
+
+.ignore

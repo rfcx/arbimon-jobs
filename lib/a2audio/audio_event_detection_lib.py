@@ -10,9 +10,19 @@ import matplotlib.mlab
 @a2pyutils.job.pickleable()
 class AudioEventDetectionJob(a2pyutils.job.Job):
         
-    def __init__(self, job_id, log=None, configuration=None, aed_id=None):
+    def __init__(self, job_id, log=None, configuration=None, job_data=None, aed_id=None):
         super(AudioEventDetectionJob, self).__init__(job_id, log, configuration)
         self.aed_id = aed_id
+        
+        if job_data:
+            self.name = job_data.get("name")
+            self.project_id = job_data.get("project_id")
+            self.user_id = job_data.get("user_id")
+            self.algorithm = job_data.get("algorithm")
+            self.playlist_id = job_data.get("playlist_id")
+            self.configuration_id = job_data.get("configuration_id")
+            self.params = job_data.get("parameters")
+            self.statistics = job_data.get("statistics")
 
     def plan_run(self):
         self.fetch_playlist_recordings()
@@ -96,7 +106,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
 
         return [subindex, roi_count]
 
-    def create_aed_entry(self, subindex, data, step, inputs):
+    def create_aed_entry(self, step, inputs):
         if self.aed_id:
             return self.aed_id
             
@@ -105,7 +115,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
             cursor.execute("""
                 INSERT INTO audio_event_detections(configuration_id, project_id, name, statistics)
                 VALUES (%s, %s, %s, %s)
-            """, [self.configuration_id, self.project_id, self.name, self.statistics])
+            """, [self.configuration_id, self.project_id, self.name, json.dumps(self.statistics)])
             self.aed_id = cursor.lastrowid
             db.commit()
         return self.aed_id
@@ -150,7 +160,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         self.params = data['parameters']
         self.statistics = data['statistics']
             
-    def insert_rec_error(db, recId, jobId):
+    def insert_rec_error(self, db, recId, jobId):
         try:
             with contextlib.closing(db.cursor()) as cursor:
                 cursor.execute("""
@@ -161,7 +171,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         except:
             exit_error("Could not insert recording error")
             
-    def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
+    def insert_result_to_db(self, config, jId, recId, species, songtype, presence, maxV):
         db = None
         try:
             db = self.get_db()
@@ -176,7 +186,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
                 """, [jId, recId, species, songtype, presence, maxV])
                 db.commit()
         except:
-            insert_rec_error(db, recId, jobId)
+            self.insert_rec_error(db, recId, jId)
         db.close()
 
     @staticmethod
@@ -205,26 +215,26 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
 
 class RoiAdder(object):
     def __init__(self, db, job_id, aed_id, recording_id):
-         self.db = db
-         self.cursor=None
-         self.job_id = job_id
-         self.aed_id = aed_id
-         self.recording_id = recording_id
+        self.db = db
+        self.cursor=None
+        self.job_id = job_id
+        self.aed_id = aed_id
+        self.recording_id = recording_id
 
     def __enter__(self):
         self.cursor = self.db.cursor()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, _type, value, traceback):
         self.cursor.close()
         self.db.commit()
         
     def add(self, roi):
         self.cursor.execute("""
-            INSERT INTO recording_audio_events(recording_id, aed_id, job_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recording_audio_events(recording_id, aed_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, [
-            self.recording_id, self.aed_id, self.job_id,
+            self.recording_id, self.aed_id,
             roi['t0'], roi['t1'], roi['f0'], roi['f1'],
             roi['bw'], roi['dur'], roi['area'], roi['Cov'], 
             roi['y_max']

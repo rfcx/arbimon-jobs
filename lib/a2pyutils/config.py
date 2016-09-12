@@ -3,6 +3,8 @@ import json
 import os
 import os.path
 
+DEFAULT_CONFIG_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
+
 class AbstractConfig(object):
     def __init__(self):
         self.cache = {}
@@ -44,10 +46,10 @@ class EnvironmentConfig(AbstractConfig):
         self.__initially_empty_env = not env
         if not env:
             env = os.environ
-            
-        self.env_file = env_file if env_file else 'config/config.env'
-        self.sample_file = sample_file if sample_file else 'config/config.env.sample'
-        
+
+        self.env_file = env_file if env_file else os.path.join(DEFAULT_CONFIG_FOLDER, 'config.env')
+        self.sample_file = sample_file if sample_file else os.path.join(DEFAULT_CONFIG_FOLDER, 'config.env.sample')
+
         if os.path.isfile(self.env_file):
             self.read_env_file(env)
         
