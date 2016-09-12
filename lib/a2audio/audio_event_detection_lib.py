@@ -106,7 +106,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
 
         return [subindex, roi_count]
 
-    def create_aed_entry(self, subindex, data, step, inputs):
+    def create_aed_entry(self, step, inputs):
         if self.aed_id:
             return self.aed_id
             
