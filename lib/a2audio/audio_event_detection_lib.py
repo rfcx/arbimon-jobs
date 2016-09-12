@@ -160,7 +160,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         self.params = data['parameters']
         self.statistics = data['statistics']
             
-    def insert_rec_error(db, recId, jobId):
+    def insert_rec_error(self, db, recId, jobId):
         try:
             with contextlib.closing(db.cursor()) as cursor:
                 cursor.execute("""
@@ -171,7 +171,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         except:
             exit_error("Could not insert recording error")
             
-    def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
+    def insert_result_to_db(self, config, jId, recId, species, songtype, presence, maxV):
         db = None
         try:
             db = self.get_db()
@@ -186,7 +186,7 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
                 """, [jId, recId, species, songtype, presence, maxV])
                 db.commit()
         except:
-            insert_rec_error(db, recId, jobId)
+            self.insert_rec_error(db, recId, jId)
         db.close()
 
     @staticmethod
@@ -215,17 +215,17 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
 
 class RoiAdder(object):
     def __init__(self, db, job_id, aed_id, recording_id):
-         self.db = db
-         self.cursor=None
-         self.job_id = job_id
-         self.aed_id = aed_id
-         self.recording_id = recording_id
+        self.db = db
+        self.cursor=None
+        self.job_id = job_id
+        self.aed_id = aed_id
+        self.recording_id = recording_id
 
     def __enter__(self):
         self.cursor = self.db.cursor()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, _type, value, traceback):
         self.cursor.close()
         self.db.commit()
         
