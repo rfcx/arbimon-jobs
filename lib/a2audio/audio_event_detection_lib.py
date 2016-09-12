@@ -113,9 +113,9 @@ class AudioEventDetectionJob(a2pyutils.job.Job):
         db = self.get_db()
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
-                INSERT INTO audio_event_detections(configuration_id, project_id, name, statistics)
-                VALUES (%s, %s, %s, %s)
-            """, [self.configuration_id, self.project_id, self.name, json.dumps(self.statistics)])
+                INSERT INTO audio_event_detections(configuration_id, project_id, name, playlist_id, statistics, created_date)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+            """, [self.configuration_id, self.project_id, self.name, self.playlist_id, json.dumps(self.statistics)])
             self.aed_id = cursor.lastrowid
             db.commit()
         return self.aed_id
