@@ -1,6 +1,8 @@
 # Arbimon II
 Bio-Acoustic Analyzer - JOBS
 
+v 1.0.1
+
 ---
 ### Quick Setup:
  - python 2.7 - comes with Ubuntu
