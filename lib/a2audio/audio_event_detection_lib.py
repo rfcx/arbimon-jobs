@@ -221,10 +221,10 @@ class RoiAdder(object):
         
     def add(self, roi):
         self.cursor.execute("""
-            INSERT INTO recording_audio_events(recording_id, aed_id, job_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recording_audio_events(recording_id, aed_id, t0, t1, f0, f1, bw, dur, area, coverage, max_y)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, [
-            self.recording_id, self.aed_id, self.job_id,
+            self.recording_id, self.aed_id,
             roi['t0'], roi['t1'], roi['f0'], roi['f1'],
             roi['bw'], roi['dur'], roi['area'], roi['Cov'], 
             roi['y_max']
