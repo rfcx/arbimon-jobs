@@ -10,9 +10,19 @@ import matplotlib.mlab
 @a2pyutils.job.pickleable()
 class AudioEventDetectionJob(a2pyutils.job.Job):
         
-    def __init__(self, job_id, log=None, configuration=None, aed_id=None):
+    def __init__(self, job_id, log=None, configuration=None, job_data=None, aed_id=None):
         super(AudioEventDetectionJob, self).__init__(job_id, log, configuration)
         self.aed_id = aed_id
+        
+        if job_data:
+            self.name = job_data.get("name")
+            self.project_id = job_data.get("project_id")
+            self.user_id = job_data.get("user_id")
+            self.algorithm = job_data.get("algorithm")
+            self.playlist_id = job_data.get("playlist_id")
+            self.configuration_id = job_data.get("configuration_id")
+            self.params = job_data.get("parameters")
+            self.statistics = job_data.get("statistics")
 
     def plan_run(self):
         self.fetch_playlist_recordings()
