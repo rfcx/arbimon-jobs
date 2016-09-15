@@ -2,7 +2,14 @@
 
 ## [Unreleased]
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/commit/HEAD)]
-[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.3)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.4)]
+
+## 1.0.4 - 2016-9-15
+[[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.4)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/v1.0.3...v1.0.4)]
+
+##### Added
+- `created_date` fixed to `date_created` in AED db insert method
 
 ## 1.0.3 - 2016-9-11
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.3)]
