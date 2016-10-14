@@ -14,6 +14,9 @@ from joblib import Parallel, delayed
 import cPickle as pickle
 import csv
 import json
+import sys
+
+classificationCanceled =False
 
 def get_classification_job_data(db,jobId):
     try:
@@ -108,8 +111,7 @@ def insert_rec_error(db, recId, jobId):
     except:
         exit_error("Could not insert recording error")
         
-import sys
-classificationCanceled =False
+
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
     global classificationCanceled
     if classificationCanceled:
