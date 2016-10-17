@@ -5,7 +5,7 @@ from a2pyutils.jobs_lib import cancelStatus
 from soundscape.set_visual_scale_lib import *
 import time
 import MySQLdb
-from contextlib import closing
+import contextlib
 import tempfile
 import shutil
 import os
@@ -20,7 +20,7 @@ classificationCanceled =False
 
 def get_classification_job_data(db,jobId):
     try:
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 SELECT J.`project_id`, J.`user_id`,
                     JP.model_id, JP.playlist_id,
@@ -38,7 +38,7 @@ def get_classification_job_data(db,jobId):
 
 def get_model_params(db,classifierId,log):
     try:
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 SELECT m.`model_type_id`,m.`uri`,ts.`species_id`,ts.`songtype_id`
                 FROM `models`m ,`training_sets_roi_set` ts
@@ -70,7 +70,7 @@ def create_temp_dir(jobId,log):
 def get_playlist(db,playlistId,log):
     try:
         recsToClassify = []
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 SELECT R.`recording_id`, R.`uri`
                 FROM `recordings` R, `playlist_recordings` PR
@@ -90,7 +90,7 @@ def get_playlist(db,playlistId,log):
 
 def set_progress_params(db,progress_steps, jobId):
     try:
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress_steps`=%s, progress=0, state="processing"
@@ -102,7 +102,7 @@ def set_progress_params(db,progress_steps, jobId):
         
 def insert_rec_error(db, recId, jobId):
     try:
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
                 VALUES (%s, %s)
@@ -138,7 +138,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         else:
             oldModel = True
         recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim )
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress` = `progress` + 1
@@ -227,7 +227,7 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
     db = None
     try:
         db = get_db(config)
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `classification_results` (
                     job_id, recording_id, species_id, songtype_id, present,
@@ -247,7 +247,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
     processed = 0
     try:
         for r in res:
-            with closing(db.cursor()) as cursor:
+            with contextlib.closing(db.cursor()) as cursor:
                 cursor.execute("""
                     UPDATE `jobs`
                     SET `progress` = `progress` + 1
@@ -322,7 +322,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     if jsonStats['t'] < 1:
         exit_error('no recordings processed.')
     try:
-        with closing(db.cursor()) as cursor:
+        with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `classification_stats` (`job_id`, `json_stats`)
                 VALUES (%s, %s)
