@@ -181,7 +181,7 @@ class Roi:
             raise ValueError("lowFreq must be less than highFreq")
         if type(sample_rate) is not int and  type(sample_rate) is not float:
             raise ValueError("sample_rate must be a number")
-        if type(spec) is not numpy.ndarray:
+        if not isinstance(spec, (numpy.ndarray, numpy.generic, numpy.memmap)):
             raise ValueError("spec must be a numpy.ndarray. Input was a "+str(type(spec)))
         self.lowFreq = lowFreq
         self.highFreq = highFreq
