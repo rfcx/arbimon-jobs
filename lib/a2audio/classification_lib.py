@@ -250,7 +250,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
             with contextlib.closing(db.cursor()) as cursor:
                 cursor.execute("""
                     UPDATE `jobs`
-                    SET `progress` = `progress` + 1
+                    SET `progress` = `progress` + 1, last_update = NOW()
                     WHERE `job_id` = %s
                 """, [jobId])
                 db.commit()   
