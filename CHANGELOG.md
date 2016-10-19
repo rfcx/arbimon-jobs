@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/commit/HEAD)]
-[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.5)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/HEAD...v1.0.6)]
+
+## 1.0.6 - 2016-10-19
+[[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.6)]
+[[compare](https://github.com/Sieve-Analytics/arbimon2-jobs/compare/v1.0.5...v1.0.6)]
+
+##### Fixed
+- `ndarray` type checking in `recanalyzer`
+- replacing `reshape` in `threshold` 
+- other fixes
 
 ## 1.0.5 - 2016-9-15
 [[tag](https://github.com/Sieve-Analytics/arbimon2-jobs/releases/tag/v1.0.5)]
