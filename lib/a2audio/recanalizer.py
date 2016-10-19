@@ -24,7 +24,7 @@ class Recanalizer:
     def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
-        if type(speciesSurface) is not numpy.ndarray:
+        if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
             raise ValueError("speciesSurface must be a numpy.ndarray. Input was a "+str(type(speciesSurface)))
         if type(low) is not int and type(low) is not float:
             raise ValueError("low must be a number")
