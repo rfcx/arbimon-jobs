@@ -35,10 +35,9 @@ class Thresholder:
             if self.method == 'median':
                 value = numpy.median(matrix)
             if self.method == 'kmeans':
-                aa = numpy.array(matrix).reshape(-1)
-                aa.shape = (aa.shape[0],1)
-                cc = k_means(aa,5)
-                ccc = cc[0].reshape(-1)
+                aa = matrix.flatten()
+                cc = k_means(aa, 5)
+                ccc = cc[0]
                 ccc.sort()
                 value = ccc[len(ccc)-2]
             binary = matrix > value
