@@ -9,6 +9,7 @@ import subprocess
 import boto
 import shutil
 import MySQLdb
+import traceback
 import json
 from boto.s3.connection import S3Connection
 from contextlib import closing
@@ -369,7 +370,8 @@ if model_type_id in [4]:
     try:
         results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) for line in validationData)
     except:
-        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel')
+        
+        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel ' + traceback.format_exc())
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
