@@ -241,7 +241,7 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
             """, [jId, recId, species, songtype, presence, maxV])
             db.commit()
     except:
-        insert_rec_error(db, recId, jobId)
+        insert_rec_error(db, recId, jId)
     db.close()
         
 def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
