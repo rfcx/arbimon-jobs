@@ -5,6 +5,8 @@ from contextlib import closing
 from a2pyutils.config import EnvironmentConfig
 from a2pyutils import tempfilecache
 import a2pyutils.palette
+import traceback
+import time
 import soundscape
 import sys
 import boto.s3.connection
@@ -17,17 +19,28 @@ def exit_error(msg, code=-1, log=None):
     sys.exit(code)
 
 
-def get_db(config):
+def get_db(config, retries=6):
     db = None
-    try:
-        db = MySQLdb.connect(
-            host=config[0], user=config[1], passwd=config[2], db=config[3],
-            cursorclass=MySQLdb.cursors.DictCursor
-        )
-    except MySQLdb.Error as e:
-        exit_error("cannot connect to database.")
+    retryCount = 0
+    
+    err = None
+    
+    while not db and retryCount < retries:
+        try:
+            db = MySQLdb.connect(
+                host=config[0], user=config[1], passwd=config[2], db=config[3],
+                cursorclass=MySQLdb.cursors.DictCursor
+            )
+        except MySQLdb.Error as e:
+            err = e
+            print traceback.format_exc()
+            print "Retrying in {} seconds".format(1.5 ** retryCount)
+            time.sleep(1.5 ** retryCount) # exponential waiting
+        retryCount += 1
+        
     if not db:
-        exit_error("cannot connect to database.")
+        exit_error("cannot connect to database. err:{}".format(traceback.format_exc()))
+    
     return db
 
 

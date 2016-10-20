@@ -9,6 +9,7 @@ import contextlib
 import tempfile
 import shutil
 import os
+import traceback
 import multiprocessing
 from joblib import Parallel, delayed
 import cPickle as pickle
@@ -31,9 +32,9 @@ def get_classification_job_data(db,jobId):
             """, [jobId])
             row = cursor.fetchone()
     except:
-        exit_error("Could not query database with classification job #{}".format(jobId))
+        exit_error("Could not query database with classification job #{}, {}".format(jobId, traceback.format_exc()))
     if not row:
-        exit_error("Could not find classification job #{}".format(jobId))
+        exit_error("Could not find classification job #{}, {}".format(jobId, traceback.format_exc()))
     return [row['model_id'],row['project_id'],row['user_id'],row['name'],row['playlist_id'],row['ncpu']]
 
 def get_model_params(db,classifierId,log):
@@ -48,10 +49,10 @@ def get_model_params(db,classifierId,log):
             db.commit()
             numrows = int(cursor.rowcount)
             if numrows < 1:
-                exit_error('fatal error cannot fetch model params (classifier_id:' + str(classifierId) + ')',-1,log)
+                exit_error('fatal error cannot fetch model params (classifier_id:{}) {}'.format(classifierId, traceback.format_exc()),-1,log)
             row = cursor.fetchone()
     except:
-        exit_error("Could not query database for model params")    
+        exit_error("Could not query database for model params {}".format(traceback.format_exc()))    
     return [row['model_type_id'],row['uri'],row['species_id'],row['songtype_id']]
 
 def create_temp_dir(jobId,log):
@@ -62,9 +63,9 @@ def create_temp_dir(jobId,log):
             shutil.rmtree(workingFolder)
         os.makedirs(workingFolder)
     except:
-        exit_error("Could not create temporary directory")
+        exit_error("Could not create temporary directory, {}".format(traceback.format_exc()))
     if not os.path.exists(workingFolder):
-        exit_error('fatal error creating directory',-1,log)
+        exit_error('fatal error creating directory, {}'.format(traceback.format_exc()),-1,log)
     return workingFolder
 
 def get_playlist(db,playlistId,log):
@@ -83,9 +84,9 @@ def get_playlist(db,playlistId,log):
                rowclassification = cursor.fetchone()
                recsToClassify.append(rowclassification)
     except:
-        exit_error("Could not generate playlist array")
+        exit_error("Could not generate playlist array, {}".format(traceback.format_exc()))
     if len(recsToClassify) < 1:
-        exit_error('No recordngs in playlist',-1,log)
+        exit_error('No recordngs in playlist, {}'.format(traceback.format_exc()),-1,log)
     return recsToClassify
 
 def set_progress_params(db,progress_steps, jobId):
@@ -98,7 +99,7 @@ def set_progress_params(db,progress_steps, jobId):
             """, [progress_steps*2+5, jobId])
             db.commit()
     except:
-        exit_error("Could not set progress params")
+        exit_error("Could not set progress params, {}".format(traceback.format_exc()))
         
 def insert_rec_error(db, recId, jobId):
     try:
@@ -109,7 +110,7 @@ def insert_rec_error(db, recId, jobId):
             """, [recId, jobId])
             db.commit()
     except:
-        exit_error("Could not insert recording error")
+        exit_error("Could not insert recording error, {}".format(traceback.format_exc()))
         
 
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
@@ -141,13 +142,13 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
-                SET `progress` = `progress` + 1
+                SET `progress` = `progress` + 1, last_update = NOW()
                 WHERE `job_id` = %s
             """, [jobId])
             db.commit()       
     except:
-        log.write('error rec analyzed')
         errorProcessing = True
+        log.write('error rec analyzed {} '.format(traceback.format_exc()))
     log.write('finish')
     featvector = None
     fets = None
@@ -157,6 +158,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
             fets = recAnalized.features()
         except:
             errorProcessing = True
+            log.write('error getting feature vectors {} '.format(traceback.format_exc()))
     else:
         errorProcessing = True
     res = None
@@ -167,6 +169,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
             res = clf.predict(fets)
         except:
             errorProcessing = True
+            log.write('error predicting {} '.format(traceback.format_exc()))
     else:
         errorProcessing = True
     if errorProcessing:
@@ -188,14 +191,14 @@ def get_model(model_uri,config,log,workingFolder):
         log.write('contents to filename...')
         k.get_contents_to_filename(modelLocal)
     except:
-        exit_error('fatal error model '+str(model_uri)+' not found in aws',-1,log)
+        exit_error('fatal error model {} not found in aws, {}'.format(model_uri, traceback.format_exc()),-1,log)
     log.write('model in local file system.')
     mod = None
     log.write('loading model to memory...')
     if os.path.isfile(modelLocal):
         mod = pickle.load(open(modelLocal, "rb"))
     else:
-        exit_error('fatal error cannot load model',-1,log)
+        exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()),-1,log)
     log.write('model was loaded to memory.')
     return mod
 
@@ -274,7 +277,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                 else:
                     insert_rec_error(db, r['id'], jobId)
     except:
-        exit_error('cannot process results.')
+        exit_error('cannot process results. {}'.format(traceback.format_exc()))
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
    
 def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
@@ -320,7 +323,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     log.write('removed folder.')
     statsJson = jsonStats['stats']
     if jsonStats['t'] < 1:
-        exit_error('no recordings processed.')
+        exit_error('no recordings processed. {}'.format(traceback.format_exc()))
     try:
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""

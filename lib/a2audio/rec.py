@@ -4,6 +4,7 @@ import time
 import sys
 import warnings
 from urllib import quote
+import traceback
 import urllib2
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -118,24 +119,27 @@ class Rec:
                     
         self.status = 'HasAudioData'
         
-    def getAudioFromUri(self):
+    def getAudioFromUri(self, retries=6):
         start_time = time.time()
         f = None
+        url = 'https://s3.amazonaws.com/' + self.bucket + '/'+quote(self.uri)
         if self.logs :
-            self.logs.write('https://s3.amazonaws.com/'+self.bucket+'/'+self.uri+ ' to '+self.localfilename)
-        try:
-            f = urllib2.urlopen('https://s3.amazonaws.com/'+self.bucket+'/'+quote(self.uri))
+            self.logs.write(url + ' to ' + self.localfilename)
+        retryCount = 0
+        while not f and retryCount < retries:
+            try:
+                f = urllib2.urlopen(url)
+            except urllib2.HTTPError, e:
+                print traceback.format_exc()
+                time.sleep(1.5 ** retryCount) # exponential waiting
+            except urllib2.URLError, e:
+                print traceback.format_exc()
+                time.sleep(1.5 ** retryCount) # exponential waiting
+            retryCount += 1
+
+        if f:
             if self.logs :
                 self.logs.write('urlopen success')
-        except urllib2.HTTPError, e:
-            if self.logs :
-                self.logs.write("bucket http error:" + str(e.code ))
-            return False
-        except urllib2.URLError, e:
-            if self.logs :
-                self.logs.write("bucket url error:" + str(e.reason ))
-            return False  
-        if f:
             try:
                 with open(self.localfilename, "wb") as local_file:
                     local_file.write(f.read())
@@ -144,6 +148,8 @@ class Rec:
                     self.logs.write('error f.read')
                 return False
         else:
+            if self.logs :
+                self.logs.write("url error. {}".format(traceback.format_exc()))
             return False
         
         if self.logs :
