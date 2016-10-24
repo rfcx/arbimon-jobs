@@ -7,6 +7,7 @@ import os
 import csv
 import subprocess
 import boto
+import traceback
 import shutil
 import MySQLdb
 import traceback
@@ -51,7 +52,7 @@ try:
         passwd=config[2], db=config[3]
     )
 except MySQLdb.Error as e:
-    log.write("fatal error cannot connect to database.")
+    log.write("fatal error cannot connect to database. {}".format(traceback.format_exc()))
     sys.exit(-1)
 
 
@@ -187,8 +188,8 @@ if model_type_id in [4]:
             for x in range(0, numSpeciesSongtype):
                 rowSpecies = cursor.fetchone()
                 speciesSongtype.append([rowSpecies[0], rowSpecies[1]])
-    except:
-        exit_error(db, workingFolder, log, jobId, 'cannot create training csvs files or access training data from db')
+    except StandardError, e:
+        exit_error(db, workingFolder, log, jobId, 'cannot create training csvs files or access training data from db. {}'.format(traceback.format_exc()))
 
     log.write('training data retrieved')
     useTrainingPresent = None
@@ -205,8 +206,8 @@ if model_type_id in [4]:
             useTrainingNotPresent = row[6]
             useValidationPresent = row[7]
             useValidationNotPresent = row[8]
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot retrieve training data from db')
+    except StandardError, e:
+        exit_error(db,workingFolder,log,jobId,'cannot retrieve training data from db. {}'.format(traceback.format_exc()))
         
     validationData = []
     """ Validation file creation """
@@ -296,12 +297,12 @@ if model_type_id in [4]:
                 WHERE `job_id` = %s
             """, [progress_steps, jobId])
             db.commit()
-    except:
-        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db')
+    except StandardError, e:
+        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db. {}'.format(traceback.format_exc()))
 
     log.write('validation data retrieved')
     if len(trainingData) == 0:
-        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db')
+        exit_error(db, workingFolder, log, jobId, 'cannot create validation csvs files or access validation data from db. (no error)')
 
     classes = {}
     rois = None
@@ -310,8 +311,8 @@ if model_type_id in [4]:
     try:
         # roigen defined in a2audio.training
         rois = Parallel(n_jobs=1)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
-    except:
-        exit_error(db, workingFolder, log, jobId, 'roigenerator failed')
+    except StandardError, e:
+        exit_error(db, workingFolder, log, jobId, 'roigenerator failed. {}'.format(traceback.format_exc()))
 
     if rois is None or len(rois) == 0:
         exit_error(db,workingFolder,log,jobId,'cannot create rois from recordings')
@@ -359,8 +360,8 @@ if model_type_id in [4]:
                 classes[i].highestFreq,
                 classes[i].maxColumns
             ]
-    except:
-        exit_error(db, workingFolder, log, jobId, 'cannot align rois')
+    except StandardError, e:
+        exit_error(db, workingFolder, log, jobId, 'cannot align rois. {}'.format(traceback.format_exc()))
 
     if len(patternSurfaces) == 0:
         exit_error(db, workingFolder, log, jobId, 'cannot create pattern surface from rois')
@@ -369,9 +370,9 @@ if model_type_id in [4]:
     """Recnilize"""
     try:
         results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) for line in validationData)
-    except:
+    except StandardError, e:
         
-        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel ' + traceback.format_exc())
+        exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel {}'.format(traceback.format_exc()))
     
     if results is None:
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings')
@@ -409,8 +410,8 @@ if model_type_id in [4]:
             else:
                 errors_count = errors_count + 1
 
-    except:
-        exit_error(db,workingFolder,log,jobId,'cannot add samples to model')
+    except StandardError, e:
+        exit_error(db,workingFolder,log,jobId,'cannot add samples to model. {}'.format(traceback.format_exc()))
     log.write('errors : '+str(errors_count)+" processed: "+ str(no_errors))
     log.write('model trained')    
     modelFilesLocation = tempFolders+"/training_"+str(jobId)+"/"
@@ -454,36 +455,36 @@ if model_type_id in [4]:
             decoded = json.loads(row[0])
             modelname = decoded['name']
             valiId = row[1]
-    except:
-        exit_error(db,workingFolder,log,jobId,'error querying database')
+    except StandardError, e:
+        exit_error(db,workingFolder,log,jobId,'error querying database. {}'.format(traceback.format_exc()))
 
     log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
     log.write('available validations : presents: '+str(presentsCount)+' ausents: '+str(ausenceCount) )
     if (useTrainingPresent+useValidationPresent) > presentsCount:
-       if presentsCount <= useTrainingPresent:
-           useTrainingPresent = presentsCount - 1
-           useValidationPresent = 1
-       else:
-           useValidationPresent = presentsCount - useTrainingPresent
+        if presentsCount <= useTrainingPresent:
+            useTrainingPresent = presentsCount - 1
+            useValidationPresent = 1
+        else:
+            useValidationPresent = presentsCount - useTrainingPresent
     
     if (useTrainingNotPresent + useValidationNotPresent) > ausenceCount:
-       if ausenceCount <= useTrainingNotPresent:
-           useTrainingNotPresent = ausenceCount - 1
-           useValidationNotPresent = 1
-       else:
-           useValidationNotPresent = ausenceCount - useTrainingNotPresent
+        if ausenceCount <= useTrainingNotPresent:
+            useTrainingNotPresent = ausenceCount - 1
+            useValidationNotPresent = 1
+        else:
+            useValidationNotPresent = ausenceCount - useTrainingNotPresent
     log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
 
     savedModel = False
     print 'try models'
-    """ Create and save model """
+    # """ Create and save model """
     for i in models:
         print i,'in models'
         resultSplit = False
         try:
             resultSplit = models[i].splitData(useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent)
-        except:
-            exit_error(db,workingFolder,log,jobId,'error spliting data for validation')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error spliting data for validation. {}'.format(traceback.format_exc()))
         if not resultSplit:
             print 'split failed'
             continue
@@ -491,27 +492,27 @@ if model_type_id in [4]:
         validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'
         try:
             models[i].train()
-        except:
-            exit_error(db,workingFolder,log,jobId,'error training model')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error training model. {}'.format(traceback.format_exc()))
 
         if useValidationPresent > 0:
             try:
                 models[i].validate()
                 models[i].saveValidations(validationsLocalFile)
-            except:
-               exit_error(db,workingFolder,log,jobId,'error validating model')
+            except StandardError, e:
+                exit_error(db,workingFolder,log,jobId,'error validating model. {}'.format(traceback.format_exc()))
                
         modFile = modelFilesLocation+"model_"+str(jobId)+"_"+str(i)+".mod"
         try:
             models[i].save(modFile,patternSurfaces[i][2] ,patternSurfaces[i][3],patternSurfaces[i][4])
-        except:
-            exit_error(db,workingFolder,log,jobId,'error saving model file to local storage')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error saving model file to local storage. {}'.format(traceback.format_exc()))
             
         modelStats = None
         try:
             modelStats = models[i].modelStats()
-        except :
-            exit_error(db,workingFolder,log,jobId,'cannot get stats from model')       
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'cannot get stats from model. {}'.format(traceback.format_exc()))
         pngKey = None
         try:
             
@@ -529,8 +530,8 @@ if model_type_id in [4]:
             smax = max([max((specToShow[j])) for j in range(specToShow.shape[0])])
             x = 255*(1-((specToShow - smin)/(smax-smin)))
             png.from_array(x, 'L;8').save(pngFilename)
-        except:
-            exit_error(db,workingFolder,log,jobId,'error creating pattern PNG')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error creating pattern PNG. {}'.format(traceback.format_exc()))
         modKey = None  
         print 'uploading png'
         try:
@@ -548,8 +549,8 @@ if model_type_id in [4]:
             k = bucket.new_key(pngKey)
             k.set_contents_from_filename(pngFilename)
             k.set_acl('public-read')
-        except:
-            exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket. {}'.format(traceback.format_exc()))
         print 'saving to db'        
         species,songtype = i.split("_")
         try:
@@ -603,8 +604,8 @@ if model_type_id in [4]:
                 db.commit()
                 print 'saved to db correctly'
                 savedModel  = True
-        except:
-            exit_error(db,workingFolder,log,jobId,'error saving model into database')
+        except StandardError, e:
+            exit_error(db,workingFolder,log,jobId,'error saving model into database. {}'.format(traceback.format_exc()))
             
     if savedModel :
         log.write("model saved")
@@ -625,3 +626,4 @@ with closing(db.cursor()) as cursor:
 shutil.rmtree(tempFolders+"/training_"+str(jobId))
 db.close()
 log.write("script ended")
+
