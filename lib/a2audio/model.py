@@ -13,7 +13,7 @@ class Model:
     def __init__(self,classid,speciesSpec,jobid):
         if type(classid) is not str and type(classid) is not int:
             raise ValueError("classid must be a string or int. Input was a "+str(type(classid)))
-        if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
+        if not isinstance(speciesSpec, (numpy.ndarray, numpy.generic, numpy.memmap)):
             raise ValueError("speciesSpec must be a numpy.ndarray. Input was a "+str(type(speciesSpec)))
         if type(jobid) is not int:
             raise ValueError("jobid must be a int. Input was a "+str(type(jobid)))
