@@ -6,7 +6,6 @@ Server for running job tasks.
 """
 
 import json
-import subprocess
 import bottle
 import a2.job.taskrunner
 import a2pyutils.config
@@ -17,31 +16,32 @@ HOST = 'localhost'
 
 def provides_route(path, method='GET'):
     "Annotates a decorated member function as providing a given route"
-    def decorate(fn):
-        if not hasattr(fn, "provides_route"):
-            fn.provides_route = []
-        fn.provides_route.append({'path':path, 'method':method})
-        return fn
+    def decorate(func):
+        "curried function decorator"
+        if not hasattr(func, "provides_route"):
+            func.provides_route = []
+        func.provides_route.append({'path':path, 'method':method})
+        return func
     return decorate
 
-def register_provided_routes(fn):
+def register_provided_routes(__init__fn):
     "Registers annotated member functions as routes for the decorated bottle app"
     def proxy(self, *args, **kwargs):
+        "proxy function for registering provided routes"
         provided_routes = [
             getattr(self, _)
             for _ in dir(self)
             if hasattr(self, _) and hasattr(getattr(self, _), 'provides_route')
         ]
-        fn(self, *args, **kwargs)
+        __init__fn(self, *args, **kwargs)
         for item in provided_routes:
             for route_privided in item.provides_route:
                 method = route_privided.get('method', 'route').lower()
                 getattr(self, method)(route_privided['path'])(item)
-
-
     return proxy
 
 class TaskRunnerBottle(bottle.Bottle):
+    """Bottle Application configuring and exposing a TaskRunner instance."""
     @register_provided_routes
     def __init__(self, max_concurrency):
         super(TaskRunnerBottle, self).__init__()
@@ -50,8 +50,9 @@ class TaskRunnerBottle(bottle.Bottle):
             max_concurrency
         )
 
+    @staticmethod
     @provides_route('/health')
-    def health(self):
+    def health():
         "returns health check"
         return {"status": "ok"}
 
@@ -73,10 +74,11 @@ class TaskRunnerBottle(bottle.Bottle):
         except a2.job.taskrunner.AtMaximumConcurrencyError:
             raise bottle.HTTPError(429, 'At Maximum Concurrency')
 
-    def default_error_handler(self, res):
+    @staticmethod
+    def default_error_handler(res):
+        "handles errors in the app requests"
         bottle.response.content_type = 'application/json'
         return json.dumps(dict(message=res.body, status="error"))
 
 if __name__ == '__main__':
-    tbr = TaskRunnerBottle(MAX_CONCURRENCY)
-    bottle.run(app=tbr, host=HOST, port=PORT)
+    bottle.run(app=TaskRunnerBottle(MAX_CONCURRENCY), host=HOST, port=PORT)
