@@ -6,6 +6,7 @@ import warnings
 from urllib import quote
 import traceback
 import urllib2
+import httplib
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from scikits.audiolab import Sndfile, Format
@@ -129,6 +130,9 @@ class Rec:
         while not f and retryCount < retries:
             try:
                 f = urllib2.urlopen(url)
+            except httplib.HTTPException, e:
+                print traceback.format_exc()
+                time.sleep(1.5 ** retryCount) # exponential waiting
             except urllib2.HTTPError, e:
                 print traceback.format_exc()
                 time.sleep(1.5 ** retryCount) # exponential waiting
