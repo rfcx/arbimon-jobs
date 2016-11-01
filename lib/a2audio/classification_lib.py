@@ -102,15 +102,16 @@ def set_progress_params(db,progress_steps, jobId):
         exit_error("Could not set progress params, {}".format(traceback.format_exc()))
         
 def insert_rec_error(db, recId, jobId):
+    error = traceback.format_exc()
     try:
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
-                INSERT INTO `recordings_errors`(`recording_id`, `job_id`)
+                INSERT INTO `recordings_errors`(`recording_id`, `job_id`, `error`)
                 VALUES (%s, %s)
-            """, [recId, jobId])
+            """, [recId, jobId, error])
             db.commit()
     except:
-        exit_error("Could not insert recording error, {}".format(traceback.format_exc()))
+        exit_error("Could not insert recording error, {}.\n\n ORIGINAL ERROR: {}".format(traceback.format_exc(), error))
         
 
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
@@ -213,6 +214,7 @@ def write_vector(recUri,tempFolder,featvector):
         wr.writerow(featvector)
         myfileWrite.close()
     except:
+        print 'ERROR:: {}'.format(traceback.format_exc())
         return None
     return vectorLocal
 
@@ -300,6 +302,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
         cancelStatus(db,jobId,workingFolder)
         log.write('model was fetched.')
     except:
+        log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
     log.write('starting parallel for.')
     db.close()
@@ -308,6 +311,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
             delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
         )
     except:
+        log.write('ERROR:: {}'.format(traceback.format_exc()))
         if classificationCanceled:
             log.write('job cancelled')
         return False
@@ -317,6 +321,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     try:
         jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db)
     except:
+        log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
     log.write('computed stats.')
     shutil.rmtree(workingFolder)
@@ -342,6 +347,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
         return True
     except:
         db.close()
+        log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
     
 def run_classification(jobId):
@@ -363,6 +369,7 @@ def run_classification(jobId):
         log.write('model params fetched.')
         db.close()
     except:
+        log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
     if model_type_id in [4]:
         retValue = run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
