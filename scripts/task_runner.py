@@ -6,7 +6,8 @@ Server for running job tasks.
 """
 
 import json
-import bottle
+import traceback
+import ws4py.client.threadedclient
 import a2.job.taskrunner
 import a2pyutils.config
 
@@ -14,71 +15,78 @@ MAX_CONCURRENCY = 4
 PORT = 8760
 HOST = 'localhost'
 
-def provides_route(path, method='GET'):
-    "Annotates a decorated member function as providing a given route"
-    def decorate(func):
-        "curried function decorator"
-        if not hasattr(func, "provides_route"):
-            func.provides_route = []
-        func.provides_route.append({'path':path, 'method':method})
-        return func
-    return decorate
-
-def register_provided_routes(__init__fn):
-    "Registers annotated member functions as routes for the decorated bottle app"
-    def proxy(self, *args, **kwargs):
-        "proxy function for registering provided routes"
-        provided_routes = [
-            getattr(self, _)
-            for _ in dir(self)
-            if hasattr(self, _) and hasattr(getattr(self, _), 'provides_route')
-        ]
-        __init__fn(self, *args, **kwargs)
-        for item in provided_routes:
-            for route_privided in item.provides_route:
-                method = route_privided.get('method', 'route').lower()
-                getattr(self, method)(route_privided['path'])(item)
-    return proxy
-
-class TaskRunnerBottle(bottle.Bottle):
-    """Bottle Application configuring and exposing a TaskRunner instance."""
-    @register_provided_routes
-    def __init__(self, max_concurrency):
-        super(TaskRunnerBottle, self).__init__()
+class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
+    """Web socket client exposing a TaskRunner instance."""
+    
+    def __init__(self, max_concurrency, config):
+        endpoint = config.hostsConfig['jobqueue']
+        print endpoint
+        super(TaskRunnerWebSocketClient, self).__init__(
+            endpoint, 
+            protocols=['http-only', 'chat']
+        )
+        self.id = None
+        self.authenticated = False
         self.task_runner = a2.job.taskrunner.TaskRunner(
-            a2pyutils.config.EnvironmentConfig(),
+            config,
             max_concurrency
         )
 
-    @staticmethod
-    @provides_route('/health')
-    def health():
-        "returns health check"
-        return {"status": "ok"}
+    def closed(self, code, reason=None):
+        print "Closed down", code, reason
+        
+    def send_data(self, topic, data):
+        self.send(json.dumps({
+            'topic': topic,
+            'data': data
+        }))
 
-    @provides_route('/status')
-    def status(self):
-        "returns status report"
-        return {
-            "status": "ok",
-            "reporter": self.task_runner.reporter_uri,
-            "tasks": [t for t in self.task_runner.tasks]
-        }
-
-    @provides_route('/task/<task:int>', 'POST')
-    @provides_route('/task/<task:int>/<step:int>', 'POST')
-    def run_task(self, task, step=None):
-        "runs a task"
+    def received_message(self, m):
         try:
-            return self.task_runner.run(task, step)
-        except a2.job.taskrunner.AtMaximumConcurrencyError:
-            raise bottle.HTTPError(429, 'At Maximum Concurrency')
+            msg = json.loads(str(m))
+            topic, data = msg['topic'], msg['data']
+        except StandardError:
+            print traceback.print_exc()
+        
+        try:
+            getattr(self, 'recieved_message_' + topic)(data)
+        except StandardError:
+            self.send_data('error', traceback.print_exc())
+        
+            
+    def recieved_message_auth(self, data):
+        if data.get('action') == 'perform_auth':
+            if 'result' in data:
+                if data['result'] == 'confirmed':
+                    # auth passed :-), now wait for work
+                    self.authenticated = True
+                    self.id = data.get('id')
+                    print "Authentication passed. Task runner #{}. Now awiting for a job...".format(
+                        self.id
+                    )
+                elif data['result'] == 'invalid':
+                    # auth failed, we should just quit
+                    print "Authentication with job queue failed. Exiting..."
+                    self.close()
+            else:
+                # TODO: auth should be more secure...
+                self.send_data('auth', {
+                    'password':'let-me-in-123',
+                    'cores': self.task_runner.max_concurrency
+                })
 
-    @staticmethod
-    def default_error_handler(res):
-        "handles errors in the app requests"
-        bottle.response.content_type = 'application/json'
-        return json.dumps(dict(message=res.body, status="error"))
+    def recieved_message_run_task(self, data):
+        print "runnning task...", data
+        self.task_runner.run(data['task'])
+        
 
 if __name__ == '__main__':
-    bottle.run(app=TaskRunnerBottle(MAX_CONCURRENCY), host=HOST, port=PORT)
+    try:
+        ws = TaskRunnerWebSocketClient(
+            MAX_CONCURRENCY, 
+            a2pyutils.config.EnvironmentConfig()
+        )
+        ws.connect()
+        ws.run_forever()
+    except KeyboardInterrupt:
+        ws.close()
