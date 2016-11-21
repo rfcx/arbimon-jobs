@@ -2,17 +2,19 @@
 TaskRunner class
 """
 
+import multiprocessing
 import multiprocessing.pool
 import traceback
+import tasks
 
 class TaskRunner(object):
     "Class for handling the running of tasks"
     def __init__(self, config, max_concurrency):
-        self.max_concurrency = max_concurrency
+        self.max_concurrency = max_concurrency if max_concurrency else multiprocessing.cpu_count()
         self.config = config
         self.tasks = []
         self.pool = multiprocessing.pool.Pool(
-            max_concurrency
+            self.max_concurrency
         )
         self.reporter_uri = None
 
