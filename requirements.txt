@@ -16,3 +16,4 @@ scikits.samplerate==0.3.3
 scikit-image==0.11.3
 dill==0.2.5
 bottle==0.12.10
+ws4py=0.3.5
