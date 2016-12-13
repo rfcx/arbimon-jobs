@@ -18,23 +18,24 @@ class TaskRunner(object):
         )
         self.reporter_uri = None
 
-    def run(self, task, step):
+    def run(self, task, callback=None):
         
         if len(self.tasks) >= self.max_concurrency:
             raise AtMaximumConcurrencyError()
 
         def resolve(arg):
-            print "resolved :: ", (task, step), arg
+            print "resolved :: ", task, arg
             for i, t in reversed(list(enumerate(self.tasks))):
-                if t[0] == task and t[1] == step:
+                if t == task:
                     del self.tasks[i]
+            if callback:
+                callback(arg)
             
-        self.tasks.append((task, step))
-        self.pool.apply_async(execute_task, (task, step), callback=resolve)
+        self.tasks.append(task)
+        self.pool.apply_async(execute_task, (task, ), callback=resolve)
         
         return {
-            "task": task,
-            "step": step
+            "task": task
         }
         
 class TaskRunnerError(StandardError):
@@ -43,12 +44,19 @@ class TaskRunnerError(StandardError):
 class AtMaximumConcurrencyError(TaskRunnerError):
     pass    
 
-def execute_task(task, step):
+def execute_task(taskId):
     try:
-        print "Executing ze task...", task, step
-        return True, sample_task()
+        print "Executing ze task...", taskId
+        task = tasks.Task.fromTaskId(taskId)
+        print "task :: ", task
+        return True, task.run()
     except Exception:
-        return False, traceback.format_exc()
+        exc = traceback.format_exc()
+        try:
+            tasks.Task.markTaskAs(taskId, 'error', exc)
+        except Exception:
+            pass
+        return False, exc
 
 def sample_task():
     import time
