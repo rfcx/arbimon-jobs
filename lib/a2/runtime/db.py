@@ -1,10 +1,10 @@
 import contextlib
 import MySQLdb
 import MySQLdb.cursors
-import a2pyutils.config
+import config
 
 # db connection
-__=object()
+__={}
 
 
 def cursor():
@@ -14,7 +14,27 @@ def execute(sql, *args):
     sql = sql.strip()
     with cursor() as c:
         c.execute(sql, *args)
+        commit()
         return c.fetchall()
+
+def insert(sql, *args):
+    _, id2 = insertMany(sql, *args)
+    return id2
+
+def insertMany(sql, *args):
+    sql = sql.strip()
+    with cursor() as c:
+        c.execute(sql, *args)
+        commit()
+        return c.lastrowid - c.rowcount + 1, c.lastrowid
+
+
+def query(sql, *args):
+    sql = sql.strip()
+    with cursor() as c:
+        c.execute(sql, *args)
+        return c.fetchall()
+
 
 def queryOne(sql, *args):
     sql = sql.strip()
@@ -35,20 +55,20 @@ def commit():
 
 def get_db():
     """Returns a database connection instance."""
-    if __.connection:
-        return __.connection
+    if 'connection' in __:
+        return __['connection']
         
-    config = a2pyutils.config.EnvironmentConfig()
+    cfg = config.get_config()
         
-    __.connection = MySQLdb.connect(
-        host=config.dbConfig['host'], user=config.dbConfig['user'], 
-        passwd=config.dbConfig['password'], db=config.dbConfig['database'],
+    __['connection'] = MySQLdb.connect(
+        host=cfg.dbConfig['host'], user=cfg.dbConfig['user'], 
+        passwd=cfg.dbConfig['password'], db=cfg.dbConfig['database'],
         cursorclass=MySQLdb.cursors.DictCursor
     )
     
-    return __.connection
+    return __['connection']
 
 def close():
-    if __.connection:
-        __.connection.close()
-        __.connection = None
+    if 'connection' in __:
+        __['connection'].close()
+        __['connection'] = None
