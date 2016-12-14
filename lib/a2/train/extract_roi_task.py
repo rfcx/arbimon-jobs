@@ -1,6 +1,4 @@
-import json
 import os.path
-import shutil
 
 import numpy
 
@@ -18,10 +16,8 @@ class ExtractRoiTask(tasks.Task):
             [x1, x2, y1, y2]
         ]
         Output:
-            efs://~/{:species_id}_{:songtype_id}/rois/{:step_id}.npy
-                - the extracted image
-            efs://~/{:species_id}_{:songtype_id}/rois/{:step_id}.json
-                - image metadata
+            efs://~/{:species_id}_{:songtype_id}/rois/{:step_id}.npz
+                - the extracted image, and its metadata
     """
     def run(self):
         rec_id, (species_id, songtype_id), bbox = self.get_args()
@@ -33,8 +29,10 @@ class ExtractRoiTask(tasks.Task):
             songtype_id
         ))
         
-        numpy.save(os.path.join(output_path, "{}.npy".format(self.step_id)), roi)
-        
-        with open(os.path.join(output_path, "{}.json".format(self.step_id)), "w") as fout:
-            json.dump({"bbox" : bbox}, fout)
+        numpy.savez(
+            os.path.join(output_path, "{}.npz".format(self.step_id)),
+            sample_rate=recording.sample_rate,
+            roi=roi,
+            bbox=bbox,
+        )
         
