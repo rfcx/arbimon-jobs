@@ -36,9 +36,14 @@ class Recording(object):
 
     @a2.util.memoize.noargs
     def get_uri(self):
+        "returns the recoring's uri"
         return runtime.db.queryOne("""
             SELECT uri FROM recordings WHERE recording_id = %s
         """, [self.id])
+
+    def get_name(self):
+        "returns the recoring's name"
+        return self.get_uri().split('/')[-1]
 
     @a2.util.memoize.noargs
     def get_audio(self):
