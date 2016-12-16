@@ -20,7 +20,7 @@ class ExtractRoiTask(tasks.Task):
         ]
 
         Output:
-            efs://~/{:species_id}_{:songtype_id}/stats/{:step_id}.json
+            efs://~/{:species_id}_{:songtype_id}/stats/{:step_id}.npz
     """
     def run(self):
         rec_id, (species_id, songtype_id), present, model_type_id = self.get_args()
@@ -50,7 +50,8 @@ class ExtractRoiTask(tasks.Task):
             present=present,
             max_cols=roidata['max_cols'],
             sample_rate=roidata['sample_rate'],
-            fbounds=fbounds
+            fbounds=fbounds,
+            uri=recording.get_uri()
         )
         
     def upload_vector(self, recording, vector):
