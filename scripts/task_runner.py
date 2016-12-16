@@ -9,6 +9,7 @@ import json
 import traceback
 import ws4py.client.threadedclient
 import a2.job.taskrunner
+import a2.runtime.inject
 import a2pyutils.config
 
 MAX_CONCURRENCY = 4
@@ -75,9 +76,19 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
                     'cores': self.task_runner.max_concurrency
                 })
 
+    def recieved_message_error(self, data):
+        print "recieved error:: ", data
+
     def recieved_message_run_task(self, data):
         print "runnning task...", data
-        self.task_runner.run(data['task'])
+
+        def resolve(arg):
+            self.send_data('running_task', {
+                'action':'finished',
+                'data': arg
+            })
+            
+        self.task_runner.run(data.get('task'), resolve)
         
 
 if __name__ == '__main__':
