@@ -89,7 +89,7 @@ class ExtractRoiTask(tasks.Task):
         # create monochromatic png image with 8bpp
         image = png.from_array(x, 'L;8')
 
-        with a2.runtime.tmp.tempfile(suffix=".png") as tmpfile:
+        with a2.runtime.tmp.tmpfile(suffix=".png") as tmpfile:
             image.save(tmpfile.file)
             tmpfile.close_file()
             runtime.bucket.upload_filename(key, tmpfile.filename, 'public-read')

@@ -3,9 +3,9 @@ Utility module for temp files.
 """
 
 import os
-import tempfile as __tempfile
+import tempfile
 
-class tempfile(object):
+class tmpfile(object):
     """
     A tempfile tracker object.
     provides usefull enter, close context handlers to automatically 
@@ -28,7 +28,7 @@ class tempfile(object):
         
     def __enter__(self):
         "Creates a tempfile upon entering the context"
-        self.file, self.filename = __tempfile.mkstemp(*self.args, **self.kwargs)
+        self.file, self.filename = tempfile.mkstemp(*self.args, **self.kwargs)
         return self
         
     def __exit__(self, xtype, value, traceback):
