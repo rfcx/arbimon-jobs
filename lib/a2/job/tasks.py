@@ -5,6 +5,7 @@
 import json
 import os.path
 import a2.runtime as runtime
+import a2.util.memoize
 
 class Task(object):
     "Tasks base class"
@@ -29,9 +30,17 @@ class Task(object):
         self.args = json.loads(args['args']) if args else None
 
     def get_job_id(self):
+        return self.get_job_data()['job_id']
+
+    def get_project_id(self):
+        return self.get_job_data()['project_id']
+
+    @a2.util.memoize.noargs
+    def get_job_data(self):
         job = runtime.db.queryOne("""
-            SELECT JT.job_id
+            SELECT JT.job_id, J.project_id
             FROM job_tasks JT
+            JOIN jobs J ON J.job_id = JT.job_id
             WHERE JT.task_id = %s
         """, [self.taskId])
         return job['job_id']
