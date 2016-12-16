@@ -133,7 +133,8 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
                     SELECT %s, %s, %s, %s, 'waiting', NULL, NOW(), CONCAT('[', 
                         RV.recording_id, ',', 
                         '[', RV.species_id, ',', RV.songtype_id, '],', 
-                        RV.present,
+                        RV.present, ',',
+                        %s
                     ']')
                     FROM `recording_validations` RV
                     WHERE rv.`project_id` = %s
@@ -145,7 +146,8 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
                 """, [
                     self.jobId, step,
                     ANALIZE_RECORDINGS_TASK,
-                    len(dependencies),                    
+                    len(dependencies),
+                    job['model_type_id'],
                     job['project_id'],
                     speciesSongtype['species_id'], speciesSongtype['songtype_id'],
                     presence, sampleLimit
