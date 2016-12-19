@@ -19,13 +19,14 @@ class ClassificationJobPlanner(a2.job.planner.JobPlanner):
         # one task per recording in playlist
         cursor.execute("""
             INSERT INTO job_tasks(job_id, step, type_id, dependency_counter, status, remark, timestamp, args)
-            SELECT %s, %s, %s, 0, 'waiting', NULL, NOW(), CONCAT('[', PR.recording_id ,']')
+            SELECT %s, %s, %s, 0, 'waiting', NULL, NOW(), CONCAT('[', PR.recording_id, ',', JPC.model_id ,']')
             FROM job_params_classification JPC
             JOIN playlist_recordings PR ON JPC.playlist_id = PR.playlist_id
         """, [
             self.jobId,
             1,
-            CLASSIFY_RECORDING_TASK
+            CLASSIFY_RECORDING_TASK,
+            
         ])
 
     def add_statistics_task(self, cursor):
