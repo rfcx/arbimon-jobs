@@ -49,13 +49,17 @@ def execute_task(taskId):
         print "Executing ze task...", taskId
         task = tasks.Task.fromTaskId(taskId)
         print "task :: ", task
-        return True, task.run()
+        retval = task.run()
+        task.finish()
+        return True, retval
     except Exception:
         exc = traceback.format_exc()
         try:
             tasks.Task.markTaskAs(taskId, 'error', exc)
         except Exception:
-            pass
+            print "Exception caught while handling exception."
+            traceback.print_exc()
+            print "Original exception:\n", exc
         return False, exc
 
 def sample_task():

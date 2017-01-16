@@ -65,6 +65,25 @@ class Task(object):
         
     def set_status(self, status, exc):
         Task.markTaskAs(self.taskId, status, exc)
+        
+    def finish(self, remark=''):
+        self.markTaskAs(self.taskId, 'completed', remark)
+        runtime.db.execute("""
+            UPDATE job_task_dependencies JTD
+            SET satisfied = 1
+            WHERE JTD.dependency_id = %s
+        """, [self.taskId])
+        runtime.db.execute("""
+            UPDATE job_tasks JT
+            JOIN job_task_dependencies JTD ON JT.task_id = JTD.task_id
+            SET dependency_counter = (
+                SELECT COUNT(*)
+                FROM job_task_dependencies JTDc
+                WHERE JTDc.task_id = JTD.task_id
+                    AND JTDc.satisfied = 0
+            )
+            WHERE JTD.dependency_id = %s
+        """, [self.taskId])
 
     @staticmethod
     def markTaskAs(taskId, status, exc):
