@@ -25,8 +25,13 @@ def insertMany(sql, *args):
     sql = sql.strip()
     with cursor() as c:
         c.execute(sql, *args)
+        
+        first_id = c.lastrowid
+        last_id = first_id + c.rowcount - 1
+        
         commit()
-        return c.lastrowid - c.rowcount + 1, c.lastrowid
+        
+        return first_id, last_id
 
 
 def query(sql, *args):
