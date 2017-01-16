@@ -6,6 +6,7 @@ Declares Model class.
 import cPickle as pickle
 from itertools import izip as zip, count
 import random
+import numbers
 
 import csv
 import numpy
@@ -20,7 +21,7 @@ class Model:
             raise ValueError("classid must be a string or int. Input was a "+str(type(classid)))
         if not isinstance(speciesSpec, (numpy.ndarray, numpy.generic, numpy.memmap)):
             raise ValueError("speciesSpec must be a numpy.ndarray. Input was a "+str(type(speciesSpec)))
-        if type(jobid) is not int:
+        if not isinstance(jobid, numbers.Number):
             raise ValueError("jobid must be a int. Input was a "+str(type(jobid)))
 
         self.classid = classid

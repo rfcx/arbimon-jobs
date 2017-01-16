@@ -13,6 +13,7 @@ from  scipy.signal import *
 from a2pyutils.logger import Logger
 import os
 import json
+import numbers
 import warnings
 from a2audio.thresholder import Thresholder
 import cv2
@@ -24,9 +25,9 @@ class Recanalizer:
     def __init__(self, rec, speciesSurface, low, high, ssim=True, searchMatch=False):
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
             raise ValueError("speciesSurface must be a numpy.ndarray. Input was a "+str(type(speciesSurface)))
-        if type(low) is not int and type(low) is not float:
+        if not isinstance(low, numbers.Number):
             raise ValueError("low must be a number")
-        if type(high) is not int and type(high) is not float:
+        if not isinstance(high, numbers.Number):
             raise ValueError("high must be a number")
         if low >= high :
             raise ValueError("low must be less than high")
