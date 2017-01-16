@@ -28,6 +28,8 @@ class Task(object):
             WHERE JT.task_id = %s
         """, [self.taskId])
         self.args = json.loads(args['args']) if args else None
+        
+        return self.args
 
     def get_job_id(self):
         return self.get_job_data()['job_id']
@@ -35,16 +37,17 @@ class Task(object):
     def get_project_id(self):
         return self.get_job_data()['project_id']
 
+    def get_user_id(self):
+        return self.get_job_data()['user_id']
 
     @a2.util.memoize.self_noargs
     def get_job_data(self):
-        job = runtime.db.queryOne("""
-            SELECT JT.job_id, J.project_id
+        return runtime.db.queryOne("""
+            SELECT JT.job_id, J.project_id, J.user_id
             FROM job_tasks JT
             JOIN jobs J ON J.job_id = JT.job_id
             WHERE JT.task_id = %s
         """, [self.taskId])
-        return job['job_id']
 
     
     @staticmethod
@@ -55,11 +58,14 @@ class Task(object):
             JOIN job_task_types JTT On JT.type_id = JTT.type_id
             WHERE JT.task_id = %s
         """, [taskId])
-        print "ttdef", ttdef
+
+        if not ttdef:
+            raise StandardError("Task {} type not found.".format(taskId))
+
         ttype = runtime.tags.get('task_type', ttdef['identifier']) if ttdef else None
         
         if not ttype:
-            raise StandardError("task or task type not found.")
+            raise StandardError("Definition for task type {} not found.".format(ttdef['identifier']))
         
         return ttype(taskId)
         
