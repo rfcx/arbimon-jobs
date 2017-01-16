@@ -28,7 +28,8 @@ class tmpfile(object):
         
     def __enter__(self):
         "Creates a tempfile upon entering the context"
-        self.file, self.filename = tempfile.mkstemp(*self.args, **self.kwargs)
+        file_handle, self.filename = tempfile.mkstemp(*self.args, **self.kwargs)
+        self.file = os.fdopen(file_handle, 'w')
         return self
         
     def __exit__(self, xtype, value, traceback):
