@@ -39,7 +39,7 @@ class Recording(object):
         "returns the recoring's uri"
         return runtime.db.queryOne("""
             SELECT uri FROM recordings WHERE recording_id = %s
-        """, [self.id])
+        """, [self.id])['uri']
 
     def get_name(self):
         "returns the recoring's name"
@@ -48,18 +48,24 @@ class Recording(object):
     @a2.util.memoize.self_noargs
     def get_audio(self):
         f = runtime.bucket.open_url(self.get_uri())
-        try:
-            tmpfile, tmpfilename = tempfile.mkstemp()
-            tmpfile.write(f.read())
+        with runtime.tmp.tmpfile() as tmpfile:
+            fdata = f.read()
+            tmpfile.file.write(fdata)
+            tmpfile.close_file()
             
-            with contextlib.closing(Sndfile(tmpfilename)) as f:
+            with contextlib.closing(Sndfile(tmpfile.filename)) as f:
                 self.bps = 16 #self.parseEncoding(f.encoding)
                 self.channs = f.channels
                 self.samples = f.nframes
                 self.sample_rate = f.samplerate
+                print "recording {}, ({} bps, {} channels, {} samples, {} sample rate)".format(
+                    self.get_uri(),
+                    self.bps,
+                    self.channs,
+                    self.samples,
+                    self.sample_rate
+                )
                 return f.read_frames(f.nframes,dtype=numpy.dtype('int'+str(self.bps)))
-        finally:
-            os.unlink(tmpfilename)
         
     def get_spectrogram(self, clip=None):
         audio  = self.get_audio()
@@ -71,13 +77,13 @@ class Recording(object):
             if t1 >= len(audio):
                 t1 = len(audio) - 1
 
-            audio = audio[t0, t1]
+            audio = audio[t0:t1]
 
         nfft = 512
         targetrows = 512
         if self.sample_rate <= 44100:
             max_i = float(self.sample_rate) / 44100.0 * 256.0
-            nfft = min(256, max_i + 1)
+            nfft = min(256, max_i)
             targetrows = 256
 
         Pxx, freqs, _ = matplotlib.mlab.specgram(audio, NFFT=nfft*2, Fs=self.sample_rate, noverlap=nfft)
