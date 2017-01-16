@@ -50,11 +50,11 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
 
         rfTasks = []
         for specie_songtype in species_songtypes:
-            rfTasks.append(self.addTask(7, CREATE_RF_MODEL_TASK, [syncTask], [
+            rfTasks.append(self.addTask(8, CREATE_RF_MODEL_TASK, [valTask], [
                 specie_songtype
             ]))
         
-        self.addJobEndTask(8, [valTask] + rfTasks)
+        self.addJobEndTask(9, rfTasks)
     
     def get_job_parameters(self):
         return runtime.db.queryOne("""
@@ -81,7 +81,7 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
     def add_exract_roi_tasks(self, step, job, dependencies, specie_songtype):
         # one task per roi in training set
         first_id, last_id = runtime.db.insertMany("""
-            INSERT INTO job_tasks(job_id, step, type_id, dependency_counter, status, remark, timestamp, args)
+            INSERT INTO job_tasks(`job_id`, `step`, `type_id`, `dependency_counter`, `status`, `remark`, `timestamp`, `args`)
             SELECT %s, %s, %s, %s, 'waiting', NULL, NOW(), CONCAT('[', 
                 TSRSD.recording_id, ',',
                 '[', 
@@ -128,13 +128,13 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
         
         for speciesSongtype in speciesSongtypes:
             for presence, sampleLimit in limitsByPresence:
-                first_id, last_id = runtime.db.insertMany("""(
-                    INSERT INTO job_tasks(job_id, step, type_id, dependency_counter, status, remark, timestamp, args)
+                first_id, last_id = runtime.db.insertMany("""
+                    INSERT INTO job_tasks(`job_id`, `step`, `type_id`, `dependency_counter`, `status`, `remark`, `timestamp`, `args`)
                     SELECT %s, %s, %s, %s, 'waiting', NULL, NOW(), CONCAT('[', 
                         RV.recording_id, ',', 
                         '[', RV.species_id, ',', RV.songtype_id, '],', 
                         RV.present, ',',
-                        %s
+                        %s,
                     ']')
                     FROM `recording_validations` RV
                     WHERE rv.`project_id` = %s
