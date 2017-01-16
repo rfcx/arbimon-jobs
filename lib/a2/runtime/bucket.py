@@ -23,6 +23,7 @@ def get_bucket():
 
     return conn.get_bucket(bucket_name, validate=False)
 
+
 def get_url(uri=''):
     "returns the url to a bucket object"
     cfg = config.get_config()
@@ -35,21 +36,26 @@ def open_url(uri='', retries=5):
     url = get_url(uri)
 
     retryCount = 0
+    print "getting {}".format(url)
     while not contents and retryCount < retries:
         try:
             contents = urllib2.urlopen(url)
-        except httplib.HTTPException:
+        except httplib.HTTPException, e:
+            print e, "retrying..."
             time.sleep(1.5 ** retryCount) # exponential waiting
-        except urllib2.HTTPError:
+        except urllib2.HTTPError, e:
+            print e, "retrying..."
             time.sleep(1.5 ** retryCount) # exponential waiting
-        except urllib2.URLError:
+        except urllib2.URLError, e:
+            print e, "retrying..."
             time.sleep(1.5 ** retryCount) # exponential waiting
         retryCount += 1
-
+    print "done."
     return contents
 
 def upload_string(key, contents, acl=None):
     "uploads a string to the bucket."
+    print "boto:: uploading file to {}".format(key)
     key_object = get_bucket().new_key(key)
     key_object.set_contents_from_string(contents)
     if acl:
@@ -57,6 +63,7 @@ def upload_string(key, contents, acl=None):
 
 def upload_filename(key, filename, acl=None):
     "uploads a string to the bucket."
+    print "boto:: uploading file to {}".format(key)
     key_object = get_bucket().new_key(key)
     key_object.set_contents_from_filename(filename)
     if acl:
