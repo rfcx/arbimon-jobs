@@ -9,7 +9,8 @@ import urllib
 import urllib2
 import httplib
 import time
-import boto
+import boto.s3.connection
+
 
 def get_bucket():
     "Returns a reference to a default configured singleton bucket connection instance"
