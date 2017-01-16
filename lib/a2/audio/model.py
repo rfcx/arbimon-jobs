@@ -151,7 +151,7 @@ class Model:
 
     def saveValidations(self, filename):
         with open(filename, 'wb') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter=', ')
+            spamwriter = csv.writer(csvfile, delimiter=',')
             for i in range(0, len(self.outClasses)):
                 spamwriter.writerow([self.outuris[i], self.outClasses[i], self.validationpredictions[i], 'validation'])
             for i in range(0, len(self.outClassesTraining)):
