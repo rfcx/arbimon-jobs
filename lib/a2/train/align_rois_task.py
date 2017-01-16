@@ -63,13 +63,15 @@ class ExtractRoiTask(a2.job.tasks.Task):
 
         return roi_set
 
-    def upload_image(self, roi_class, surface):
+    def upload_image(self, roi_class, roi_set):
         "uploads the computed surface for the given class to the bucket."
         key = "project_{}/models/job_{}_{}.png".format(
             self.get_project_id(),
             self.get_job_id(),
             roi_class
         )
+        
+        surface = roi_set.getSurface()
         
         specToShow = numpy.zeros(shape=(0, int(surface.shape[1])))
 

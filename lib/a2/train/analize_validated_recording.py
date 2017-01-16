@@ -28,18 +28,17 @@ class ExtractRoiTask(a2.job.tasks.Task):
         roi_class = "{}_{}".format(species_id, songtype_id)
         
         base_path = self.get_workspace_path(roi_class)
-        rois_path = os.path.join(base_path, 'rois')
         stats_path = os.path.join(base_path, 'stats')
 
         recording = a2.audio.recording.Recording(rec_id)
-        roidata = numpy.load(os.path.join(rois_path, 'surface.npz'))
+        roidata = numpy.load(os.path.join(base_path, 'surface.npz'))
         roi_spec, fbounds = roidata['roi'], roidata['fbounds']
         flag_ssim, flag_search_match = self.get_analysis_flags(model_type_id)
-
+        print type(fbounds[0])
         recanalizer = a2.audio.recanalizer.Recanalizer(
             recording,
             roi_spec,
-            fbounds[1], fbounds[2],
+            fbounds[0], fbounds[1],
             flag_ssim, flag_search_match
         )
         
@@ -57,12 +56,13 @@ class ExtractRoiTask(a2.job.tasks.Task):
         
     def upload_vector(self, recording, vector):
         "uploads the given vector as a result of the given recording's analysis."
-        key = "project_{}/training_vector/job_{}/{}".format(
+        key = "project_{}/training_vectors/job_{}/{}".format(
             self.get_project_id(),
             self.get_job_id(),
             recording.get_name()
         )
 
+        print "vector :: ", vector
         csv = ','.join(str(x) for x in vector) + '\n'
 
         runtime.bucket.upload_string(key, csv, 'public-read')

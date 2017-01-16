@@ -24,8 +24,9 @@ class CreateModelTask(a2.job.tasks.Task):
             s3://~/validations/job_{:job}_vals.csv
     """
     def run(self):
-        roi_class = self.get_args()[0]
-        species, songtype = roi_class.split("_")
+        roi_class = "{species_id}_{songtype_id}".format(**self.get_args()[0])
+
+        species, songtype = roi_class.split('_')
         
         base_path = self.get_workspace_path(roi_class)
         rois_path = os.path.join(base_path, 'rois')
@@ -42,36 +43,36 @@ class CreateModelTask(a2.job.tasks.Task):
             roi_class
         )
         
-        with numpy.load(os.path.join(rois_path, 'surface.npz')) as surface:
+        with numpy.load(os.path.join(base_path, 'surface.npz')) as surface:
             model = a2.audio.model.Model(roi_class, surface['roi'], self.get_job_id())
-        
-        tally = [0, 0]
-        for statsfile in os.listdir(stats_path):
-            with numpy.load(os.path.join(stats_path, statsfile)) as validation:
-                model.addSample(
-                    validation['present'],
-                    validation['features'],
-                    validation['uri']
-                )
-                tally[int(bool(validation['present']))] += 1
+            
+            tally = [0, 0]
+            for statsfile in os.listdir(stats_path):
+                with numpy.load(os.path.join(stats_path, statsfile)) as validation:
+                    model.addSample(
+                        validation['present'],
+                        validation['features'],
+                        validation['uri']
+                    )
+                    tally[int(bool(validation['present']))] += 1
 
 
-        params = self.get_job_parameters(tally)
+            params = self.get_job_parameters(tally)
 
-        model.splitData(params['use'][1][0], params['use'][0][0], params['use'][1][1], params['use'][0][1])
+            model.splitData(params['use'][1][0], params['use'][0][0], params['use'][1][1], params['use'][0][1])
 
-        model.train()
+            model.train()
 
-        if params['use'][1][1] > 0:
-            model.validate()
-            self.upload_validations(model)
+            if params['use'][1][1] > 0:
+                model.validate()
+                self.upload_validations(model)
 
-        self.upload_model(model_key, model, surface)
+            self.upload_model(model_key, model, surface)
 
-        stats = self.compute_model_stats(
-            model.modelStats(), surface, 
-            pngKey, params['training_set_id']
-        )
+            stats = self.compute_model_stats(
+                model.modelStats(), surface, 
+                pngKey, params['training_set_id']
+            )
 
         #save model to DB
         self.save_model_to_db(
