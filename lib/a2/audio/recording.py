@@ -34,7 +34,7 @@ class Recording(object):
             self.get_uri.val = uri
         
 
-    @a2.util.memoize.noargs
+    @a2.util.memoize.self_noargs
     def get_uri(self):
         "returns the recoring's uri"
         return runtime.db.queryOne("""
@@ -45,7 +45,7 @@ class Recording(object):
         "returns the recoring's name"
         return self.get_uri().split('/')[-1]
 
-    @a2.util.memoize.noargs
+    @a2.util.memoize.self_noargs
     def get_audio(self):
         f = runtime.bucket.open_url(self.get_uri())
         try:

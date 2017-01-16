@@ -35,7 +35,8 @@ class Task(object):
     def get_project_id(self):
         return self.get_job_data()['project_id']
 
-    @a2.util.memoize.noargs
+
+    @a2.util.memoize.self_noargs
     def get_job_data(self):
         job = runtime.db.queryOne("""
             SELECT JT.job_id, J.project_id

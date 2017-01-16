@@ -1,3 +1,17 @@
+def self_noargs(func):
+    "Memoizes a noarg function"
+
+    def memoized_fn(self):
+        "memoized function"
+        if not hasattr(memoized_fn, 'val'):
+            memoized_fn.val = func(self)
+        return memoized_fn.val
+
+    memoized_fn.__name__ = func.__name__
+    memoized_fn.__doc__ = func.__doc__
+
+    return memoized_fn
+
 def noargs(func):
     "Memoizes a noarg function"
 
