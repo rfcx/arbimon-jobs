@@ -4,14 +4,14 @@ import os.path
 import numpy
 import png
 
-import tasks
+import a2.job.tasks
 import a2.runtime as runtime
 import a2.runtime.tmp
 import a2.audio.roiset
 
 
-@runtime.tags.tag('task_type', 'train.surface.extract_samples')
-class ExtractRoiTask(tasks.Task):
+@runtime.tags.tag('task_type', 'train.surface.align_create')
+class ExtractRoiTask(a2.job.tasks.Task):
     """Task that aligns all rois read from the working folder.
         Inputs:[
             species_id, 

@@ -3,7 +3,7 @@ import json
 
 import numpy
 
-import tasks
+import a2.job.tasks
 import a2.runtime as runtime
 import a2.runtime.tmp
 
@@ -11,7 +11,7 @@ import a2.audio.model
 
 
 @runtime.tags.tag('task_type', 'train.rf_model.create')
-class CreateModelTask(tasks.Task):
+class CreateModelTask(a2.job.tasks.Task):
     """Task that creates a decision model from a validation dataset in efs.
         Inputs:[
             roi_class

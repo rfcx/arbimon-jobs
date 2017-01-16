@@ -4,20 +4,21 @@ import json
 
 import numpy
 
-import tasks
+import a2.job.tasks
 import a2.runtime as runtime
 import a2.audio.recording
 import a2.audio.recanalizer
 
 
 @runtime.tags.tag('task_type', 'train.validations.analyze')
-class ExtractRoiTask(tasks.Task):
-    """Task that aligns all rois read from the working folder.
+class ExtractRoiTask(a2.job.tasks.Task):
+    """Task that analizes a recording using the surface and metadata and outputs its result.
         Inputs:[
             recording_id,
             [species_id, songtype_id],
             present
         ]
+        efs://~/{:species_id}_{:songtype_id}/rois/surface.npz
 
         Output:
             efs://~/{:species_id}_{:songtype_id}/stats/{:step_id}.npz

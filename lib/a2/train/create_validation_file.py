@@ -1,8 +1,8 @@
 import json
 import csv
 
-import tasks
 import planner
+import a2.job.tasks
 import a2.runtime as runtime
 import a2.runtime.tmp
 
@@ -10,7 +10,7 @@ import a2.audio.recording
 
 
 @runtime.tags.tag('task_type', 'train.validations.create_file')
-class CreateValidationFileTask(tasks.Task):
+class CreateValidationFileTask(a2.job.tasks.Task):
     """Task that creates a validation file using the input of the reclinize tasks in the given step in this job.
         Inputs:[
             recnilizeTasksStep == resolves to ==> [
