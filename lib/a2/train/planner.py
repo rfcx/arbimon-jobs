@@ -20,7 +20,7 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
         
         self.deleteStepsHigherThan(0)
 
-        self.addPrepareWorkspaceTask(1, None, [
+        prepTask = self.addPrepareWorkspaceTask(1, None, [
             '{}_{}/{}'.format(
                 specie_songtype['species_id'], 
                 specie_songtype['songtype_id'],
@@ -32,7 +32,7 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
         
         alignTasks = []
         for specie_songtype in species_songtypes:
-            roiTasks = self.add_exract_roi_tasks(2, job, [self.taskId], specie_songtype)
+            roiTasks = self.add_exract_roi_tasks(2, job, [prepTask], specie_songtype)
             alignTasks.append(self.addTask(3, ALIGN_ROIS_AND_CREATE_SURFACE_TASK, roiTasks, [
                 specie_songtype['species_id'],
                 specie_songtype['songtype_id']
