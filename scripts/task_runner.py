@@ -7,6 +7,8 @@ Server for running job tasks.
 
 import json
 import traceback
+import sys
+import os.path
 import ws4py.client.threadedclient
 import a2.job.taskrunner
 import a2.runtime.inject
@@ -19,7 +21,7 @@ HOST = 'localhost'
 class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
     """Web socket client exposing a TaskRunner instance."""
     
-    def __init__(self, max_concurrency, config):
+    def __init__(self, max_concurrency, config, runner_script):
         endpoint = config.hostsConfig['jobqueue']
         print endpoint
         super(TaskRunnerWebSocketClient, self).__init__(
@@ -30,7 +32,8 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
         self.authenticated = False
         self.task_runner = a2.job.taskrunner.TaskRunner(
             config,
-            max_concurrency
+            max_concurrency,
+            runner_script
         )
 
     def closed(self, code, reason=None):
@@ -89,13 +92,15 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
             })
             
         self.task_runner.run(data.get('task'), resolve)
-        
 
 if __name__ == '__main__':
     try:
         ws = TaskRunnerWebSocketClient(
             MAX_CONCURRENCY, 
-            a2pyutils.config.EnvironmentConfig()
+            a2pyutils.config.EnvironmentConfig(), [
+                sys.executable, 
+                os.path.join(os.path.dirname(__file__), "./run_task.py")
+            ]
         )
         ws.connect()
         ws.run_forever()
