@@ -54,8 +54,14 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
         
         try:
             getattr(self, 'recieved_message_' + topic)(data)
-        except StandardError:
-            self.send_data('error', traceback.print_exc())
+        except StandardError, e:
+            exc = traceback.format_exc()
+            self.send_data('error', {
+                'error': e.__class__.__name__,
+                'traceback': exc,
+                'topic': topic,
+                'data': data
+            })
         
             
     def recieved_message_auth(self, data):
