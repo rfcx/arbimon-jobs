@@ -14,15 +14,12 @@ import a2.job.taskrunner
 import a2.runtime.inject
 import a2pyutils.config
 
-MAX_CONCURRENCY = 0
-PORT = 8760
-HOST = 'localhost'
-
 class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
     """Web socket client exposing a TaskRunner instance."""
     
-    def __init__(self, max_concurrency, config, runner_script):
+    def __init__(self, config, runner_script):
         endpoint = config.hostsConfig['jobqueue']
+        max_concurrency = config.tasksConfig['max_concurrency']
         print endpoint
         super(TaskRunnerWebSocketClient, self).__init__(
             endpoint, 
@@ -102,7 +99,6 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
 if __name__ == '__main__':
     try:
         ws = TaskRunnerWebSocketClient(
-            MAX_CONCURRENCY, 
             a2pyutils.config.EnvironmentConfig(), [
                 sys.executable, 
                 os.path.join(os.path.dirname(__file__), "./run_task.py")
