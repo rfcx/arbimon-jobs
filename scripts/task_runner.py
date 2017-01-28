@@ -9,7 +9,9 @@ import json
 import traceback
 import sys
 import os.path
+import time
 import ws4py.client.threadedclient
+import jwt
 import a2.job.taskrunner
 import a2.runtime.inject
 import a2pyutils.config
@@ -26,6 +28,7 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
             protocols=['http-only', 'chat']
         )
         self.id = None
+        self.config = config
         self.authenticated = False
         self.task_runner = a2.job.taskrunner.TaskRunner(
             config,
@@ -76,9 +79,14 @@ class TaskRunnerWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
                     print "Authentication with job queue failed. Exiting..."
                     self.close()
             else:
-                # TODO: auth should be more secure...
+                payload = json.loads(self.config.hostsConfig['auth_options'])
+                payload['time'] = time.time()
+                token = jwt.encode(
+                    payload,
+                    self.config.hostsConfig['auth_secret']
+                )
                 self.send_data('auth', {
-                    'password':'let-me-in-123',
+                    'password': token,
                     'cores': self.task_runner.max_concurrency
                 })
 
