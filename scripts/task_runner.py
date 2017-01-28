@@ -12,7 +12,7 @@ import a2.job.taskrunner
 import a2.runtime.inject
 import a2pyutils.config
 
-MAX_CONCURRENCY = 4
+MAX_CONCURRENCY = 0
 PORT = 8760
 HOST = 'localhost'
 
