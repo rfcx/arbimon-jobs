@@ -7,6 +7,7 @@ bucket, plus some utility functions.
 import config
 import urllib
 import urllib2
+import requests
 import httplib
 import time
 import boto.s3.connection
@@ -40,7 +41,7 @@ def open_url(uri='', retries=5):
     print "getting {}".format(url)
     while not contents and retryCount < retries:
         try:
-            contents = urllib2.urlopen(url)
+            contents = requests.get(url, stream=True)
         except httplib.HTTPException, e:
             print e, "retrying..."
             time.sleep(1.5 ** retryCount) # exponential waiting
@@ -52,7 +53,7 @@ def open_url(uri='', retries=5):
             time.sleep(1.5 ** retryCount) # exponential waiting
         retryCount += 1
     print "done."
-    return contents
+    return contents.raw
 
 def upload_string(key, contents, acl=None):
     "uploads a string to the bucket."
