@@ -14,7 +14,7 @@ import threading
 class TaskRunner(object):
     "Class for handling the running of tasks"
     def __init__(self, config, max_concurrency, runner_script):
-        self.max_concurrency = max_concurrency if max_concurrency else multiprocessing.cpu_count()
+        self.max_concurrency = int(max_concurrency) or multiprocessing.cpu_count()
         self.config = config
         self.tasks = []
         self.runner_script = runner_script
