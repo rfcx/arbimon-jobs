@@ -137,7 +137,7 @@ class TrainingJobPlanner(a2.job.planner.JobPlanner):
                         %s,
                     ']')
                     FROM `recording_validations` RV
-                    WHERE rv.`project_id` = %s
+                    WHERE RV.`project_id` = %s
                       AND `species_id` = %s
                       AND `songtype_id` = %s
                       AND `present` = %s
