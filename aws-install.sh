@@ -1,7 +1,9 @@
 sudo apt-get update -y
+curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
 sudo apt-get install -y \
     htop \
     bwidget \
+    nodejs \
     gfortran \
     libfftw3-3 \
     libfftw3-dev \
@@ -31,6 +33,8 @@ git clone git@github.com:Sieve-Analytics/arbimon2-jobs.git
 
 cd arbimon2-jobs
 scripts/setup/setup.sh
+npm install # install node stuff (like forever)
+crontab ./crontab # install reboot crontab
 
 export efs_host='fs-06cf134f.efs.us-east-1.amazonaws.com'
 sudo mkdir /mnt/efs
