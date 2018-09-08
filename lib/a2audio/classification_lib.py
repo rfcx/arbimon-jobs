@@ -52,7 +52,7 @@ def get_model_params(db,classifierId,log):
                 exit_error('fatal error cannot fetch model params (classifier_id:{}) {}'.format(classifierId, traceback.format_exc()),-1,log)
             row = cursor.fetchone()
     except:
-        exit_error("Could not query database for model params {}".format(traceback.format_exc()))    
+        exit_error("Could not query database for model params {}".format(traceback.format_exc()))
     return [row['model_type_id'],row['uri'],row['species_id'],row['songtype_id']]
 
 def create_temp_dir(jobId,log):
@@ -100,19 +100,19 @@ def set_progress_params(db,progress_steps, jobId):
             db.commit()
     except:
         exit_error("Could not set progress params, {}".format(traceback.format_exc()))
-        
+
 def insert_rec_error(db, recId, jobId):
     error = traceback.format_exc()
     try:
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 INSERT INTO `recordings_errors`(`recording_id`, `job_id`, `error`)
-                VALUES (%s, %s)
+                VALUES (%s, %s, %s)
             """, [recId, jobId, error])
             db.commit()
     except:
         exit_error("Could not insert recording error, {}.\n\n ORIGINAL ERROR: {}".format(traceback.format_exc(), error))
-        
+
 
 def classify_rec(rec,mod,workingFolder,log,config,jobId):
     global classificationCanceled
@@ -146,7 +146,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
                 SET `progress` = `progress` + 1, last_update = NOW()
                 WHERE `job_id` = %s
             """, [jobId])
-            db.commit()       
+            db.commit()
     except:
         errorProcessing = True
         log.write('error rec analyzed {} '.format(traceback.format_exc()))
@@ -181,7 +181,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         log.write('done processing this rec')
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
-        
+
 def get_model(model_uri,config,log,workingFolder):
     log.write('reaching bucket.')
     modelLocal = workingFolder+'model.mod'
@@ -245,7 +245,7 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
     except:
         insert_rec_error(db, recId, jId)
     db.close()
-        
+
 def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
     minVectorVal = 9999999.0
     maxVectorVal = -9999999.0
@@ -258,7 +258,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                     SET `progress` = `progress` + 1, last_update = NOW()
                     WHERE `job_id` = %s
                 """, [jobId])
-                db.commit()   
+                db.commit()
             if r and 'id' in r:
                 processed = processed + 1
                 recName = r['uri'].split('/')
@@ -281,7 +281,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
     except:
         exit_error('cannot process results. {}'.format(traceback.format_exc()))
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
-   
+
 def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
     global classificationCanceled
     db = None
@@ -349,12 +349,12 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
         db.close()
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
-    
+
 def run_classification(jobId):
     try:
-        start_time = time.time()   
+        start_time = time.time()
         log = Logger(jobId, 'classification.py', 'main')
-        log.also_print = True    
+        log.also_print = True
         configuration = EnvironmentConfig()
         config = configuration.data()
         bucketName = config[4]
@@ -362,7 +362,7 @@ def run_classification(jobId):
         log.write('database connection succesful')
         (
             classifierId, projectId, userId,
-            classificationName, playlistId, ncpu   
+            classificationName, playlistId, ncpu
         ) = get_classification_job_data(db,jobId)
         log.write('job data fetched.')
         model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
