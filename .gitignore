@@ -25,6 +25,7 @@ a2.komodoproject
 # docs (?)
 docs
 
+.DS_Store
 
 .ignore
 
