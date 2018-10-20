@@ -246,7 +246,7 @@ def insert_result_to_db(config,jId, recId, species, songtype, presence, maxV):
         insert_rec_error(db, recId, jId)
     db.close()
 
-def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
+def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, log):
     minVectorVal = 9999999.0
     maxVectorVal = -9999999.0
     processed = 0
@@ -275,6 +275,13 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db):
                             modelUri.replace('.mod', ''), jobId, recName
                     )
                     upload_vector(vectorUri,localFile,config,r['id'],db,jobId)
+                    log.write("inserting results from {rid} for {sp} {st} into the database ({r}, maxv:{maxv})".format(
+                        rid=r['id'],
+                        r=r['r'],
+                        sp=species,
+                        st=songtype,
+                        maxv=maxv
+                    )
                     insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
                 else:
                     insert_rec_error(db, r['id'], jobId)
@@ -319,7 +326,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     db = get_db(config)
     cancelStatus(db,jobId,workingFolder)
     try:
-        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db)
+        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db, log)
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
