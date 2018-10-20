@@ -281,7 +281,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
                         sp=species,
                         st=songtype,
                         maxv=maxv
-                    )
+                    ))
                     insert_result_to_db(config,jobId,r['id'], species, songtype,r['r'],maxv)
                 else:
                     insert_rec_error(db, r['id'], jobId)
