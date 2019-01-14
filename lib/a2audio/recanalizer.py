@@ -21,7 +21,7 @@ import random
 from contextlib import closing
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=441000):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
@@ -73,6 +73,9 @@ class Recanalizer:
         if self.logs:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
+            # If the recording's sample rate is not modelSampleRate, resample the audio data
+            if self.rec.sample_rate != modelSampleRate
+                self.rec_resample(modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
                 self.status = 'CannotProcess'
@@ -368,3 +371,44 @@ class Recanalizer:
         imshow(self.matrixSurfacComp)
         show()
         close()
+
+    # Creates an FIR filter for audio resampling
+    def resample_poly_filter(up, down, beta=5.0, L=16001):
+    
+        # *** this block STOLEN FROM scipy.signal.resample_poly ***
+        # Determine our up and down factors
+        # Use a rational approximation to save computation time on really long
+        # signals
+        g_ = gcd(up, down)
+        up //= g_
+        down //= g_
+        max_rate = max(up, down)
+
+        sfact = np.sqrt(1+(beta/np.pi)**2)
+                
+        # generate first filter attempt: with 6dB attenuation at f_c.
+        filt = firwin(L, 1/max_rate, window=('kaiser', beta))
+        
+        N_FFT = 2**19
+        NBINS = N_FFT/2+1
+        paddedfilt = np.zeros(N_FFT)
+        paddedfilt[:L] = filt
+        ffilt = np.fft.rfft(paddedfilt)
+        
+        # now find the minimum between f_c and f_c+sqrt(1+(beta/pi)^2)/L
+        bot = int(np.floor(NBINS/max_rate))
+        top = int(np.ceil(NBINS*(1/max_rate + 2*sfact/L)))
+        firstnull = (np.argmin(np.abs(ffilt[bot:top])) + bot)/NBINS
+    
+        # generate the proper shifted filter
+        filt2 = firwin(L, -firstnull+2/max_rate, window=('kaiser', beta))
+        
+        return filt2
+
+    # Function for resampling audio
+    def rec_resample(self, newSampleRate):
+        wfilt = resample_poly_filter(newSampleRate, self.rec.sample_rate) # Create a filter for resampling
+        self.rec.original = resample_poly(self.rec.original, newSampleRate, window=wfilt) # Resampling with polyphase filtering
+        # Update attributes
+        self.rec.samples = len(self.rec.original)
+        self.rec.sample_rate = newSampleRate
