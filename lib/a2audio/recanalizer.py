@@ -408,7 +408,7 @@ class Recanalizer:
     # Function for resampling audio
     def rec_resample(self, newSampleRate):
         wfilt = resample_poly_filter(newSampleRate, self.rec.sample_rate) # Create a filter for resampling
-        self.rec.original = resample_poly(self.rec.original, newSampleRate, window=wfilt) # Resampling with polyphase filtering
+        self.rec.original = resample_poly(self.rec.original, newSampleRate, self.rec.sample_rate, window=wfilt) # Resampling with polyphase filtering
         # Update attributes
         self.rec.samples = len(self.rec.original)
         self.rec.sample_rate = newSampleRate
