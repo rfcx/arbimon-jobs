@@ -21,7 +21,7 @@ import random
 from contextlib import closing
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=441000):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
