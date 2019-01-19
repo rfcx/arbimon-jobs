@@ -175,7 +175,7 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
     if featvector is not None:
         try:
             clf = model_data[0]
-            res = clf.predict(fets.reshape((1, -1)))
+            res = clf.predict([fets])
         except:
             errorProcessing = True
             log.write('error predicting {} '.format(traceback.format_exc()))
