@@ -19,6 +19,7 @@ import cv2
 from cv import *
 import random
 from contextlib import closing
+from .filters.resample_poly_filter import resample_poly_filter
 
 
 class Recanalizer:
@@ -374,43 +375,12 @@ class Recanalizer:
         show()
         close()
 
-    # Creates an FIR filter for audio resampling
-    def resample_poly_filter(up, down, beta=5.0, L=16001):
-    
-        # *** this block STOLEN FROM scipy.signal.resample_poly ***
-        # Determine our up and down factors
-        # Use a rational approximation to save computation time on really long
-        # signals
-        g_ = gcd(up, down)
-        up //= g_
-        down //= g_
-        max_rate = max(up, down)
-
-        sfact = np.sqrt(1+(beta/np.pi)**2)
-                
-        # generate first filter attempt: with 6dB attenuation at f_c.
-        filt = firwin(L, 1/max_rate, window=('kaiser', beta))
-        
-        N_FFT = 2**19
-        NBINS = N_FFT/2+1
-        paddedfilt = np.zeros(N_FFT)
-        paddedfilt[:L] = filt
-        ffilt = np.fft.rfft(paddedfilt)
-        
-        # now find the minimum between f_c and f_c+sqrt(1+(beta/pi)^2)/L
-        bot = int(np.floor(NBINS/max_rate))
-        top = int(np.ceil(NBINS*(1/max_rate + 2*sfact/L)))
-        firstnull = (np.argmin(np.abs(ffilt[bot:top])) + bot)/NBINS
-    
-        # generate the proper shifted filter
-        filt2 = firwin(L, -firstnull+2/max_rate, window=('kaiser', beta))
-        
-        return filt2
-
     # Function for resampling audio
     def rec_resample(self, newSampleRate):
-        wfilt = resample_poly_filter(newSampleRate, self.rec.sample_rate) # Create a filter for resampling
-        self.rec.original = resample_poly(self.rec.original, newSampleRate, self.rec.sample_rate, window=wfilt) # Resampling with polyphase filtering
-        # Update attributes
+        self.rec.original = resample_poly_filter(
+            self.rec.original,
+            self.rec.sample_rate,
+            newSampleRate
+        )
         self.rec.samples = len(self.rec.original)
         self.rec.sample_rate = newSampleRate
