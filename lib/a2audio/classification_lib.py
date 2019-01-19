@@ -131,23 +131,23 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
         classificationCanceled = True
         quit()
     recAnalized = None
-    mod = model_specs['mod']
-    clfFeatsN = mod[0].n_features_
+    model_data = model_specs['data']
+    clfFeatsN = model_data[0].n_features_
     log.write('classify_rec try')
     try:
         useSsim = True
         oldModel = False
         useRansac = False
         bIndex = 0
-        if len(mod) > 7:
-            bIndex  =  mod[7]
-        if len(mod) > 6:
-            useRansac =  mod[6]
-        if len(mod) > 5:
-            useSsim =  mod[5]
+        if len(model_data) > 7:
+            bIndex  =  model_data[7]
+        if len(model_data) > 6:
+            useRansac =  model_data[6]
+        if len(model_data) > 5:
+            useSsim =  model_data[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim )
+        recAnalized = Recanalizer(rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]), workingFolder, str(config[4]), log, False, useSsim, model_specs['sample_rate'])
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
@@ -174,7 +174,7 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
     log.write('FEATS COMPUTED')
     if featvector is not None:
         try:
-            clf = mod[0]
+            clf = model_data[0]
             res = clf.predict(fets)
         except:
             errorProcessing = True
@@ -209,7 +209,13 @@ def get_model(db, model_specs, config, log, workingFolder):
 
     log.write('loading model to memory...')
     if os.path.isfile(modelLocal):
-        model_specs['model'] = pickle.load(open(modelLocal, "rb"))
+        model_data = pickle.load(open(modelLocal, "rb"))
+        if isinstance(model_data, dict):
+            # future model formats (they should be pickled as a dict)
+            model_specs = model_data
+        else:
+            # current style models (they're pickled as a list)
+            model_specs['data'] = model_data
     else:
         exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
