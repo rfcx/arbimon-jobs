@@ -53,7 +53,13 @@ def get_model_params(db,classifierId,log):
             row = cursor.fetchone()
     except:
         exit_error("Could not query database for model params {}".format(traceback.format_exc()))
-    return [row['model_type_id'],row['uri'],row['species_id'],row['songtype_id']]
+    return {
+        'model_type_id': row['model_type_id'],
+        'uri': row['uri'],
+        'species_id': row['species_id'],
+        'songtype_id': row['songtype_id'],
+    }
+
 
 def create_temp_dir(jobId,log):
     try:
@@ -114,7 +120,7 @@ def insert_rec_error(db, recId, jobId):
         exit_error("Could not insert recording error, {}.\n\n ORIGINAL ERROR: {}".format(traceback.format_exc(), error))
 
 
-def classify_rec(rec,mod,workingFolder,log,config,jobId):
+def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -124,6 +130,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         classificationCanceled = True
         quit()
     recAnalized = None
+    mod = model_specs['mod']
     clfFeatsN = mod[0].n_features_
     log.write('classify_rec try')
     try:
@@ -182,26 +189,31 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
 
-def get_model(model_uri,config,log,workingFolder):
+
+def get_model(db, model_specs, config, log, workingFolder):
     log.write('reaching bucket.')
     modelLocal = workingFolder+'model.mod'
     bucket = get_bucket(config)
     try:
         log.write('getting aws file key...')
-        k = bucket.get_key(model_uri, validate=False)
+        k = bucket.get_key(model_specs['uri'], validate=False)
         log.write('contents to filename...')
         k.get_contents_to_filename(modelLocal)
+
     except:
-        exit_error('fatal error model {} not found in aws, {}'.format(model_uri, traceback.format_exc()),-1,log)
+        exit_error('fatal error model {} not found in aws, {}'.format(model_specs['uri'], traceback.format_exc()), -1, log)
+
     log.write('model in local file system.')
-    mod = None
+    model_specs['model'] = None
+
     log.write('loading model to memory...')
     if os.path.isfile(modelLocal):
-        mod = pickle.load(open(modelLocal, "rb"))
+        model_specs['model'] = pickle.load(open(modelLocal, "rb"))
     else:
-        exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()),-1,log)
+        exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
-    return mod
+
+    return model_specs
 
 def write_vector(recUri,tempFolder,featvector):
     vectorLocal = None
@@ -289,7 +301,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
         exit_error('cannot process results. {}'.format(traceback.format_exc()))
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
 
-def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
+def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
     global classificationCanceled
     db = None
     try:
@@ -305,7 +317,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
         cancelStatus(db,jobId,workingFolder)
         set_progress_params(db,len(recsToClassify), jobId)
         log.write('job progress set to start.')
-        mod = get_model(model_uri,config,log,workingFolder)
+        model_specs = get_model(db, model_specs, config, log, workingFolder)
         cancelStatus(db,jobId,workingFolder)
         log.write('model was fetched.')
     except:
@@ -315,7 +327,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     db.close()
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
+            delayed(classify_rec)(rec, model_specs, workingFolder, log, config, jobId) for rec in recsToClassify
         )
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
@@ -326,7 +338,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     db = get_db(config)
     cancelStatus(db,jobId,workingFolder)
     try:
-        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db, log)
+        jsonStats = processResults(resultsParallel, workingFolder, config, model_specs['uri'], jobId, model_specs['species'], model_specs['songtype'], db, log)
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
@@ -372,16 +384,19 @@ def run_classification(jobId):
             classificationName, playlistId, ncpu
         ) = get_classification_job_data(db,jobId)
         log.write('job data fetched.')
-        model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
+
+        model_specs = get_model_params(db, classifierId, log)
         log.write('model params fetched.')
+
         db.close()
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
-    if model_type_id in [4]:
-        retValue = run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
+
+    if model_specs['model_type_id'] in [4]:
+        retValue = run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu)
         return retValue
-    elif model_type_id in [-1]:
+    elif model_specs['model_type_id'] in [-1]:
         pass
         """Entry point for new model types"""
     else:
