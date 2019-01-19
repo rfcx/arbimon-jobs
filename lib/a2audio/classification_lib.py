@@ -54,6 +54,7 @@ def get_model_params(db,classifierId,log):
     except:
         exit_error("Could not query database for model params {}".format(traceback.format_exc()))
     return {
+        'id': classifierId,
         'model_type_id': row['model_type_id'],
         'uri': row['uri'],
         'species_id': row['species_id'],
@@ -212,6 +213,26 @@ def get_model(db, model_specs, config, log, workingFolder):
     else:
         exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
+
+    if "sample_rate" not in model_specs:
+        log.write('sampling rate not specified in model. searching training data for sampling rate...')
+        with contextlib.closing(db.cursor()) as cursor:
+            cursor.execute("""
+                SELECT R.sample_rate
+                FROM models as M
+                JOIN training_set_roi_set_data AS TSRSD ON M.training_set_id = TSRSD.training_set_id
+                JOIN recordings AS R ON R.recording_id = TSRSD.recording_id
+                WHERE M.model_id = %s
+                AND TSRSD.species_id = %s
+                AND TSRSD.songtype_id = %s
+                LIMIT 1
+            """, [
+                model_spec['id'],
+                model_spec['species_id'],
+                model_spec['songtype_id'],
+            ])
+            model_specs["sample_rate"] = cursor.fetchone()["sample_rate"]
+        log.write('model sampling rate is {}'.format(model_specs["sample_rate"]))
 
     return model_specs
 
