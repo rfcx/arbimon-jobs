@@ -53,7 +53,14 @@ def get_model_params(db,classifierId,log):
             row = cursor.fetchone()
     except:
         exit_error("Could not query database for model params {}".format(traceback.format_exc()))
-    return [row['model_type_id'],row['uri'],row['species_id'],row['songtype_id']]
+    return {
+        'id': classifierId,
+        'model_type_id': row['model_type_id'],
+        'uri': row['uri'],
+        'species_id': row['species_id'],
+        'songtype_id': row['songtype_id'],
+    }
+
 
 def create_temp_dir(jobId,log):
     try:
@@ -114,7 +121,7 @@ def insert_rec_error(db, recId, jobId):
         exit_error("Could not insert recording error, {}.\n\n ORIGINAL ERROR: {}".format(traceback.format_exc(), error))
 
 
-def classify_rec(rec,mod,workingFolder,log,config,jobId):
+def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
     global classificationCanceled
     if classificationCanceled:
         return None
@@ -124,22 +131,23 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         classificationCanceled = True
         quit()
     recAnalized = None
-    clfFeatsN = mod[0].n_features_
+    model_data = model_specs['data']
+    clfFeatsN = model_data[0].n_features_
     log.write('classify_rec try')
     try:
         useSsim = True
         oldModel = False
         useRansac = False
         bIndex = 0
-        if len(mod) > 7:
-            bIndex  =  mod[7]
-        if len(mod) > 6:
-            useRansac =  mod[6]
-        if len(mod) > 5:
-            useSsim =  mod[5]
+        if len(model_data) > 7:
+            bIndex  =  model_data[7]
+        if len(model_data) > 6:
+            useRansac =  model_data[6]
+        if len(model_data) > 5:
+            useSsim =  model_data[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], mod[1], float(mod[2]), float(mod[3]), workingFolder,str(config[4]) ,log,False,useSsim )
+        recAnalized = Recanalizer(rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]), workingFolder, str(config[4]), log, False, useSsim, model_specs['sample_rate'])
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
@@ -166,7 +174,7 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
     log.write('FEATS COMPUTED')
     if featvector is not None:
         try:
-            clf = mod[0]
+            clf = model_data[0]
             res = clf.predict(fets)
         except:
             errorProcessing = True
@@ -182,26 +190,57 @@ def classify_rec(rec,mod,workingFolder,log,config,jobId):
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
 
-def get_model(model_uri,config,log,workingFolder):
+
+def get_model(db, model_specs, config, log, workingFolder):
     log.write('reaching bucket.')
     modelLocal = workingFolder+'model.mod'
     bucket = get_bucket(config)
     try:
         log.write('getting aws file key...')
-        k = bucket.get_key(model_uri, validate=False)
+        k = bucket.get_key(model_specs['uri'], validate=False)
         log.write('contents to filename...')
         k.get_contents_to_filename(modelLocal)
+
     except:
-        exit_error('fatal error model {} not found in aws, {}'.format(model_uri, traceback.format_exc()),-1,log)
+        exit_error('fatal error model {} not found in aws, {}'.format(model_specs['uri'], traceback.format_exc()), -1, log)
+
     log.write('model in local file system.')
-    mod = None
+    model_specs['model'] = None
+
     log.write('loading model to memory...')
     if os.path.isfile(modelLocal):
-        mod = pickle.load(open(modelLocal, "rb"))
+        model_data = pickle.load(open(modelLocal, "rb"))
+        if isinstance(model_data, dict):
+            # future model formats (they should be pickled as a dict)
+            model_specs = model_data
+        else:
+            # current style models (they're pickled as a list)
+            model_specs['data'] = model_data
     else:
-        exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()),-1,log)
+        exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
-    return mod
+
+    if "sample_rate" not in model_specs:
+        log.write('sampling rate not specified in model. searching training data for sampling rate...')
+        with contextlib.closing(db.cursor()) as cursor:
+            cursor.execute("""
+                SELECT R.sample_rate
+                FROM models as M
+                JOIN training_set_roi_set_data AS TSRSD ON M.training_set_id = TSRSD.training_set_id
+                JOIN recordings AS R ON R.recording_id = TSRSD.recording_id
+                WHERE M.model_id = %s
+                AND TSRSD.species_id = %s
+                AND TSRSD.songtype_id = %s
+                LIMIT 1
+            """, [
+                model_spec['id'],
+                model_spec['species_id'],
+                model_spec['songtype_id'],
+            ])
+            model_specs["sample_rate"] = cursor.fetchone()["sample_rate"]
+        log.write('model sampling rate is {}'.format(model_specs["sample_rate"]))
+
+    return model_specs
 
 def write_vector(recUri,tempFolder,featvector):
     vectorLocal = None
@@ -289,7 +328,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
         exit_error('cannot process results. {}'.format(traceback.format_exc()))
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
 
-def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu):
+def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
     global classificationCanceled
     db = None
     try:
@@ -305,7 +344,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
         cancelStatus(db,jobId,workingFolder)
         set_progress_params(db,len(recsToClassify), jobId)
         log.write('job progress set to start.')
-        mod = get_model(model_uri,config,log,workingFolder)
+        model_specs = get_model(db, model_specs, config, log, workingFolder)
         cancelStatus(db,jobId,workingFolder)
         log.write('model was fetched.')
     except:
@@ -315,7 +354,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     db.close()
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
-            delayed(classify_rec)(rec,mod,workingFolder,log,config,jobId) for rec in recsToClassify
+            delayed(classify_rec)(rec, model_specs, workingFolder, log, config, jobId) for rec in recsToClassify
         )
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
@@ -326,7 +365,7 @@ def run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,
     db = get_db(config)
     cancelStatus(db,jobId,workingFolder)
     try:
-        jsonStats = processResults(resultsParallel,workingFolder,config,model_uri,jobId,species,songtype,db, log)
+        jsonStats = processResults(resultsParallel, workingFolder, config, model_specs['uri'], jobId, model_specs['species'], model_specs['songtype'], db, log)
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
@@ -372,16 +411,19 @@ def run_classification(jobId):
             classificationName, playlistId, ncpu
         ) = get_classification_job_data(db,jobId)
         log.write('job data fetched.')
-        model_type_id,model_uri,species,songtype = get_model_params(db,classifierId,log)
+
+        model_specs = get_model_params(db, classifierId, log)
         log.write('model params fetched.')
+
         db.close()
     except:
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
-    if model_type_id in [4]:
-        retValue = run_pattern_matching(jobId,model_uri,species,songtype,playlistId,log,config,ncpu)
+
+    if model_specs['model_type_id'] in [4]:
+        retValue = run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu)
         return retValue
-    elif model_type_id in [-1]:
+    elif model_specs['model_type_id'] in [-1]:
         pass
         """Entry point for new model types"""
     else:
