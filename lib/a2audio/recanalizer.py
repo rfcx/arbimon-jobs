@@ -9,7 +9,7 @@ from scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
 from scipy.stats import *
-from  scipy.signal import *
+from scipy.signal import *
 from a2pyutils.logger import Logger
 import os
 import json
@@ -19,6 +19,7 @@ import cv2
 from cv import *
 import random
 from contextlib import closing
+
 
 class Recanalizer:
     def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100):
@@ -49,6 +50,7 @@ class Recanalizer:
         self.high = float(high)
         self.columns = speciesSurface.shape[1]
         self.speciesSurface = speciesSurface
+        self.modelSampleRate = modelSampleRate
         self.logs = logs   
         self.uri = uri
         self.bucketName = bucketName
@@ -74,8 +76,8 @@ class Recanalizer:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             # If the recording's sample rate is not modelSampleRate, resample the audio data
-            if self.rec.sample_rate > modelSampleRate
-                self.rec_resample(modelSampleRate)
+            if self.rec.sample_rate > self.modelSampleRate:
+                self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
                 self.status = 'CannotProcess'
