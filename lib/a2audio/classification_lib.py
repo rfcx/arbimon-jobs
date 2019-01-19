@@ -57,8 +57,8 @@ def get_model_params(db,classifierId,log):
         'id': classifierId,
         'model_type_id': row['model_type_id'],
         'uri': row['uri'],
-        'species_id': row['species_id'],
-        'songtype_id': row['songtype_id'],
+        'species': row['species_id'],
+        'songtype': row['songtype_id'],
     }
 
 
@@ -234,8 +234,8 @@ def get_model(db, model_specs, config, log, workingFolder):
                 LIMIT 1
             """, [
                 model_specs['id'],
-                model_specs['species_id'],
-                model_specs['songtype_id'],
+                model_specs['species'],
+                model_specs['songtype'],
             ])
             model_specs["sample_rate"] = cursor.fetchone()["sample_rate"]
         log.write('model sampling rate is {}'.format(model_specs["sample_rate"]))
