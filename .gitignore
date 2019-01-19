@@ -30,3 +30,6 @@ docs
 .ignore
 
 .crontab
+
+# file manual backups
+*.bak
