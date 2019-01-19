@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import firwin
 from scipy.signal import resample_poly
 
+from fractions import gcd
 
 # Creates an FIR filter for audio resampling
 def resample_poly_filter_window(up, down, beta=5.0, L=16001):
@@ -10,7 +11,7 @@ def resample_poly_filter_window(up, down, beta=5.0, L=16001):
     # Determine our up and down factors
     # Use a rational approximation to save computation time on really long
     # signals
-    g_ = np.gcd(up, down)
+    g_ = gcd(up, down)
     up //= g_
     down //= g_
     max_rate = max(up, down)
