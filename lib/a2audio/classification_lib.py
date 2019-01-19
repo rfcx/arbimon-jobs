@@ -233,9 +233,9 @@ def get_model(db, model_specs, config, log, workingFolder):
                 AND TSRSD.songtype_id = %s
                 LIMIT 1
             """, [
-                model_spec['id'],
-                model_spec['species_id'],
-                model_spec['songtype_id'],
+                model_specs['id'],
+                model_specs['species_id'],
+                model_specs['songtype_id'],
             ])
             model_specs["sample_rate"] = cursor.fetchone()["sample_rate"]
         log.write('model sampling rate is {}'.format(model_specs["sample_rate"]))
