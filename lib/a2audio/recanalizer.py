@@ -77,7 +77,7 @@ class Recanalizer:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             # If the recording's sample rate is not modelSampleRate, resample the audio data
-            if self.rec.sample_rate > self.modelSampleRate and self.modelSampleRate > 44100:
+            if self.rec.sample_rate > self.modelSampleRate and self.modelSampleRate >= 44100:
                 self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
