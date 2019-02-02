@@ -377,10 +377,12 @@ class Recanalizer:
 
     # Function for resampling audio
     def rec_resample(self, newSampleRate):
+        print "resampling recording from %s to %s. original length: %s" % (self.rec.sample_rate, newSampleRate, len(self.rec.original))
         self.rec.original = resample_poly_filter(
             self.rec.original,
             self.rec.sample_rate,
             newSampleRate
         )
+        print "    resampled length: %s" % (len(self.rec.original))
         self.rec.samples = len(self.rec.original)
         self.rec.sample_rate = newSampleRate
