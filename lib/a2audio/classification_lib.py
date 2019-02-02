@@ -413,7 +413,7 @@ def run_classification(jobId):
         log.write('job data fetched.')
 
         model_specs = get_model_params(db, classifierId, log)
-        log.write('model params fetched. %s' % + str(model_specs))
+        log.write('model params fetched. %s' % str(model_specs))
 
         db.close()
     except:
