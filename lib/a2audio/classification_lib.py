@@ -219,6 +219,12 @@ def get_model(db, model_specs, config, log, workingFolder):
     else:
         exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
+    log.write('model #%d for species %s songtype %s. template shape is %s, with frequencies from %s to %s' % (
+        model_specs['id'],
+        model_specs['species'],
+        model_specs['songtype'],
+        model_specs['data'][1].shape, float(model_specs['data'][2]), float(model_specs['data'][3])
+    ))
 
     if "sample_rate" not in model_specs:
         log.write('sampling rate not specified in model. searching training data for sampling rate...')

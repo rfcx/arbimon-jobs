@@ -77,7 +77,9 @@ class Recanalizer:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
             # If the recording's sample rate is not modelSampleRate, resample the audio data
-            if self.rec.sample_rate > self.modelSampleRate and self.modelSampleRate >= 44100:
+            print "rec.sample_rate is %s (model is %s)" % (self.rec.sample_rate, self.modelSampleRate)
+            if self.rec.sample_rate != self.modelSampleRate and self.modelSampleRate >= 44100:
+                print " resmapling rec to %s" % self.modelSampleRate
                 self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
@@ -285,7 +287,7 @@ class Recanalizer:
         i = 0
         nfft = 512
         if self.rec.sample_rate <= 44100:
-            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec:
                 i = i + 1
             nfft = i
         start_time = time.time()
@@ -356,6 +358,7 @@ class Recanalizer:
                 self.spechigh = 0
         Z = np.flipud(Z)
         if self.logs:
+            self.logs.write("spec hi : %s spec low: %s" % (self.spechigh, self.speclow))
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
         self.spec = Z
 
