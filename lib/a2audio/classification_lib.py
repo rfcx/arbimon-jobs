@@ -147,7 +147,11 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
             useSsim =  model_data[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]), workingFolder, str(config[4]), log, False, useSsim, model_specs['sample_rate'])
+        recAnalized = Recanalizer(
+            rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]),
+            workingFolder, str(config[4]), log, False, useSsim,
+            modelSampleRate=model_specs['sample_rate']
+        )
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
