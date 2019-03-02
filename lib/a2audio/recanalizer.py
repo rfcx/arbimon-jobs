@@ -9,7 +9,7 @@ from scipy.spatial.distance import cityblock as ct
 from scipy.spatial.distance import cosine as csn
 import math
 from scipy.stats import *
-from  scipy.signal import *
+from scipy.signal import *
 from a2pyutils.logger import Logger
 import os
 import json
@@ -19,9 +19,11 @@ import cv2
 from cv import *
 import random
 from contextlib import closing
+from .filters.resample_poly_filter import resample_poly_filter
+
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
@@ -49,7 +51,8 @@ class Recanalizer:
         self.high = float(high)
         self.columns = speciesSurface.shape[1]
         self.speciesSurface = speciesSurface
-        self.logs = logs   
+        self.modelSampleRate = modelSampleRate
+        self.logs = logs
         self.uri = uri
         self.bucketName = bucketName
         self.tempFolder = tempFolder
@@ -60,19 +63,24 @@ class Recanalizer:
         self.rec_id = rec_id
         self.job_id = job_id
         if self.logs:
-           self.logs.write("processing: "+self.uri)    
+           self.logs.write("processing: "+self.uri)
         if self.logs :
             self.logs.write("configuration time --- seconds ---" + str(time.time() - start_time))
-        
+
         if not test:
             self.process()
-    
+
     def process(self):
         start_time = time.time()
         self.instanceRec()
         if self.logs:
             self.logs.write("retrieving recording from bucket --- seconds ---" + str(time.time() - start_time))
         if self.rec.status == 'HasAudioData':
+            # If the recording's sample rate is not modelSampleRate, resample the audio data
+            print "rec.sample_rate is %s (model is %s)" % (self.rec.sample_rate, self.modelSampleRate)
+            if self.rec.sample_rate != self.modelSampleRate and self.modelSampleRate >= 44100:
+                print " resmapling rec to %s" % self.modelSampleRate
+                self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
             if self.high >= maxFreqInRec:
                 self.status = 'CannotProcess'
@@ -89,13 +97,13 @@ class Recanalizer:
                         self.logs.write("spectrogrmam --- seconds ---" + str(time.time() - start_time))
                     start_time = time.time()
                     self.featureVector_search()
-                    
+
                     if self.db:
                         elapsed = time.time() - start_time_all
                         print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
                         with closing(self.db.cursor()) as cursor:
                             cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
-                            self.db.commit()   
+                            self.db.commit()
                     if self.logs:
                         self.logs.write("feature vector --- seconds ---" + str(time.time() - start_time))
                     self.status = 'Processed'
@@ -104,13 +112,13 @@ class Recanalizer:
 
     def getRec(self):
         return self.rec
-    
+
     def instanceRec(self):
         self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None)
-        
+
     def getVector(self ):
         return self.distances
-    
+
     def features(self):
         if len(self.distances)<1:
             self.featureVector()
@@ -118,7 +126,7 @@ class Recanalizer:
         fvi = np.fft.fft(self.distances, n=2*N)
         acf = np.real( np.fft.ifft( fvi * np.conjugate(fvi) )[:N] )
         acf = acf/(N - numpy.arange(N))
-        
+
         xf = abs(numpy.fft.fft(self.distances))
 
         fs = [ numpy.mean(xf), (max(xf)-min(xf)),
@@ -138,14 +146,14 @@ class Recanalizer:
                     ,hist[0],hist[1],hist[2],hist[3],hist[4],hist[5]
                     ,fs[0],fs[1],fs[2],fs[3],fs[4],fs[5],fs[6],fs[7],fs[8],fs[9],fs[10]]
         return ffs
-				
+
     def featureVector_search(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if self.logs:
                self.logs.write("featureVector start")
             if self.logs:
-               self.logs.write(self.uri)    
+               self.logs.write(self.uri)
 
             self.matrixSurfacComp = numpy.copy(self.speciesSurface[self.spechigh:self.speclow,:])
             removeUnwanted = self.matrixSurfacComp == -10000
@@ -159,18 +167,18 @@ class Recanalizer:
             pat = ((pat-numpy.min(numpy.min(pat)))/(numpy.max(numpy.max(pat))-numpy.min(numpy.min(pat))))*255
             pat = pat.astype('uint8')
             th, tw = pat.shape[:2]
-            
+
             result = cv2.matchTemplate(spec, pat, cv2.TM_CCOEFF_NORMED)
 
-            self.distances = numpy.mean(result,axis=0) 
-			
+            self.distances = numpy.mean(result,axis=0)
+
     def featureVector(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if self.logs:
                self.logs.write("featureVector start")
             if self.logs:
-               self.logs.write(self.uri)    
+               self.logs.write(self.uri)
             pieces = self.uri.split('/')
             self.distances = []
             currColumns = self.spec.shape[1]
@@ -209,7 +217,7 @@ class Recanalizer:
                         self.distances.append(  val )
             if self.logs:
                self.logs.write("featureVector end")
- 
+
     def computeGFTT(self,pat,spec,currColumns):
         currColumns = self.spec.shape[1]
         spec = ((spec-numpy.min(numpy.min(spec)))/(numpy.max(numpy.max(spec))-numpy.min(numpy.min(spec))))*255
@@ -269,17 +277,17 @@ class Recanalizer:
                 val=0
             self.distances[maxLoc[0]+tw/2] = val
         self.logs.write('------------------------- ssimCalls: '+str(ssimCalls)+'-------------------------')
-        
+
     def getSpec(self):
         return self.spec
-    
+
     def spectrogram(self):
         freqs44100 = json.load(file('scripts/data/freqs.json'))['freqs']
         maxHertzInRec = float(self.rec.sample_rate)/2.0
         i = 0
         nfft = 512
         if self.rec.sample_rate <= 44100:
-            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec :
+            while i<len(freqs44100) and freqs44100[i] <= maxHertzInRec:
                 i = i + 1
             nfft = i
         start_time = time.time()
@@ -297,23 +305,23 @@ class Recanalizer:
         while freqs[i] < self.low:
             j = j + 1
             i = i + 1
-        
+
         #calculate decibeles in the passband
         Pxx =  10. * np.log10( Pxx.clip(min=0.0000000001))
         while (i < len(freqs)) and (freqs[i] < self.high):
             i = i + 1
- 
+
         if i >= dims[0]:
             i = dims[0] - 1
-            
+
         Z= Pxx[(j-2):(i+2),:]
-        
+
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i
-        
+
         if self.lowIndex < 0:
             self.lowIndex = 0
-            
+
         if self.highIndex >= dims[0]:
             self.highIndex = dims[0] - 1
         i = 0
@@ -322,9 +330,9 @@ class Recanalizer:
             i = len(freqs44100) - 1
             j = i
             while freqs44100[i] > self.high and i>=0:
-                j = j -1 
+                j = j -1
                 i = i -1
-                
+
             while freqs44100[j] > self.low and j>=0:
                 j = j -1
             self.speclow = len(freqs44100) - j - 2
@@ -337,11 +345,11 @@ class Recanalizer:
             i = len(freqs) - 1
             j = i
             while freqs[i] > self.high and i>=0:
-                j = j -1 
+                j = j -1
                 i = i -1
-                
+
             while freqs[j] > self.low and j>=0:
-                j = j -1            
+                j = j -1
             self.speclow = len(freqs) - j - 2
             self.spechigh = len(freqs) - i - 2
             if self.speclow >= len(freqs):
@@ -350,9 +358,10 @@ class Recanalizer:
                 self.spechigh = 0
         Z = np.flipud(Z)
         if self.logs:
+            self.logs.write("spec hi : %s spec low: %s" % (self.spechigh, self.speclow))
             self.logs.write('logs and flip ---' + str(time.time() - start_time))
         self.spec = Z
-    
+
     def showVectAndSpec(self):
         ax1 = subplot(211)
         plot(self.distances)
@@ -362,9 +371,21 @@ class Recanalizer:
         ax.axis('auto')
         show()
         close()
-        
+
     def showSurface(self):
         print numpy.min(numpy.min(self.matrixSurfacComp))
         imshow(self.matrixSurfacComp)
         show()
         close()
+
+    # Function for resampling audio
+    def rec_resample(self, newSampleRate):
+        print "resampling recording from %s to %s. original length: %s" % (self.rec.sample_rate, newSampleRate, len(self.rec.original))
+        self.rec.original = resample_poly_filter(
+            self.rec.original,
+            self.rec.sample_rate,
+            newSampleRate
+        )
+        print "    resampled length: %s" % (len(self.rec.original))
+        self.rec.samples = len(self.rec.original)
+        self.rec.sample_rate = newSampleRate
