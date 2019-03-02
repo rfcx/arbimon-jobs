@@ -147,7 +147,11 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
             useSsim =  model_data[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]), workingFolder, str(config[4]), log, False, useSsim, model_specs['sample_rate'])
+        recAnalized = Recanalizer(
+            rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]),
+            workingFolder, str(config[4]), log, False, useSsim,
+            modelSampleRate=model_specs['sample_rate']
+        )
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`
@@ -219,6 +223,12 @@ def get_model(db, model_specs, config, log, workingFolder):
     else:
         exit_error('fatal error cannot load model, {}'.format(traceback.format_exc()), -1, log)
     log.write('model was loaded to memory.')
+    log.write('model #%d for species %s songtype %s. template shape is %s, with frequencies from %s to %s' % (
+        model_specs['id'],
+        model_specs['species'],
+        model_specs['songtype'],
+        model_specs['data'][1].shape, float(model_specs['data'][2]), float(model_specs['data'][3])
+    ))
 
     if "sample_rate" not in model_specs:
         log.write('sampling rate not specified in model. searching training data for sampling rate...')
@@ -413,7 +423,7 @@ def run_classification(jobId):
         log.write('job data fetched.')
 
         model_specs = get_model_params(db, classifierId, log)
-        log.write('model params fetched.')
+        log.write('model params fetched. %s' % str(model_specs))
 
         db.close()
     except:
