@@ -1,17 +1,11 @@
-FROM ubuntu
-MAINTAINER Giovany Vega <aleph.omega@gmail.com>
-LABEL Description="Jobs container" \
-      Vendor=Arbimon2 \
-      Version=1.0
+FROM ubuntu:16.04
 
-ENV DB__TIMEZONE=Z \
-    APP_PATH=/app/jobs \
-    SCRIPT_PATH=scripts
+RUN mkdir /app/
 
-RUN mkdir /root/.ssh/
+WORKDIR /app/
 
-RUN apt-get update -y
-RUN apt-get install -y \
+RUN apt-get update -y && \
+    apt-get install -y \
     bwidget \
     gfortran \
     libfftw3-3 \
@@ -30,12 +24,12 @@ RUN apt-get install -y \
     python-virtualenv \
     r-base \
     r-base-dev \
-    r-cran-rgl
+    r-cran-rgl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
 COPY scripts /app/scripts
-
-WORKDIR /app/
 
 RUN scripts/setup/setup.sh
 
