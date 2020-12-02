@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arbimon-job
+spec:
+  selector:
+    matchLabels:
+      app: arbimon-job
+  template:
+    metadata:
+      labels:
+        app: arbimon-job
+    spec:
+      containers:
+      - name: arbimon-job
+        image: nginx
+        resources:
+          requests:
+            memory: "7Gi"
+            cpu: "4"
+          limits:
+            memory: "15Gi"
+            cpu: "8"
