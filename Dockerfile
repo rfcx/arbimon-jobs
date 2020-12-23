@@ -1,8 +1,4 @@
-FROM ubuntu
-MAINTAINER Giovany Vega <aleph.omega@gmail.com>
-LABEL Description="Jobs container" \
-      Vendor=Arbimon2 \
-      Version=1.0
+FROM ubuntu:16.04
 
 ENV DB__TIMEZONE=Z \
     APP_PATH=/app/jobs \
