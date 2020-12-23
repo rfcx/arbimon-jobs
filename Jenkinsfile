@@ -102,9 +102,7 @@ def branchToConfig(branch) {
             result = "staging"
         slackChannel = "alerts-deployment"
         }
-        }
         echo "BRANCH:${branch} -> CONFIGURATION:${result}"
-       
-    }
+    }    
     return result
 }
