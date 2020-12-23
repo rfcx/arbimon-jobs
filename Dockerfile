@@ -38,4 +38,4 @@ RUN scripts/setup/setup.sh
 COPY . /app/
 
 
-CMD ["/bin/sh"]
+CMD ["tail", "-f", "/dev/null"]
