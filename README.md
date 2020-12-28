@@ -105,3 +105,18 @@ v 1.0.1
     - networkx
     - scikit-image
     - scikits.samplerate
+
+## Deployment (AWS)
+
+From Bastion:
+```
+ssh-job
+```
+
+Find the code:
+```
+cd /var/lib/arbimon2/jobs
+```
+
+Manually update the files. (git didn't work for me)
+
