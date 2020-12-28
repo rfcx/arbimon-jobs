@@ -315,7 +315,7 @@ class Recanalizer:
         if i >= dims[0]:
             i = dims[0] - 1
 
-        Z= Pxx[(j-2):(i+2),:]
+        Z= Pxx[numpy.max([0, (j-2)]):numpy.min([(i+2), Pxx.shape[0]]),:]
 
         self.highIndex = dims[0]-j
         self.lowIndex = dims[0]-i
