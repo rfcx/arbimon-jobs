@@ -62,7 +62,6 @@ def exit_error(db, workingFolder, log, jobId, msg):
             UPDATE `jobs`
             SET `remarks` = %s,
                 `state`="error",
-                `progress` = `progress_steps`,
                 `completed` = 1 ,
                 `last_update` = now()
             WHERE `job_id` = %s
