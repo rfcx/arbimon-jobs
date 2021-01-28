@@ -452,10 +452,10 @@ try:
             log.write('tring connection to bucket')
             start_time = time.time()
             bucket = None
-            conn = S3Connection(awsKeyId, awsKeySecret)
+            conn = S3Connection(sieveAwsKeyId, sieveAwsKeySecret)
             try:
-                log.write('connecting to '+bucketName)
-                bucket = conn.get_bucket(bucketName)
+                log.write('connecting to ' + legacyBucketName)
+                bucket = conn.get_bucket(legacyBucketName)
             except Exception, ex:
                 log.write('fatal error cannot connect to bucket '+ex.error_message)
                 with closing(db.cursor()) as cursor:
