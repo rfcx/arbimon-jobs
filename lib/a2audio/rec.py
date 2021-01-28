@@ -89,10 +89,14 @@ class Rec:
         
     def process(self):
         start_time = time.time()
+        if self.legacy and not self.getAudioFromLegacyUri():
+            self.status = 'KeyNotFound'
+            return None
         if not self.getAudioFromUri():
-           self.status = 'KeyNotFound'
-           return None  
-        if self.logs :
+            self.status = 'KeyNotFound'
+            return None
+
+        if self.logs:
             self.logs.write("getAudioFromUri:" + str(time.time() - start_time))
         
         start_time = time.time()
@@ -119,8 +123,13 @@ class Rec:
             return None
                     
         self.status = 'HasAudioData'
-        
-    def getAudioFromUri(self, retries=6):
+
+    def getAudioFromUri(self):
+
+        self.status = 'Downloaded'
+        return True
+
+    def getAudioFromLegacyUri(self, retries=6):
         start_time = time.time()
         f = None
         url = 'https://s3.amazonaws.com/' + self.bucket + '/'+quote(self.uri)

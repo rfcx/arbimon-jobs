@@ -124,19 +124,22 @@ if bin_size < 0:
     log.close()
     sys.exit(-1)
 
-bucketName = config[4]
-awsKeyId = config[5]
-awsKeySecret = config[6]
+legacyBucketName = config[4]
+sieveAwsKeyId = config[5]
+sieveAwsKeySecret = config[6]
+
+bucketName = config[7]
+awsAccessKeyId = config[8]
+awsSecretKey = config[9]
 
 try:
-#------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
-    q = (
-        "SELECT r.`recording_id`,`uri`, DATE_FORMAT( `datetime` , \
-        '%Y-%m-%d %H:%i:%s' ) as date FROM `playlist_recordings` pr , \
-        `recordings` r " +
-        "WHERE `playlist_id` = "+str(playlist_id) +
-        " and pr.`recording_id` = r.`recording_id`"
-    )
+    #------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
+    q = ("SELECT r.`recording_id`,`uri`, DATE_FORMAT( `datetime` , \
+        '%Y-%m-%d %H:%i:%s') as date, s.legacy \
+        FROM `playlist_recordings` pr \
+        JOIN `recordings` r ON pr.`recording_id` = r.`recording_id` \
+        JOIN `sites` s ON r.`site_id` = s.`site_id` \
+        WHERE `playlist_id` = " + str(playlist_id))
 
     log.write('retrieving playlist recordings list')
     totalRecs = 0
@@ -149,7 +152,10 @@ try:
         for i in range(0, numrows):
             row = cursor.fetchone()
             recsToProcess.append({
-                "uri": row[1], "id": row[0], "date": row[2]
+                "uri": row[1],
+                "id": row[0],
+                "date": row[2],
+                "legacy": row[3]
             })
         log.write('playlist recordings list retrieved')
     with closing(db.cursor()) as cursor:
@@ -210,9 +216,9 @@ try:
         uri = rec['uri']
         logofthread.write('worker id'+str(id)+' log: rec uri:'+uri)
         start_time_rec = time.time()
-        recobject = Rec(
-            str(uri), str(workingFolder), str(config[4]), logofthread, False
-            )
+        recobject = Rec(str(uri), str(workingFolder),
+                        legacyBucketName if rec['legacy'] else bucketName,
+                        logofthread, False)
 
         logofthread.write(
             'worker id' + str(id) + ' log: rec from uri' +
