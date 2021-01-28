@@ -45,9 +45,16 @@ class Rec:
     sample_rate = 0
     channs = 0
     status = 'NotProcessed'
-    
-    def __init__(self, uri, tempFolder, bucketName, logs=None, removeFile=True , test=False):
-        
+
+    def __init__(self,
+                 uri,
+                 tempFolder,
+                 bucketName,
+                 logs=None,
+                 removeFile=True,
+                 test=False,
+                 legacy=True):
+
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if type(tempFolder) is not str:
@@ -65,6 +72,7 @@ class Rec:
         if type(test) is not bool:
             raise ValueError("test must be a boolean")
         start_time = time.time()
+        self.legacy = legacy
         self.logs = logs
         self.localFiles = tempFolder
         self.bucket = bucketName    

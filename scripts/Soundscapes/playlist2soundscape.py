@@ -216,9 +216,12 @@ try:
         uri = rec['uri']
         logofthread.write('worker id'+str(id)+' log: rec uri:'+uri)
         start_time_rec = time.time()
-        recobject = Rec(str(uri), str(workingFolder),
+        recobject = Rec(str(uri),
+                        str(workingFolder),
                         legacyBucketName if rec['legacy'] else bucketName,
-                        logofthread, False)
+                        logofthread,
+                        False,
+                        legacy=rec['legacy'])
 
         logofthread.write(
             'worker id' + str(id) + ' log: rec from uri' +
