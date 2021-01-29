@@ -14,6 +14,11 @@ with warnings.catch_warnings():
 import contextlib
 import numpy as np
 from a2pyutils.logger import Logger
+from a2pyutils.config import EnvironmentConfig
+
+config = EnvironmentConfig()
+aws_key_id = config.rfcxawsConfig['access_key_id']
+aws_key_secret = config.rfcxawsConfig['secret_access_key']
 
 encodings = {
     "pcms8": 8,
@@ -106,7 +111,7 @@ class Rec:
         if self.legacy and not self.getAudioFromLegacyUri():
             self.status = 'KeyNotFound'
             return None
-        if not self.getAudioFromUri():
+        if not self.legacy and not self.getAudioFromUri():
             self.status = 'KeyNotFound'
             return None
 
@@ -141,9 +146,7 @@ class Rec:
         self.status = 'HasAudioData'
 
     def getAudioFromUri(self):
-        print('getAudioFromUri')
-        conn = boto.s3.connection.S3Connection(aws_key_id, aws_key_secret)
-
+        c = boto.s3.connection.S3Connection(aws_key_id, aws_key_secret)
         b = c.get_bucket(self.bucket, validate=False)
         k = b.get_key(self.uri, validate=False)
         k.get_contents_to_filename(self.localfilename)
@@ -152,7 +155,6 @@ class Rec:
         return True
 
     def getAudioFromLegacyUri(self, retries=6):
-        print('getAudioFromLegacyUri')
         start_time = time.time()
         f = None
         url = 'https://s3.amazonaws.com/' + self.bucket + '/' + quote(self.uri)
