@@ -148,10 +148,15 @@ class Rec:
     def getAudioFromUri(self):
         c = boto.s3.connection.S3Connection(aws_key_id, aws_key_secret)
         b = c.get_bucket(self.bucket, validate=False)
-        k = b.get_key(self.uri, validate=False)
-        k.get_contents_to_filename(self.localfilename)
+        k = b.get_key(self.uri)
+        if k is None:
+            if self.logs:
+                self.logs.write("missing file. {} {}".format(
+                    self.bucket, self.uri))
+            print("missing file. {} {}".format(self.bucket, self.uri))
+            return False
 
-        self.status = 'Downloaded'
+        k.get_contents_to_filename(self.localfilename)
         return True
 
     def getAudioFromLegacyUri(self, retries=6):
@@ -194,8 +199,6 @@ class Rec:
             self.logs.write('f.read success')
             self.logs.write("retrieve recording:" +
                             str(time.time() - start_time))
-
-        self.status = 'Downloaded'
         return True
 
     def parseEncoding(self, enc_key):
