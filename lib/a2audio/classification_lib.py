@@ -80,16 +80,16 @@ def get_playlist(db,playlistId,log):
         recsToClassify = []
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
-                SELECT R.`recording_id`, R.`uri`
-                FROM `recordings` R, `playlist_recordings` PR
-                WHERE R.`recording_id` = PR.`recording_id`
-                  AND PR.`playlist_id` = %s
+                SELECT r.`recording_id`, r.`uri`, s.legacy
+                FROM `recordings` r JOIN `playlist_recordings` pr ON r.`recording_id` = pr.`recording_id`
+                JOIN `sites` s ON r.`site_id` = s.`site_id`
+                WHERE pr.`playlist_id` = %s
             """, [playlistId])
             db.commit()
             numrows = int(cursor.rowcount)
             for x in range(0, numrows):
-               rowclassification = cursor.fetchone()
-               recsToClassify.append(rowclassification)
+                rowclassification = cursor.fetchone()
+                recsToClassify.append(rowclassification)
     except:
         exit_error("Could not generate playlist array, {}".format(traceback.format_exc()))
     if len(recsToClassify) < 1:
@@ -147,11 +147,18 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
             useSsim =  model_data[5]
         else:
             oldModel = True
-        recAnalized = Recanalizer(
-            rec['uri'], model_data[1], float(model_data[2]), float(model_data[3]),
-            workingFolder, str(config[4]), log, False, useSsim,
-            modelSampleRate=model_specs['sample_rate']
-        )
+        bucketName = config[4] if rec['legacy'] else config[7]
+        recAnalized = Recanalizer(rec['uri'],
+                                  model_data[1],
+                                  float(model_data[2]),
+                                  float(model_data[3]),
+                                  workingFolder,
+                                  bucketName,
+                                  log,
+                                  False,
+                                  useSsim,
+                                  modelSampleRate=model_specs['sample_rate'],
+                                  legacy=rec['legacy'])
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
                 UPDATE `jobs`

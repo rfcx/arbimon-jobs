@@ -142,10 +142,11 @@ if model_type_id in [4]:
             # create training file
             cursor.execute("""
                 SELECT r.`recording_id`, ts.`species_id`, ts.`songtype_id`,
-                    ts.`x1`, ts.`x2`, ts.`y1`, ts.`y2`, r.`uri`
-                FROM `training_set_roi_set_data` ts, `recordings` r
-                WHERE r.`recording_id` = ts.`recording_id`
-                  AND ts.`training_set_id` = %s
+                    ts.`x1`, ts.`x2`, ts.`y1`, ts.`y2`, r.`uri`, s.`legacy`
+                FROM `training_set_roi_set_data` ts
+                  JOIN `recordings` r ON r.`recording_id` = ts.`recording_id`
+                  JOIN `sites` s ON r.`site_id` = s.`site_id`
+                WHERE ts.`training_set_id` = %s
             """, [training_set_id])
             db.commit()
             trainingFileName = os.path.join(
@@ -217,21 +218,24 @@ if model_type_id in [4]:
             for x in range(0, numSpeciesSongtype):
                 spst = speciesSongtype[x]
                 with closing(db.cursor()) as cursor:
-                    cursor.execute("""
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id` 
-                        FROM `recording_validations` rv, `recordings` r
-                        WHERE r.`recording_id` = rv.`recording_id`
-                          AND rv.`project_id` = %s
+                    cursor.execute(
+                        """
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, s.`legacy`
+                        FROM `recording_validations` rv 
+                          JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
+                          JOIN `sites` s ON r.`site_id` = s.`site_id`
+                        WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
                           AND `present` = 1
                           ORDER BY rand()
                           LIMIT %s)
                           UNION
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id` 
-                        FROM `recording_validations` rv, `recordings` r
-                        WHERE r.`recording_id` = rv.`recording_id`
-                          AND rv.`project_id` = %s
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, s.`legacy`
+                        FROM `recording_validations` rv 
+                          JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
+                          JOIN `sites` s ON r.`site_id` = s.`site_id`
+                        WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
                           AND `present` = 0
@@ -249,7 +253,11 @@ if model_type_id in [4]:
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
-                        validationData.append([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc,rowValidation[4]])
+                        validationData.append([
+                            rowValidation[0], rowValidation[1],
+                            rowValidation[2], rowValidation[3], cc,
+                            rowValidation[4], rowValidation[5]
+                        ])
                         spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc,rowValidation[4]])
 
         # get Amazon S3 bucket
@@ -309,7 +317,7 @@ if model_type_id in [4]:
     """Roigenerator"""
     try:
         # roigen defined in a2audio.training
-        rois = Parallel(n_jobs=1)(delayed(roigen)(line,config,workingFolder,currDir,jobId,log) for line in trainingData)
+        rois = Parallel(n_jobs=1)(delayed(roigen)(line,workingFolder,currDir,jobId,log) for line in trainingData)
     except StandardError, e:
         exit_error(db, workingFolder, log, jobId, 'roigenerator failed. {}'.format(traceback.format_exc()))
 
@@ -368,7 +376,7 @@ if model_type_id in [4]:
     results = None
     """Recnilize"""
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,config,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch,flag_training=True) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch,flag_training=True) for line in validationData)
     except StandardError, e:
         
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel {}'.format(traceback.format_exc()))
