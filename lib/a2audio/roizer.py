@@ -7,7 +7,7 @@ import json
 
 class Roizer:
 
-    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000):
+    def __init__(self, uri ,tempFolder,bucketName ,iniSecs=5,endiSecs=15,lowFreq = 1000, highFreq = 2000, legacy=True):
         
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
@@ -32,7 +32,7 @@ class Roizer:
         if lowFreq>=highFreq :
             raise ValueError("lowFreq must be less than highFreq")
         self.spec = None
-        recording = Rec(uri,tempFolder,bucketName,None)
+        recording = Rec(uri,tempFolder,bucketName,None,legacy=legacy)
 
         if  'HasAudioData' in recording.status:
             self.original = recording.original

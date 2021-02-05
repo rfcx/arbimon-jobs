@@ -23,7 +23,7 @@ from .filters.resample_poly_filter import resample_poly_filter
 
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100,flag_training=False):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100,flag_training=False,legacy=True):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
@@ -63,6 +63,7 @@ class Recanalizer:
         self.db =db
         self.rec_id = rec_id
         self.job_id = job_id
+        self.legacy = legacy
         if self.logs:
            self.logs.write("processing: "+self.uri)
         if self.logs :
@@ -115,7 +116,7 @@ class Recanalizer:
         return self.rec
 
     def instanceRec(self):
-        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None)
+        self.rec = Rec(str(self.uri),self.tempFolder,self.bucketName,None,legacy=self.legacy)
 
     def getVector(self ):
         return self.distances

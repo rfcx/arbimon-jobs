@@ -17,7 +17,10 @@ class AbstractConfig(object):
             self.dbConfig['database'],
             self.awsConfig['bucket_name'],
             self.awsConfig['access_key_id'],
-            self.awsConfig['secret_access_key']
+            self.awsConfig['secret_access_key'],
+            self.rfcxawsConfig['bucket_name'],
+            self.rfcxawsConfig['access_key_id'],
+            self.rfcxawsConfig['secret_access_key']
         ]
 
     def __getattr__(self, identifier):

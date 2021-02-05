@@ -5,9 +5,12 @@ from boto.s3.connection import S3Connection
 from a2audio.recanalizer import Recanalizer
 import csv
 import sys
-sys.path.append('/home/rafa/node/arbimon2-jobs-master-old/lib')
+from a2pyutils.config import EnvironmentConfig
 
-def roigen(line,config,tempFolder,currDir ,jobId,log=None):
+config = EnvironmentConfig().data()
+
+
+def roigen(line,tempFolder,currDir ,jobId,log=None):
     if log is not None:
         log.write('roizing recording: '+line[7])
     db = MySQLdb.connect(host=config[0], user=config[1], passwd=config[2],db=config[3])
@@ -24,12 +27,14 @@ def roigen(line,config,tempFolder,currDir ,jobId,log=None):
     lowFreq = float(line[5])
     highFreq = float(line[6])
     recuri = line[7]
-    roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq)
-    
+    legacy = line[8]
+    bucketName = config[4] if legacy else config[7]
+    roi = Roizer(recuri,tempFolder,bucketName,initTime,endingTime,lowFreq,highFreq,legacy)
+
     with closing(db.cursor()) as cursor:
         cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 ,last_update = now() where `job_id` = '+str(jobId))
         db.commit()
-        
+
     if 'HasAudioData' not in roi.status:
         with closing(db.cursor()) as cursor:
             cursor.execute('INSERT INTO `recordings_errors` (`recording_id`, `job_id`) VALUES ('+str(recId)+','+str(jobId)+') ')
@@ -45,7 +50,7 @@ def roigen(line,config,tempFolder,currDir ,jobId,log=None):
             log.write('done roizing : '+line[7])
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True,searchMatch=False, flag_training=False):
+def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,searchMatch=False, flag_training=False):
     if log is not None:
         log.write('analizing recording: '+line[0])
     bucketName = config[4]
@@ -68,8 +73,13 @@ def recnilize(line,config,workingFolder,currDir,jobId,pattern,log=None,ssim=True
         if log is not None:
             log.write('cannot analize '+line[0])
         return 'err project not found'
-    bucketBase = 'project_'+str(pid)+'/training_vectors/job_'+str(jobId)+'/'
-    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder, str(bucketName), log,False,ssim,searchMatch,db=db,rec_id=recId,job_id=jobId, flag_training=flag_training)
+    bucketBase = 'project_' + str(pid) + '/training_vectors/job_' + str(jobId) + '/'
+    legacy = line[6]
+    recBucketName = bucketName if legacy else config[7]
+    recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder,
+                              recBucketName, log, False, ssim, searchMatch, db=db,
+                              rec_id=recId, job_id=jobId, flag_training=flag_training,
+                              legacy=legacy)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
         recName = recName[len(recName)-1]
