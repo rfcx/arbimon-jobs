@@ -58,39 +58,6 @@ spec:
 
            }
         }
-        stage('Deploy') {
-            agent {
-                label 'slave'
-            }
-            options {
-                skipDefaultCheckout true
-            }
-            when {
-                 expression { BRANCH_NAME ==~ /(dev)/ }
-            }
-            steps {
-                sh "kubectl set image deployment ${APP} ${APP}=${ECR}/${APP}/${PHASE}:v$BUILD_NUMBER --namespace ${PHASE}"
-            }
-
-        }
-        stage('Verifying') {
-            agent {
-                label 'slave'
-            }
-            options {
-                skipDefaultCheckout true
-            }
-            when {
-                 expression { BRANCH_NAME ==~ /(dev)/ }
-            }
-            steps {
-            catchError {
-            sh "kubectl rollout status deployment ${APP} --namespace ${PHASE}"
-            slackSend (channel: "#${slackChannel}", color: '#4CAF50', message: "*Arbimon Job*: Deployment completed <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
-            }
-            }
-
-        }
     }
 }
 
@@ -103,6 +70,6 @@ def branchToConfig(branch) {
         slackChannel = "alerts-deployment"
         }
         echo "BRANCH:${branch} -> CONFIGURATION:${result}"
-    }    
+    }
     return result
 }
