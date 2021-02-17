@@ -37,5 +37,3 @@ RUN scripts/setup/setup.sh
 
 COPY . /app/
 
-
-CMD ["tail", "-f", "/dev/null"]
