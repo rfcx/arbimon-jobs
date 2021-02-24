@@ -26,7 +26,13 @@ RUN apt-get install -y \
     python-virtualenv \
     r-base \
     r-base-dev \
-    r-cran-rgl
+    r-cran-rgl \
+    software-properties-common
+
+RUN add-apt-repository ppa:chris-lea/node.js && \
+    apt-get update && \
+    apt-get -y install nodejs npm && \
+    npm install -g grunt-cli
 
 COPY requirements.txt /app/requirements.txt
 COPY scripts /app/scripts
