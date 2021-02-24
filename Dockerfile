@@ -31,9 +31,9 @@ RUN apt-get install -y \
 COPY requirements.txt /app/requirements.txt
 COPY scripts /app/scripts
 
-WORKDIR /app/
+WORKDIR /app/jobs
 
 RUN scripts/setup/setup.sh
 
-COPY . /app/
+COPY . /app/jobs/
 
