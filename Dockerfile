@@ -29,7 +29,20 @@ RUN apt-get install -y \
     r-cran-rgl \
     software-properties-common \
     nodejs \
-    npm
+    npm \
+    libsox-fmt-all \
+    libsox-dev \
+    libvorbis-dev \
+    libogg-dev \
+    vorbis-tools \
+    libopus-dev \
+    libopusfile-dev \
+    libtool \
+    opus-tools \
+    pkg-config \
+    libflac-dev \
+    autoconf \
+    automake \
 
 RUN npm install -g grunt-cli && \
     add-apt-repository ppa:jonathonf/ffmpeg-4 && \
