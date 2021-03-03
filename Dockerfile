@@ -95,7 +95,7 @@ WORKDIR /tmp
 RUN rm -rf /tmp/*
 
 COPY requirements.txt /app/requirements.txt
-COPY scripts /app/scripts
+COPY scripts /app/jobs/scripts
 
 WORKDIR /app/jobs
 
