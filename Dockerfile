@@ -74,7 +74,7 @@ RUN ./configure --with-opus=yes  --with-flac=yes --with-oggvorbis=yes && \
     make -s && \
     make install && \
     ln -s /usr/local/bin/sox /usr/bin/sox && \
-    apt -y upgrade && \
+    ln -s /usr/bin/nodejs /usr/bin/node && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
