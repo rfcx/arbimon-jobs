@@ -36,7 +36,7 @@ spec:
                  expression { BRANCH_NAME ==~ /(dev)/ }
             }
             steps {
-                // slackSend (channel: "#${slackChannel}", color: '#FF9800', message: "*Arbimon Job*: Build started <${env.BUILD_URL}|#${env.BUILD_NUMBER}> commit ${env.GIT_COMMIT[0..6]} branch ${env.BRANCH_NAME}")
+                slackSend (channel: "#${slackChannel}", color: '#FF9800', message: "*Arbimon Job*: Build started <${env.BUILD_URL}|#${env.BUILD_NUMBER}> commit ${env.GIT_COMMIT[0..6]} branch ${env.BRANCH_NAME}")
                 catchError {
                 container(name: 'kaniko') {
                 sh '''
@@ -52,7 +52,7 @@ spec:
                    echo 'Compile Stage Successful'
                }
                failure {
-                   // slackSend (channel: "#${slackChannel}", color: '#F44336', message: "*Arbimon Job*: Image build failed <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
+                   slackSend (channel: "#${slackChannel}", color: '#F44336', message: "*Arbimon Job*: Image build failed <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
                    echo 'Compile Stage Failed'
                    sh "exit 1"
                }
