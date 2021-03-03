@@ -30,8 +30,8 @@ RUN apt-get install -y \
     software-properties-common
 
 RUN add-apt-repository ppa:chris-lea/node.js && \
-    apt-get update && \
-    apt-get -y install nodejs npm && \
+    apt update && \
+    apt -y install nodejs npm && \
     # npm install -g grunt-cli
     # add-apt-repository ppa:jonathonf/ffmpeg-4 && \
     # apt-get update && \
