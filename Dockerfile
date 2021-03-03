@@ -42,7 +42,7 @@ RUN apt-get install -y \
     pkg-config \
     libflac-dev \
     autoconf \
-    automake \
+    automake
 
 RUN npm install -g grunt-cli && \
     add-apt-repository ppa:jonathonf/ffmpeg-4 && \
