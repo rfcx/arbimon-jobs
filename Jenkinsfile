@@ -48,12 +48,13 @@ spec:
 
            post {
                success {
-                   slackSend (channel: "#${slackChannel}", color: '#3380C7', message: "*Arbimon Job*: Image built on <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
+                   // slackSend (channel: "#${slackChannel}", color: '#3380C7', message: "*Arbimon Job*: Image built on <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
                    echo 'Compile Stage Successful'
                }
                failure {
-                   slackSend (channel: "#${slackChannel}", color: '#F44336', message: "*Arbimon Job*: Image build failed <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
+                   // slackSend (channel: "#${slackChannel}", color: '#F44336', message: "*Arbimon Job*: Image build failed <${env.BUILD_URL}|#${env.BUILD_NUMBER}> branch ${env.BRANCH_NAME}")
                    echo 'Compile Stage Failed'
+                   sh "exit 1"
                }
 
            }
