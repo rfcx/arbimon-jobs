@@ -78,12 +78,18 @@ def processRec(rec):
     # if not ".flac" in rec:
         # return None
     id = 1
-    rec_wav = rec.replace(".flac",".wav")
+    fileType = ''
+    if rec.endswith(".flac"):
+        rec_wav = rec.replace(".flac",".wav")
+        fileType = 'flac'
+    if rec.endswith(".opus"):
+        rec_wav = rec.replace(".opus",".wav")
+        fileType = 'opus'
     rec_date = rec.replace("t1-","").replace(".wav","")
     date = datetime.strptime(rec_date, '%Y-%m-%d_%H-%M')
     if not os.path.isfile(rec_wav):
         proc = subprocess.Popen([
-           '/usr/bin/flac',
+           '/usr/bin/'+fileType,
            '-d',
            folder+"/"+rec
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -123,23 +129,23 @@ def processRec(rec):
                localFile
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
-            
+
             acivalue = None
             if stdout and 'err' not in stdout:
                 acivalue = float(stdout)
-                
+
             proc = subprocess.Popen([
                '/usr/bin/soxi', '-r',
                localFile
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
-            
+
             recSampleRate = None
             if stdout and 'err' not in stdout:
                 recSampleRate = float(stdout)
-            recMaxHertz = float(recSampleRate)/2.0    
+            recMaxHertz = float(recSampleRate)/2.0
             results = {"date": date, "id": id, "freqs": freqs , "amps":amps , "h":hvalue , "aci" :acivalue,"recMaxHertz":recMaxHertz}
-            return results 
+            return results
     else:
         return None
 
@@ -168,18 +174,18 @@ if len(resultsParallel) > 0:
                 hIndex.insert_value(result['date'] ,result['h'],i)
             if result['aci'] is not None:
                 aciIndex.insert_value(result['date'] ,result['aci'],i)
-                
+
     scp.write_index(workingFolder+scidxout)
-    
+
     peaknFile = workingFolder+'peaknumbers'
     peaknumbers.write_index_aggregation_json(peaknFile+'.json')
-    
+
     hFile = workingFolder+'h'
     hIndex.write_index_aggregation_json(hFile+'.json')
-    
+
     aciFile = workingFolder+'aci'
     aciIndex.write_index_aggregation_json(aciFile+'.json')
-    
+
     if aggregation['range'] == 'auto':
         statsMin = scp.stats['min_idx']
         statsMax = scp.stats['max_idx']
