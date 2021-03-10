@@ -56,8 +56,13 @@ spec:
                    echo 'Compile Stage Failed'
                    sh "exit 1"
                }
-
            }
+        }
+
+        stage ('Invoke jobqueue Pipeline') {
+            steps {
+                build job: 'arbimon-jobqueue/${PHASE}', wait: false
+            }
         }
     }
 }
