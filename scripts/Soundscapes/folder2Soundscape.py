@@ -88,11 +88,11 @@ def processRec(rec):
     rec_date = rec.replace("t1-","").replace(".wav","")
     date = datetime.strptime(rec_date, '%Y-%m-%d_%H-%M')
     if not os.path.isfile(rec_wav):
-        proc = subprocess.Popen([
-           '/usr/bin/'+fileType,
-           '-d',
-           folder+"/"+rec
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if fileType == 'flac':
+            command = ['/usr/bin/flac', '-d', folder+"/"+rec]
+        else:
+            command = ['/usr/bin/sox', folder+"/"+rec, rec_wav]
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
     if os.path.isfile(folder+"/"+rec_wav):
         localFile = folder+"/"+rec_wav
