@@ -61,7 +61,7 @@ spec:
 
         stage ('Invoke jobqueue Pipeline') {
             steps {
-                build job: 'arbimon-jobqueue/${PHASE}', wait: false
+                build job: "arbimon-jobqueue/${jobqueueJob}", wait: false
             }
         }
     }
@@ -74,6 +74,7 @@ def branchToConfig(branch) {
         if (branch == 'dev') {
             result = "staging"
         slackChannel = "alerts-deployment"
+        jobqueueJob = "dev"
         withCredentials([file(credentialsId: 'arbimon-job_staging_aws.local.json', variable: 'PRIVATE_ENV')]) {
         sh "cp $PRIVATE_ENV config/aws.local.json"
         }
