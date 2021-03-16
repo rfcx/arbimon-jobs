@@ -74,6 +74,18 @@ def branchToConfig(branch) {
         if (branch == 'dev') {
             result = "staging"
         slackChannel = "alerts-deployment"
+        withCredentials([file(credentialsId: 'arbimon-job_staging_aws.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/aws.local.json"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_staging_config.env', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/config.env"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_staging_db.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/db.local.json"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_staging_path.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/path.local.json"
+        }
         }
         echo "BRANCH:${branch} -> CONFIGURATION:${result}"
     }
