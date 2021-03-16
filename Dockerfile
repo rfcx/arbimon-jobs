@@ -103,3 +103,4 @@ RUN bash scripts/setup/setup.sh
 
 COPY . /app/jobs/
 
+RUN mv config/config_env config/config.env

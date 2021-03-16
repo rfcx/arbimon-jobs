@@ -79,7 +79,7 @@ def branchToConfig(branch) {
         sh "cp $PRIVATE_ENV config/aws.local.json"
         }
         withCredentials([file(credentialsId: 'arbimon-job_staging_config.env', variable: 'PRIVATE_ENV')]) {
-        sh "cp $PRIVATE_ENV config/config.env"
+        sh "cp $PRIVATE_ENV config/config_env"
         }
         withCredentials([file(credentialsId: 'arbimon-job_staging_db.local.json', variable: 'PRIVATE_ENV')]) {
         sh "cp $PRIVATE_ENV config/db.local.json"
