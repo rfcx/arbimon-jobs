@@ -230,7 +230,7 @@ class Rec:
 
     def removeFiles(self):
         start_time = time.time()
-        if filename.endswith('.flac') or filename.endswith('.opus'):  #if flac convert to wav
+        if self.filename.endswith('.flac') or self.filename.endswith('.opus'):  #if flac convert to wav
             if not self.removeFile:
                 try:
                     format = Format('wav')
