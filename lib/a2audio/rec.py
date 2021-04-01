@@ -132,8 +132,7 @@ class Rec:
                     "removeFiles: warning some files could not be removed")
 
         if self.channs > 1:
-            self.status = 'StereoNotSupported'
-            return None
+						self.original = np.mean(self.original, axis=-1)
 
         if self.samples == 0:
             self.status = 'NoData'
