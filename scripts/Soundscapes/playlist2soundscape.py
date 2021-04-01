@@ -523,7 +523,7 @@ try:
     db.close()
     log.write('removing temporary folder')
 
-   # shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 except Exception, e:
     import traceback
     errmsg = traceback.format_exc()
@@ -536,6 +536,6 @@ except Exception, e:
             'error', -1, errmsg, job_id
         ])
         db.commit()
-
+    shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
 log.write('ended script')
 log.close()
