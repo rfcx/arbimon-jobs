@@ -33,7 +33,7 @@ spec:
 
         stage("Build") {
             when {
-                 expression { BRANCH_NAME ==~ /(dev)/ }
+                 expression { BRANCH_NAME ==~ /(dev|master)/ }
             }
             steps {
                 slackSend (channel: "#${slackChannel}", color: '#FF9800', message: "*Arbimon Job*: Build started <${env.BUILD_URL}|#${env.BUILD_NUMBER}> commit ${env.GIT_COMMIT[0..6]} branch ${env.BRANCH_NAME}")
@@ -85,6 +85,24 @@ def branchToConfig(branch) {
         sh "cp $PRIVATE_ENV config/db.local.json"
         }
         withCredentials([file(credentialsId: 'arbimon-job_staging_path.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/path.local.json"
+        }
+        }
+
+        if (branch == 'master') {
+            result = "production"
+        slackChannel = "alerts-deployment-prod"
+        jobqueueJob = "master"
+        withCredentials([file(credentialsId: 'arbimon-job_prod_aws.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/aws.local.json"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_prod_config.env', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/config_env"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_prod_db.local.json', variable: 'PRIVATE_ENV')]) {
+        sh "cp $PRIVATE_ENV config/db.local.json"
+        }
+        withCredentials([file(credentialsId: 'arbimon-job_prod_path.local.json', variable: 'PRIVATE_ENV')]) {
         sh "cp $PRIVATE_ENV config/path.local.json"
         }
         }
