@@ -135,10 +135,9 @@ awsSecretKey = config[9]
 try:
     #------------------------------- PREPARE --------------------------------------------------------------------------------------------------------------------
     q = ("SELECT r.`recording_id`,`uri`, DATE_FORMAT( `datetime` , \
-        '%Y-%m-%d %H:%i:%s') as date, s.legacy \
+        '%Y-%m-%d %H:%i:%s') as date, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy \
         FROM `playlist_recordings` pr \
         JOIN `recordings` r ON pr.`recording_id` = r.`recording_id` \
-        JOIN `sites` s ON r.`site_id` = s.`site_id` \
         WHERE `playlist_id` = " + str(playlist_id))
 
     log.write('retrieving playlist recordings list')

@@ -142,10 +142,9 @@ if model_type_id in [4]:
             # create training file
             cursor.execute("""
                 SELECT r.`recording_id`, ts.`species_id`, ts.`songtype_id`,
-                    ts.`x1`, ts.`x2`, ts.`y1`, ts.`y2`, r.`uri`, s.`legacy`
+                    ts.`x1`, ts.`x2`, ts.`y1`, ts.`y2`, r.`uri`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                 FROM `training_set_roi_set_data` ts
                   JOIN `recordings` r ON r.`recording_id` = ts.`recording_id`
-                  JOIN `sites` s ON r.`site_id` = s.`site_id`
                 WHERE ts.`training_set_id` = %s
             """, [training_set_id])
             db.commit()
@@ -220,10 +219,9 @@ if model_type_id in [4]:
                 with closing(db.cursor()) as cursor:
                     cursor.execute(
                         """
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, s.`legacy`
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                         FROM `recording_validations` rv 
                           JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
-                          JOIN `sites` s ON r.`site_id` = s.`site_id`
                         WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
@@ -231,10 +229,9 @@ if model_type_id in [4]:
                           ORDER BY rand()
                           LIMIT %s)
                           UNION
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, s.`legacy`
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                         FROM `recording_validations` rv 
                           JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
-                          JOIN `sites` s ON r.`site_id` = s.`site_id`
                         WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
