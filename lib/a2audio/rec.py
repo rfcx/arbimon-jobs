@@ -7,6 +7,7 @@ from urllib import quote
 import traceback
 import urllib2
 import httplib
+import subprocess
 import boto.s3.connection
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
