@@ -373,7 +373,7 @@ if model_type_id in [4]:
     results = None
     """Recnilize"""
     try:
-        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch,flag_training=True) for line in validationData)
+        results = Parallel(n_jobs=num_cores)(delayed(recnilize)(line,workingFolder,currDir,jobId,(patternSurfaces[line[4]]),log,ssim,searchMatch) for line in validationData)
     except StandardError, e:
         
         exit_error(db,workingFolder,log,jobId,'cannot analize recordings in parallel {}'.format(traceback.format_exc()))

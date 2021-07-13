@@ -23,7 +23,7 @@ from .filters.resample_poly_filter import resample_poly_filter
 
 
 class Recanalizer:
-    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100,flag_training=False,legacy=True):
+    def __init__(self, uri, speciesSurface, low, high, tempFolder, bucketName, logs=None,test=False,ssim=True,searchMatch=False,db=None,rec_id=None,job_id=None,modelSampleRate=44100,legacy=True):
         if type(uri) is not str and type(uri) is not unicode:
             raise ValueError("uri must be a string")
         if not isinstance(speciesSurface, (numpy.ndarray, numpy.generic, numpy.memmap)):
@@ -59,7 +59,6 @@ class Recanalizer:
         self.rec = None
         self.status = 'NoData'
         self.searchMatch = searchMatch
-        self.flag_training = flag_training
         self.db =db
         self.rec_id = rec_id
         self.job_id = job_id
@@ -80,7 +79,7 @@ class Recanalizer:
         if self.rec.status == 'HasAudioData':
             # If the recording's sample rate is not modelSampleRate, resample the audio data
             print "rec.sample_rate is %s (model is %s)" % (self.rec.sample_rate, self.modelSampleRate)
-            if self.rec.sample_rate != self.modelSampleRate and self.modelSampleRate >= 44100 and self.flag_training == False:
+            if self.rec.sample_rate != self.modelSampleRate and self.modelSampleRate >= 44100:
                 print " resmapling rec to %s" % self.modelSampleRate
                 self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
