@@ -50,7 +50,7 @@ def roigen(line,tempFolder,currDir ,jobId,log=None):
             log.write('done roizing : '+line[7])
         return [roi,str(roispeciesId)+"_"+str(roisongtypeId)]
     
-def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,searchMatch=False, flag_training=False):
+def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,searchMatch=False):
     if log is not None:
         log.write('analizing recording: '+line[0])
     bucketName = config[4]
@@ -78,7 +78,7 @@ def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,search
     recBucketName = bucketName if legacy else config[7]
     recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder,
                               recBucketName, log, False, ssim, searchMatch, modelSampleRate=pattern[1], db=db,
-                              rec_id=recId, job_id=jobId, flag_training=flag_training,
+                              rec_id=recId, job_id=jobId,
                               legacy=legacy)
     if recAnalized.status == 'Processed':
         recName = line[0].split('/')
