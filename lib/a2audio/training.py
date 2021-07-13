@@ -77,7 +77,7 @@ def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,search
     legacy = line[6]
     recBucketName = bucketName if legacy else config[7]
     recAnalized = Recanalizer(line[0], pattern[0], pattern[2], pattern[3], workingFolder,
-                              recBucketName, log, False, ssim, searchMatch, db=db,
+                              recBucketName, log, False, ssim, searchMatch, modelSampleRate=pattern[1], db=db,
                               rec_id=recId, job_id=jobId, flag_training=flag_training,
                               legacy=legacy)
     if recAnalized.status == 'Processed':
