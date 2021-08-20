@@ -3,6 +3,7 @@ import sys
 import time
 import sys
 import tempfile
+import unidecode
 import os
 import csv
 import subprocess
@@ -112,7 +113,8 @@ if not row:
     use_in_validation_notpresent,
     name
 ) = row
-modelName = name
+modelName = unicode(name, "latin-1")
+modelName = unidecode.unidecode(modelName)
 tempFolders = str(configuration.pathsConfig['temp_dir'])
 # select the model_type by its id
 if model_type_id in [4]:
@@ -126,7 +128,7 @@ if model_type_id in [4]:
 
     log.write("Pattern Matching (modified Alvarez thesis)")
 
-    progress_steps = 0
+    progress_steps = 1
     # creating a temporary folder
     workingFolder = tempFolders+"/training_"+str(jobId)+"/"
     if os.path.exists(workingFolder):
