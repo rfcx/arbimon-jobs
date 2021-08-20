@@ -80,9 +80,8 @@ def get_playlist(db,playlistId,log):
         recsToClassify = []
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
-                SELECT r.`recording_id`, r.`uri`, s.legacy
+                SELECT r.`recording_id`, r.`uri`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                 FROM `recordings` r JOIN `playlist_recordings` pr ON r.`recording_id` = pr.`recording_id`
-                JOIN `sites` s ON r.`site_id` = s.`site_id`
                 WHERE pr.`playlist_id` = %s
             """, [playlistId])
             db.commit()

@@ -7,6 +7,7 @@ from urllib import quote
 import traceback
 import urllib2
 import httplib
+import subprocess
 import boto.s3.connection
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -132,8 +133,7 @@ class Rec:
                     "removeFiles: warning some files could not be removed")
 
         if self.channs > 1:
-            self.status = 'StereoNotSupported'
-            return None
+						self.original = np.mean(self.original, axis=-1)
 
         if self.samples == 0:
             self.status = 'NoData'
@@ -208,6 +208,13 @@ class Rec:
         return enc
 
     def readAudioFromFile(self):
+
+        if self.filename.split('.')[-1]=='opus':
+            process = subprocess.Popen(['opusdec', self.localfilename, self.localfilename+'.wav'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = process.communicate()
+            self.localfilename = self.localfilename+'.wav'
+            self.logs.write('decoded opus file: '+str(self.filename))
+
         try:
             with contextlib.closing(Sndfile(self.localfilename)) as f:
                 if self.logs:
@@ -230,7 +237,7 @@ class Rec:
 
     def removeFiles(self):
         start_time = time.time()
-        if 'flac' in self.filename:  #if flac convert to wav
+        if self.filename.endswith('.flac') or self.filename.endswith('.opus'):  #if flac convert to wav
             if not self.removeFile:
                 try:
                     format = Format('wav')
