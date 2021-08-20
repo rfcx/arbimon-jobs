@@ -40,7 +40,11 @@ def resample_poly_filter_window(up, down, beta=5.0, L=16001):
 
 def resample_poly_filter(data, current_sample_rate, new_sample_rate):
     "Resamples a 1d array from a current_sample_rate to a new_sample_rate using resample_poly_filter"
-    # Create a filter for resampling
+    
+    if new_sample_rate in (current_sample_rate*2, current_sample_rate/2):
+        new_sample_rate+=1
+
+		# Create a filter for resampling
     window = resample_poly_filter_window(new_sample_rate, current_sample_rate)
     # Resampling with polyphase filtering
     data = resample_poly(data, new_sample_rate, current_sample_rate, window=window)
