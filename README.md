@@ -55,8 +55,10 @@ forever restart XwGh
 
 ## If the issue is appeared:
 
+```
 error: Forever detected script exited with code: null
 error: Script restart attempt #1
+```
 
 Stop the process and start queue:
 
