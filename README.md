@@ -37,6 +37,11 @@ data:    [0] XwGh /usr/bin/nodejs /var/lib/arbimon2/jobqueue/bin/jobqueue 1422  
 ```sh
 tail /var/lib/arbimon2/.forever/XwGh.log
 ```
+To see all file, just use
+
+```sh
+cat /var/lib/arbimon2/.forever/XwGh.log
+```
 
 
 ## How to see restart job server:
