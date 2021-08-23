@@ -53,6 +53,18 @@ Repeat steps 1-4 from `How to see latest logs`.
 forever restart XwGh
 ```
 
+## If the issue is appeared:
+
+error: Forever detected script exited with code: null
+error: Script restart attempt #1
+
+Stop the process and start queue:
+
+```sh
+forever stop XwGh
+cd /var/lib/arbimon2/jobqueue
+./start_queue-debug.sh
+```
 
 ## How to delete outdated logs and temp files:
 
