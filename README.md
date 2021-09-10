@@ -1,7 +1,6 @@
-# Arbimon II
-Bio-Acoustic Analyzer - JOBS
+# Arbimon Jobs (Soundscape + Random Forest)
 
-v 1.0.1
+See also [rfcx/arbimon-jobqueue](https://github.com/rfcx/arbimon-jobqueue).
 
 
 ## How to see latest logs:

@@ -1,22 +1,10 @@
 {
-  "name": "arbimon2-jobs",
+  "name": "arbimon-jobs",
   "version": "1.0.0",
-  "description": "Bio-Acoustic Analyzer - JOBS",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": ".env/bin/python scripts/task_runner.py",
     "start-forever": "forever start -c .env/bin/python --spinSleepTime 120000  scripts/task_runner.py"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Sieve-Analytics/arbimon2-jobs.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Sieve-Analytics/arbimon2-jobs/issues"
-  },
-  "homepage": "https://github.com/Sieve-Analytics/arbimon2-jobs#readme",
   "dependencies": {
     "forever": "^0.15.3"
   }
