@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ranger-api-ingress
+  namespace: staging
+  labels:
+    app: ranger-api
+spec:
+  rules:
+    - host: staging-arbimon-jobs.rfcx.org
+      http:
+        paths:
+          - backend:
+              serviceName: arbimon-jobs-service
+              servicePort: 80

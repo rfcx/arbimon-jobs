@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: arbimon-jobs-config
 data:
+  DEBUG: "arbimon2:model:jobqueues"
+
   DB__HOST: "arbimon-dev-cluster.cluster-ctjyvabp9jnq.us-east-1.rds.amazonaws.com"
   DB__DATABASE: "arbimon2"
   DB__TIMEZONE: "Z"
