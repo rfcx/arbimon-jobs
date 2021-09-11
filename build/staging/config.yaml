@@ -3,21 +3,15 @@ kind: ConfigMap
 metadata:
   name: arbimon-jobs-config
 data:
-  DB__HOST: "localhost"
-  DB__USER: "jobs"
-  DB__PASSWORD: "password"
+  DB__HOST: "arbimon-dev-cluster.cluster-ctjyvabp9jnq.us-east-1.rds.amazonaws.com"
   DB__DATABASE: "arbimon2"
   DB__TIMEZONE: "Z"
 
-  AWS__ACCESS_KEY_ID: "access key"
-  AWS__SECRET_ACCESS_KEY: "secret access key"
   AWS__REGION: "us-east-1"
   AWS__BUCKET_NAME: "arbimon2"
 
-  RFCXAWS__ACCESS_KEY_ID: "access key"
-  RFCXAWS__SECRET_ACCESS_KEY: "secret access key"
   RFCXAWS__REGION: "eu-west-1"
-  RFCXAWS__BUCKET_NAME: "rfcx-streams-testing"
+  RFCXAWS__BUCKET_NAME: "rfcx-streams-staging"
 
   HOSTS__JOBQUEUE: "http://localhost:3007"
   HOSTS__AUTH_SECRET: let-me-in-123
@@ -41,7 +35,3 @@ data:
   JOB_QUEUE__SCRIPT_WD: "/app/jobs"
   JOB_QUEUE__SCRIPT_PATH: "scripts"
   JOB_QUEUE__RUN: tasks,jobs
-
-  # not used?
-  AUTH__SECRET: authentication_secret_for_task_jwt_auth
-  AUTH__OPTIONS: options_for_tasks_jwt_auth_verification

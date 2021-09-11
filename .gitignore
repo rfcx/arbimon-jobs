@@ -11,19 +11,11 @@ bower_components
 # grunt build files
 public/assets
 
-#komodo specific files
-a2.komodoproject
-
 # python virtual env
 .env
 
 # python compiled binaries
 *pyc
-
-.env
-
-# docs (?)
-docs
 
 .DS_Store
 .idea
@@ -31,5 +23,5 @@ docs
 
 .crontab
 
-# file manual backups
-*.bak
+# Kubernetes secrets
+secrets.yaml
