@@ -36,3 +36,5 @@ COPY scripts ./scripts
 RUN scripts/setup/setup.sh
 
 COPY . /app
+
+WORKDIR /app/jobqueue

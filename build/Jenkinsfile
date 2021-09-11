@@ -60,7 +60,7 @@ pipeline {
         sh "kubectl apply -f build/${K8S_NAMESPACE} --namespace ${K8S_NAMESPACE}"
       }
     }
-    stage("Verifying") {
+    stage("Verify") {
       agent {
         label "slave"
       }

@@ -193,17 +193,23 @@ cd /mnt/jobs-temp/
     - scikit-image
     - scikits.samplerate
 
-## Deployment (AWS)
 
-From Bastion:
-```
-ssh-job
-```
+## Docker
 
-Find the code:
-```
-cd /var/lib/arbimon2/jobs
+If you have access to the AWS ECR for RFCx, then build it with the latest production job queue:
+
+```sh
+docker build -t rfcx-arbimon-jobs -f build/Dockerfile . 
 ```
 
-Manually update the files. (git didn't work for me)
+Otherwise, you will need to build the job queue manually (see [rfcx/arbimon-jobqueue](https://github.com/rfcx/arbimon-jobqueue, follow the docker build command to tag `rfcx-arbimon-jobqueue`) and then pass in a build arg to set the base image:
 
+```sh
+docker build -t rfcx-arbimon-jobs --build-arg base=rfcx-arbimon-jobqueue -f build/Dockerfile . 
+```
+
+Test it:
+
+```sh
+docker run -it --rm --env-file config/config.env.sample --env-file ../rfcx-arbimon-jobqueue/config/config.env.sample rfcx-arbimon-jobs
+```
