@@ -35,3 +35,7 @@ data:
   JOB_QUEUE__SCRIPT_WD: "/app/jobs"
   JOB_QUEUE__SCRIPT_PATH: "scripts"
   JOB_QUEUE__RUN: tasks,jobs
+
+  # not used?
+  AUTH__SECRET: authentication_secret_for_task_jwt_auth
+  AUTH__OPTIONS: options_for_tasks_jwt_auth_verification
