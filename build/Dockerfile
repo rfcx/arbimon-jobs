@@ -29,12 +29,13 @@ RUN apt-get update -y \
         r-base-dev \
         r-cran-rgl
 
-WORKDIR /app
+RUN mkdir /app/jobs
+WORKDIR /app/jobs
 COPY requirements.txt ./requirements.txt
 COPY scripts ./scripts
 
 RUN scripts/setup/setup.sh
 
-COPY . /app
+COPY . /app/jobs
 
 WORKDIR /app/jobqueue
