@@ -21,6 +21,7 @@ RUN apt-get update -y \
         libsndfile1 \
         libsndfile-dev \
         libsamplerate-dev \
+        opus-tools \
         python-dev \
         python-opencv \
         python-pip \
