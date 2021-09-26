@@ -25,6 +25,7 @@ RUN apt-get update -y \
         python-dev \
         python-opencv \
         python-pip \
+        python-tk \
         python-virtualenv \
         r-base \
         r-base-dev \
