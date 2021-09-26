@@ -14,6 +14,11 @@ spec:
       containers:
       - name: arbimon-jobs
         image: 887044485231.dkr.ecr.eu-west-1.amazonaws.com/arbimon-jobs:latest
+        envFrom:
+          - secretRef:
+              name: arbimon-jobs-secrets
+          - configMapRef:
+              name: arbimon-jobs-config
         resources:
           requests:
             memory: "0.5Gi"
