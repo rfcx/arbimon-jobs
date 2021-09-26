@@ -2,12 +2,12 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: arbimon-jobs-ingress
-  namespace: staging
+  namespace: production
   labels:
     app: arbimon-jobs
 spec:
   rules:
-    - host: staging-arbimon-jobs.rfcx.org
+    - host: arbimon-jobs.rfcx.org
       http:
         paths:
           - backend:

@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arbimon-jobs-config
+data:
+  DEBUG: "arbimon2:model:jobqueues"
+
+  DB__HOST: "arbimon-cluster.cluster-ctjyvabp9jnq.us-east-1.rds.amazonaws.com"
+  DB__DATABASE: "arbimon2"
+  DB__TIMEZONE: "Z"
+
+  AWS__REGION: "us-east-1"
+  AWS__BUCKET_NAME: "arbimon2"
+
+  RFCXAWS__REGION: "eu-west-1"
+  RFCXAWS__BUCKET_NAME: "rfcx-streams-production"
+
+  HOSTS__JOBQUEUE: "http://localhost:3007"
+  HOSTS__AUTH_SECRET: let-me-in-123
+  HOSTS__AUTH_OPTIONS: "{\"algorithm\":\"HS256\"}"
+
+  PATHS__TEMP_DIR: "/tmp"
+  PATHS__EFS_BASE: "/tmp"
+
+  # maximum number of concurrent tasks to run
+  TASKS__MAX_CONCURRENCY: "0"
+
+  # jobqueue configuration
+  JOB_QUEUE__PORT: "3007"
+  JOB_QUEUE__LOOP_DELAY: "5000"
+  JOB_QUEUE__LOOP_WHILE_MORE_JOBS: "true"
+  JOB_QUEUE__RERUN_INTERVAL: "100000"
+  JOB_QUEUE__HEARTBEAT_TIMEOUT: "300000"
+  JOB_QUEUE__JOB_INACTIVITY_TIMEOUT: "1800000"
+  JOB_QUEUE__JOB_REQUEUE_DELAY: "3550000"
+  JOB_QUEUE__CONCURRENCY: "-1"
+  JOB_QUEUE__SCRIPT_WD: "/app/jobs"
+  JOB_QUEUE__SCRIPT_PATH: "scripts"
+  JOB_QUEUE__RUN: tasks,jobs
+
+  # jobqueue unknown - not used?
+  AUTH__SECRET: authentication_secret_for_task_jwt_auth
+  AUTH__OPTIONS: options_for_tasks_jwt_auth_verification
