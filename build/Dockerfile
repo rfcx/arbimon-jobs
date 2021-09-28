@@ -29,7 +29,8 @@ RUN apt-get update -y \
         python-virtualenv \
         r-base \
         r-base-dev \
-        r-cran-rgl
+        r-cran-rgl \
+        sox
 
 RUN mkdir /app/jobs
 WORKDIR /app/jobs
