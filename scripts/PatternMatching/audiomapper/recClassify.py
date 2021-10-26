@@ -154,13 +154,17 @@ def processLine(line, bucket, mod, config, logWorkers, bucketNam, ssimFlag):
     )
 
     log.time_delta("recAnalized", start_time)
-    with closing(db.cursor()) as cursor:
-        cursor.execute("""
-            UPDATE `jobs`
-            SET `progress` = `progress` + 1 ,last_update = now()
-            WHERE `job_id` = %s
-        """, [jobId])
-        db.commit()
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute("""
+                UPDATE `jobs`
+                SET `progress` = `progress` + 1 ,last_update = now()
+                WHERE `job_id` = %s
+            """, [jobId])
+            db.commit()
+    except Exception as e:
+        log.write(str(e))
+        continue
 
     if recAnalized.status == 'Processed':
         log.write('rec processed')

@@ -158,13 +158,17 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
                                   useSsim,
                                   modelSampleRate=model_specs['sample_rate'],
                                   legacy=rec['legacy'])
-        with contextlib.closing(db.cursor()) as cursor:
-            cursor.execute("""
-                UPDATE `jobs`
-                SET `progress` = `progress` + 1, last_update = NOW()
-                WHERE `job_id` = %s
-            """, [jobId])
-            db.commit()
+        try:
+            with contextlib.closing(db.cursor()) as cursor:
+                cursor.execute("""
+                    UPDATE `jobs`
+                    SET `progress` = `progress` + 1, last_update = NOW()
+                    WHERE `job_id` = %s
+                """, [jobId])
+                db.commit()
+        except Exception as e:
+            log.write(str(e))
+            continue
     except:
         errorProcessing = True
         log.write('error rec analyzed {} '.format(traceback.format_exc()))
@@ -307,13 +311,17 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
     processed = 0
     try:
         for r in res:
-            with contextlib.closing(db.cursor()) as cursor:
-                cursor.execute("""
-                    UPDATE `jobs`
-                    SET `progress` = `progress` + 1, last_update = NOW()
-                    WHERE `job_id` = %s
-                """, [jobId])
-                db.commit()
+            try:
+                with contextlib.closing(db.cursor()) as cursor:
+                    cursor.execute("""
+                        UPDATE `jobs`
+                        SET `progress` = `progress` + 1, last_update = NOW()
+                        WHERE `job_id` = %s
+                    """, [jobId])
+                    db.commit()
+            except Exception as e:
+                log.write(str(e))
+                continue
             if r and 'id' in r:
                 processed = processed + 1
                 recName = r['uri'].split('/')
@@ -398,6 +406,7 @@ def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
                 VALUES (%s, %s)
             """, [jobId, json.dumps(statsJson)])
             db.commit()
+            try:
             cursor.execute("""
                 UPDATE `jobs`
                 SET `progress` = `progress_steps`, `completed` = 1,

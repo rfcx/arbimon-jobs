@@ -39,10 +39,14 @@ def processLine(line,config,tempFolders,currDir ):
     spectrogram  = spectrogram.strip('\n')   
     specCopy = spectrogram
     
-    with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jId))
-        db.commit()
-        
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jId))
+            db.commit()
+    except Exception as e:
+        print(e)
+        continue
+
     #prepare the spec matrix from spectrogram string
     #the spec is the species vocalization 
     spectrogram  = spectrogram.strip(' ')

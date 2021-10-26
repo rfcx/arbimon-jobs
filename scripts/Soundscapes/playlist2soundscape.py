@@ -157,11 +157,15 @@ try:
                 "legacy": row[3]
             })
         log.write('playlist recordings list retrieved')
-    with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set state="processing", `progress` = 1,\
-            `progress_steps` = '                                                                +str(totalRecs+5)+' \
-            where `job_id` = '                                                            +str(job_id))
-        db.commit()
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set state="processing", `progress` = 1,\
+                `progress_steps` = '                                                                +str(totalRecs+5)+' \
+                where `job_id` = '                                                            +str(job_id))
+            db.commit()
+    except Exception as e:
+        log.write(str(e))
+        continue
     if len(recsToProcess) < 1:
         print "# fatal error invalid playlist or no recordings on playlist."
         log.write('Invalid playlist or no recordings on playlist')
@@ -206,10 +210,14 @@ try:
                 connect \to db'                                                              )
             return None
         logofthread.write('worker id'+str(id)+' log: connected to db')
-        with closing(db1.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", \
-                `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
-            db1.commit()
+        try:
+            with closing(db1.cursor()) as cursor:
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
+                db1.commit()
+        except Exception as e:
+            log.write(str(e))
+            continue
         results = []
         date = datetime.strptime(rec['date'], '%Y-%m-%d %H:%M:%S')
 
@@ -353,10 +361,14 @@ try:
     log.write("all recs parallel ---" + str(time.time() - start_time_all))
     if len(resultsParallel) > 0:
         log.write('processing recordings results: '+str(len(resultsParallel)))
-        with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", \
-                `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
-            db.commit()
+        try:
+            with closing(db.cursor()) as cursor:
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
+                db.commit()
+        except Exception as e:
+            log.write(str(e))
+            continue
         max_hertz = 22050
         for result in resultsParallel:
             if result is not None:
@@ -417,13 +429,17 @@ try:
         ])
 
         scpId = -1
-        with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set `state`="processing", \
-                `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
-            db.commit()
-            cursor.execute(query, query_data)
-            db.commit()
-            scpId = cursor.lastrowid
+        try:
+            with closing(db.cursor()) as cursor:
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
+                db.commit()
+                cursor.execute(query, query_data)
+                db.commit()
+                scpId = cursor.lastrowid
+        except Exception as e:
+            log.write(str(e))
+            continue
         try:
             log.write('inserted soundscape into database')
             soundscapeId = scpId
@@ -437,10 +453,14 @@ try:
                 scp.norm_vector = norm_vector
 
             scp.write_image(workingFolder + imgout, palette.get_palette())
-            with closing(db.cursor()) as cursor:
-                cursor.execute('update `jobs` set `state`="processing", \
-                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
-                db.commit()
+            try:
+                with closing(db.cursor()) as cursor:
+                    cursor.execute('update `jobs` set `state`="processing", \
+                        `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
+                    db.commit()
+            except Exception as e:
+                log.write(str(e))
+                continue
             log.write("writing image:" + str(time.time() - start_time_all))
             uriBase = 'project_'+str(pid)+'/soundscapes/'+str(soundscapeId)
             imageUri = uriBase + '/image.png'
@@ -469,10 +489,14 @@ try:
             k = bucket.new_key(imageUri)
             k.set_contents_from_filename(workingFolder+imgout)
             k.set_acl('public-read')
-            with closing(db.cursor()) as cursor:
-                cursor.execute('update `jobs` set `state`="processing", \
-                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
-                db.commit()
+            try:
+                with closing(db.cursor()) as cursor:
+                    cursor.execute('update `jobs` set `state`="processing", \
+                        `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
+                    db.commit()
+            except Exception as e:
+                log.write(str(e))
+                continue
             k = bucket.new_key(indexUri)
             k.set_contents_from_filename(workingFolder+scidxout)
             k.set_acl('public-read')
@@ -508,16 +532,24 @@ try:
                 where `job_id` = '                                                                    +str(job_id))
             db.commit()
         log.write('no results from playlist id:'+playlist_id)
-        with closing(db.cursor()) as cursor:
-            cursor.execute('update `jobs` set \
-                `progress` = `progress` + 4 where `job_id` = '                                                                                                                            +str(job_id))
-            db.commit()
+        try:
+            with closing(db.cursor()) as cursor:
+                cursor.execute('update `jobs` set \
+                    `progress` = `progress` + 4 where `job_id` = '                                                                                                                            +str(job_id))
+                db.commit()
+        except Exception as e:
+            log.write(str(e))
+            continue
 
-    with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="completed", `completed`=1, \
-            `progress` = `progress` + 1 where `job_id` = '                                                                                                                    +str(job_id))
-        insertNews(cursor, uid, pid, json.dumps({"soundscape": name}), 11)
-        db.commit()
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `state`="completed", `completed`=1, \
+                `progress` = `progress` + 1 where `job_id` = '                                                                                                                    +str(job_id))
+            insertNews(cursor, uid, pid, json.dumps({"soundscape": name}), 11)
+            db.commit()
+    except Exception as e:
+        log.write(str(e))
+        continue
     log.write('closing database')
 
     db.close()

@@ -51,9 +51,13 @@ def processLine(line, config, tempFolders, currDir):
     tempFolder = tempFolders+"/training_"+str(jobId)+"/"
     roi = Roizer(recuri,tempFolder,str(config[4]),initTime,endingTime,lowFreq,highFreq)
 
-    with closing(db.cursor()) as cursor:
-        cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
-        db.commit()
+    try:
+        with closing(db.cursor()) as cursor:
+            cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 1 where `job_id` = '+str(jobId))
+            db.commit()
+    except Exception as e:
+        print(e)
+        continue
         
     if "NoAudio" in roi.status:
         with closing(db.cursor()) as cursor:
