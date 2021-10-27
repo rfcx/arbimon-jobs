@@ -168,7 +168,6 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
                 db.commit()
         except Exception as e:
             log.write(str(e))
-            continue
     except:
         errorProcessing = True
         log.write('error rec analyzed {} '.format(traceback.format_exc()))
@@ -321,7 +320,6 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
                     db.commit()
             except Exception as e:
                 log.write(str(e))
-                continue
             if r and 'id' in r:
                 processed = processed + 1
                 recName = r['uri'].split('/')

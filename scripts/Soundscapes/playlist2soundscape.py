@@ -165,7 +165,6 @@ try:
             db.commit()
     except Exception as e:
         log.write(str(e))
-        continue
     if len(recsToProcess) < 1:
         print "# fatal error invalid playlist or no recordings on playlist."
         log.write('Invalid playlist or no recordings on playlist')
@@ -217,7 +216,6 @@ try:
                 db1.commit()
         except Exception as e:
             log.write(str(e))
-            continue
         results = []
         date = datetime.strptime(rec['date'], '%Y-%m-%d %H:%M:%S')
 
@@ -368,7 +366,6 @@ try:
                 db.commit()
         except Exception as e:
             log.write(str(e))
-            continue
         max_hertz = 22050
         for result in resultsParallel:
             if result is not None:
@@ -439,7 +436,6 @@ try:
                 scpId = cursor.lastrowid
         except Exception as e:
             log.write(str(e))
-            continue
         try:
             log.write('inserted soundscape into database')
             soundscapeId = scpId
@@ -460,7 +456,6 @@ try:
                     db.commit()
             except Exception as e:
                 log.write(str(e))
-                continue
             log.write("writing image:" + str(time.time() - start_time_all))
             uriBase = 'project_'+str(pid)+'/soundscapes/'+str(soundscapeId)
             imageUri = uriBase + '/image.png'
@@ -496,7 +491,6 @@ try:
                     db.commit()
             except Exception as e:
                 log.write(str(e))
-                continue
             k = bucket.new_key(indexUri)
             k.set_contents_from_filename(workingFolder+scidxout)
             k.set_acl('public-read')
@@ -539,7 +533,6 @@ try:
                 db.commit()
         except Exception as e:
             log.write(str(e))
-            continue
 
     try:
         with closing(db.cursor()) as cursor:
@@ -549,7 +542,6 @@ try:
             db.commit()
     except Exception as e:
         log.write(str(e))
-        continue
     log.write('closing database')
 
     db.close()

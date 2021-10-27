@@ -45,7 +45,6 @@ def processLine(line,config,tempFolders,currDir ):
             db.commit()
     except Exception as e:
         print(e)
-        continue
 
     #prepare the spec matrix from spectrogram string
     #the spec is the species vocalization 

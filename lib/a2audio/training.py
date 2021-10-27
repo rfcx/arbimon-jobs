@@ -37,7 +37,6 @@ def roigen(line,tempFolder,currDir ,jobId,log=None):
             db.commit()
     except Exception as e:
         log.write(str(e))
-        continue
 
     if 'HasAudioData' not in roi.status:
         with closing(db.cursor()) as cursor:
@@ -71,7 +70,6 @@ def recnilize(line,workingFolder,currDir,jobId,pattern,log=None,ssim=True,search
             db.commit()
     except Exception as e:
         log.write(str(e))
-        continue
     with closing(db.cursor()) as cursor:
         cursor.execute('SELECT `project_id` FROM `jobs` WHERE `job_id` =  '+str(jobId))
         db.commit()

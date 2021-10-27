@@ -164,7 +164,6 @@ def processLine(line, bucket, mod, config, logWorkers, bucketNam, ssimFlag):
             db.commit()
     except Exception as e:
         log.write(str(e))
-        continue
 
     if recAnalized.status == 'Processed':
         log.write('rec processed')

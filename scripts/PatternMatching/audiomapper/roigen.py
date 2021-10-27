@@ -57,7 +57,6 @@ def processLine(line, config, tempFolders, currDir):
             db.commit()
     except Exception as e:
         print(e)
-        continue
         
     if "NoAudio" in roi.status:
         with closing(db.cursor()) as cursor:
