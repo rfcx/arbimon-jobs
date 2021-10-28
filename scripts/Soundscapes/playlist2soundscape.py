@@ -7,6 +7,7 @@ import os
 import time
 import shutil
 import math
+import random
 import multiprocessing
 import subprocess
 import boto
@@ -138,7 +139,7 @@ try:
         '%Y-%m-%d %H:%i:%s') as date, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy \
         FROM `playlist_recordings` pr \
         JOIN `recordings` r ON pr.`recording_id` = r.`recording_id` \
-        WHERE `playlist_id` = "                                                               + str(playlist_id))
+        WHERE `playlist_id` = " + str(playlist_id))
 
     log.write('retrieving playlist recordings list')
     totalRecs = 0
@@ -160,8 +161,8 @@ try:
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set state="processing", `progress` = 1,\
-                `progress_steps` = '                                                                +str(totalRecs+5)+' \
-                where `job_id` = '                                                            +str(job_id))
+                `progress_steps` = '+str(int(totalRecs/10)+5)+' \
+                where `job_id` = '+str(job_id))
             db.commit()
     except Exception as e:
         log.write(str(e))
@@ -172,7 +173,7 @@ try:
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="error", \
                 `completed` = -1,`remarks` = \'Error: Invalid playlist \
-                (Maybe empty).\' where `job_id` = '                                                                                                      +str(job_id))
+                (Maybe empty).\' where `job_id` = '+str(job_id))
             db.commit()
         log.close()
         sys.exit(-1)
@@ -206,16 +207,17 @@ try:
             )
         except MySQLdb.Error as e:
             logofthread.write('worker id'+str(id)+' log: worker cannot \
-                connect \to db'                                                              )
+                connect \to db')
             return None
         logofthread.write('worker id'+str(id)+' log: connected to db')
-        try:
-            with closing(db1.cursor()) as cursor:
-                cursor.execute('update `jobs` set `state`="processing", \
-                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
-                db1.commit()
-        except Exception as e:
-            log.write(str(e))
+        if random.randint(1,100)<=10: # update progress for 10% of recordings
+            try:
+                with closing(db1.cursor()) as cursor:
+                    cursor.execute('update `jobs` set `state`="processing", \
+                        `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+                    db1.commit()
+            except Exception as e:
+                log.write(str(e))
         results = []
         date = datetime.strptime(rec['date'], '%Y-%m-%d %H:%M:%S')
 
@@ -268,7 +270,7 @@ try:
                 with closing(db1.cursor()) as cursor:
                     cursor.execute(
                         'INSERT INTO `recordings_errors`(`recording_id`,`job_id`) \
-                        VALUES ('                                                                  +str(id)+','+str(job_id)+') ')
+                        VALUES ('+str(id)+','+str(job_id)+') ')
                     db1.commit()
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
@@ -341,7 +343,7 @@ try:
                 'worker id' + str(id) + ' log: Invalid recording:' + uri)
             with closing(db1.cursor()) as cursor:
                 cursor.execute('INSERT INTO `recordings_errors`(`recording_id`, \
-                    `job_id`) VALUES ('                                                                              +str(id)+','+str(job_id)+') ')
+                    `job_id`) VALUES ('+str(id)+','+str(job_id)+') ')
                 db1.commit()
             logofthread.write(
                 '------------------END WORKER THREAD LOG (id:' + str(id) +
@@ -362,7 +364,7 @@ try:
         try:
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set `state`="processing", \
-                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
+                    `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                 db.commit()
         except Exception as e:
             log.write(str(e))
@@ -429,7 +431,7 @@ try:
         try:
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set `state`="processing", \
-                    `progress` = `progress` + 1 where `job_id` = '                                                                                                                            +str(job_id))
+                    `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                 db.commit()
                 cursor.execute(query, query_data)
                 db.commit()
@@ -452,7 +454,7 @@ try:
             try:
                 with closing(db.cursor()) as cursor:
                     cursor.execute('update `jobs` set `state`="processing", \
-                        `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
+                        `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                     db.commit()
             except Exception as e:
                 log.write(str(e))
@@ -477,7 +479,7 @@ try:
                     cursor.execute('UPDATE `jobs` \
                     SET `completed` = -1, `state`="error", \
                     `remarks` = \'Error: connecting to bucket.\' \
-                    WHERE `job_id` = '                                                                            +str(job_id))
+                    WHERE `job_id` = '+str(job_id))
                     db.commit()
                 quit()
             log.write('connect to bucket  succesful')
@@ -487,7 +489,7 @@ try:
             try:
                 with closing(db.cursor()) as cursor:
                     cursor.execute('update `jobs` set `state`="processing", \
-                        `progress` = `progress` + 1 where `job_id` = '                                                                                                                                    +str(job_id))
+                        `progress` = `progress` + 1 where `job_id` = '+str(job_id))
                     db.commit()
             except Exception as e:
                 log.write(str(e))
@@ -496,7 +498,7 @@ try:
             k.set_acl('public-read')
             with closing(db.cursor()) as cursor:
                 cursor.execute("update `soundscapes` set `uri` = '"+imageUri+"' \
-                    where  `soundscape_id` = "                                                                                            +str(soundscapeId))
+                    where  `soundscape_id` = "+str(soundscapeId))
                 db.commit()
 
             k = bucket.new_key(peaknumbersUri)
@@ -516,20 +518,20 @@ try:
                 db.commit()
                 cursor.execute('update `jobs` set `state`="error", \
                     `completed` = -1,`remarks` = \'Error: No results found.\' \
-                    where `job_id` = '                                                                            +str(job_id))
+                    where `job_id` = '+str(job_id))
                 db.commit()
     else:
         print 'no results from playlist id:'+playlist_id
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="error", \
                 `completed` = -1,`remarks` = \'Error: No results found.\' \
-                where `job_id` = '                                                                    +str(job_id))
+                where `job_id` = '+str(job_id))
             db.commit()
         log.write('no results from playlist id:'+playlist_id)
         try:
             with closing(db.cursor()) as cursor:
                 cursor.execute('update `jobs` set \
-                    `progress` = `progress` + 4 where `job_id` = '                                                                                                                            +str(job_id))
+                    `progress` = `progress` + 4 where `job_id` = '+str(job_id))
                 db.commit()
         except Exception as e:
             log.write(str(e))
@@ -537,7 +539,7 @@ try:
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set `state`="completed", `completed`=1, \
-                `progress` = `progress` + 1 where `job_id` = '                                                                                                                    +str(job_id))
+                `progress` = `progress` + 1 where `job_id` = '+str(job_id))
             insertNews(cursor, uid, pid, json.dumps({"soundscape": name}), 11)
             db.commit()
     except Exception as e:
@@ -556,7 +558,7 @@ except Exception, e:
         cursor.execute('\
             UPDATE `jobs` \
             SET `state`=%s, `completed`=%s, `remarks`=%s \
-            WHERE `job_id` = %s'                                                                , [
+            WHERE `job_id` = %s', [
             'error', -1, errmsg, job_id
         ])
         db.commit()
