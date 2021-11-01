@@ -349,7 +349,8 @@ try:
                 '------------------END WORKER THREAD LOG (id:' + str(id) +
                 ')------------------'
             )
-            return None
+        db1.close()
+        return None
 #finish function
 #------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
