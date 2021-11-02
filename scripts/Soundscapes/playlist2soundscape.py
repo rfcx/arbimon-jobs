@@ -161,7 +161,7 @@ try:
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set state="processing", `progress` = 1,\
-                `progress_steps` = '+str(int(totalRecs/10)+5)+' \
+                `progress_steps` = '+str(int(totalRecs/100)+5)+' \
                 where `job_id` = '+str(job_id))
             db.commit()
     except Exception as e:
@@ -208,9 +208,10 @@ try:
         except MySQLdb.Error as e:
             logofthread.write('worker id'+str(id)+' log: worker cannot \
                 connect \to db')
+            db1.close()
             return None
         logofthread.write('worker id'+str(id)+' log: connected to db')
-        if random.randint(1,100)<=10: # update progress for 10% of recordings
+        if random.randint(1,1000)<=10: # update progress for 10% of recordings
             try:
                 with closing(db1.cursor()) as cursor:
                     cursor.execute('update `jobs` set `state`="processing", \
@@ -243,6 +244,7 @@ try:
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
                 )
+                db1.close()
                 return None
             logofthread.write(
                 'worker id' + str(id) + ' log: cmd: /usr/bin/Rscript ' +
@@ -275,6 +277,7 @@ try:
                 logofthread.write(
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------')
+                db1.close()
                 return None
             elif stdout:
                 logofthread.write(
@@ -288,6 +291,7 @@ try:
                     logofthread.write(
                         '------------------END WORKER THREAD LOG (id:' +
                         str(id) + ')------------------')
+                    db1.close()
                     return None
                 ff=json.loads(stdout)
                 freqs =[]
@@ -337,6 +341,7 @@ try:
                     '------------------END WORKER THREAD LOG (id:' + str(id) +
                     ')------------------'
                 )
+                db1.close()
                 return results
         else:
             logofthread.write(
@@ -349,8 +354,8 @@ try:
                 '------------------END WORKER THREAD LOG (id:' + str(id) +
                 ')------------------'
             )
-        db1.close()
-        return None
+            db1.close()
+            return None
 #finish function
 #------------------------------- PARALLEL PROCESSING OF RECORDINGS --------------------------------------------------------------------------------------------------------------------
     start_time_all = time.time()
@@ -564,5 +569,6 @@ except Exception, e:
         ])
         db.commit()
     shutil.rmtree(tempFolders+"/soundscape_"+str(job_id))
+    db.close()
 log.write('ended script')
 log.close()
