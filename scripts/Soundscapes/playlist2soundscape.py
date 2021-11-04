@@ -67,8 +67,8 @@ try:
         cursorclass=MySQLdb.cursors.DictCursor
     )
 except MySQLdb.Error as e:
-    print "# fatal error cannot connect to database."
-    log.write('fatal error cannot connect to database.')
+    print "# Fatal error: cannot connect to database."
+    log.write('Fatal error: cannot connect to database.')
     log.close()
     quit()
 log.write('database connection succesful')
@@ -167,7 +167,7 @@ try:
     except Exception as e:
         log.write(str(e))
     if len(recsToProcess) < 1:
-        print "# fatal error invalid playlist or no recordings on playlist."
+        print "# Fatal error: invalid playlist or no recordings on playlist."
         log.write('Invalid playlist or no recordings on playlist')
 
         with closing(db.cursor()) as cursor:
@@ -374,6 +374,24 @@ try:
                 db.commit()
         except Exception as e:
             log.write(str(e))
+            try:
+                log.write('Attempting to re-establish main MySQL connection')
+                db.close()
+                db = MySQLdb.connect(
+                    host=config[0], user=config[1],
+                    passwd=config[2], db=config[3]
+                )
+                with closing(db.cursor()) as cursor:
+                    cursor.execute('update `jobs` set `state`="processing", \
+                        `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+                    db.commit()
+            except Exception as e:
+                log.write(str(e))
+                log.write('Fatal error: cannot connect to database.')
+                log.close()
+                db.close()
+                quit()
+
         max_hertz = 22050
         for result in resultsParallel:
             if result is not None:
@@ -480,13 +498,14 @@ try:
                 log.write('connecting to ' + legacyBucketName)
                 bucket = conn.get_bucket(legacyBucketName)
             except Exception, ex:
-                log.write('fatal error cannot connect to bucket '+ex.error_message)
+                log.write('Fatal error: cannot connect to bucket '+ex.error_message)
                 with closing(db.cursor()) as cursor:
                     cursor.execute('UPDATE `jobs` \
                     SET `completed` = -1, `state`="error", \
                     `remarks` = \'Error: connecting to bucket.\' \
                     WHERE `job_id` = '+str(job_id))
                     db.commit()
+                db.close()
                 quit()
             log.write('connect to bucket  succesful')
             k = bucket.new_key(imageUri)
