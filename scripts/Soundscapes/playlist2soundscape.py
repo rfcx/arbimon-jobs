@@ -7,7 +7,6 @@ import os
 import time
 import shutil
 import math
-import random
 import multiprocessing
 import subprocess
 import boto
@@ -161,7 +160,7 @@ try:
     try:
         with closing(db.cursor()) as cursor:
             cursor.execute('update `jobs` set state="processing", `progress` = 1,\
-                `progress_steps` = '+str(int(totalRecs/100)+5)+' \
+                `progress_steps` = '+str(int(totalRecs)+5)+' \
                 where `job_id` = '+str(job_id))
             db.commit()
     except Exception as e:
@@ -211,14 +210,13 @@ try:
             db1.close()
             return None
         logofthread.write('worker id'+str(id)+' log: connected to db')
-        if random.randint(1,1000)<=10: # update progress for 10% of recordings
-            try:
-                with closing(db1.cursor()) as cursor:
-                    cursor.execute('update `jobs` set `state`="processing", \
-                        `progress` = `progress` + 1 where `job_id` = '+str(job_id))
-                    db1.commit()
-            except Exception as e:
-                log.write(str(e))
+        try:
+            with closing(db1.cursor()) as cursor:
+                cursor.execute('update `jobs` set `state`="processing", \
+                    `progress` = `progress` + 1 where `job_id` = '+str(job_id))
+                db1.commit()
+        except Exception as e:
+            log.write(str(e))
         results = []
         date = datetime.strptime(rec['date'], '%Y-%m-%d %H:%M:%S')
 
