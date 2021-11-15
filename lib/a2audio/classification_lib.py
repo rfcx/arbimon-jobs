@@ -405,13 +405,15 @@ def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
             """, [jobId, json.dumps(statsJson)])
             db.commit()
             try:
-            cursor.execute("""
-                UPDATE `jobs`
-                SET `progress` = `progress_steps`, `completed` = 1,
-                    state="completed", `last_update` = now()
-                WHERE `job_id` = %s
-            """, [jobId])
-            db.commit()
+                cursor.execute("""
+                    UPDATE `jobs`
+                    SET `progress` = `progress_steps`, `completed` = 1,
+                        state="completed", `last_update` = now()
+                    WHERE `job_id` = %s
+                """, [jobId])
+                db.commit()
+            except Exception as e:
+                log.write(str(e))
         db.close()
         return True
     except:
