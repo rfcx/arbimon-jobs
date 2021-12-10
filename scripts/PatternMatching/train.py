@@ -221,23 +221,24 @@ if model_type_id in [4]:
                 with closing(db.cursor()) as cursor:
                     cursor.execute(
                         """
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , `present_review` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                         FROM `recording_validations` rv 
                           JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
                         WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
-                          AND `present` = 1
+                          AND (`present` = 1 OR `present_review` > 0)
                           ORDER BY rand()
                           LIMIT %s)
-                          UNION
-                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
+                        UNION
+                        (SELECT r.`uri` , `species_id` , `songtype_id` , `present` , `present_review` , r.`recording_id`, IF(LEFT(r.uri, 8) = 'project_', 1, 0) legacy
                         FROM `recording_validations` rv 
                           JOIN `recordings` r ON r.`recording_id` = rv.`recording_id`
                         WHERE rv.`project_id` = %s
                           AND `species_id` = %s
                           AND `songtype_id` = %s
                           AND `present` = 0
+                          AND `present_review` = 0
                           ORDER BY rand()
                           LIMIT %s)
                     """, [project_id, spst[0], spst[1], (int(useTrainingPresent)+int(useValidationPresent )) ,
@@ -251,11 +252,14 @@ if model_type_id in [4]:
 
                     for x in range(0, numValidationRows):
                         rowValidation = cursor.fetchone()
+                        ispresent = 0
+                        if (rowValidation[3]==1) or (rowValidation[4]>0):
+                            ispresent = 1
                         cc = (str(rowValidation[1])+"_"+str(rowValidation[2]))
                         validationData.append([
                             rowValidation[0], rowValidation[1],
-                            rowValidation[2], rowValidation[3], cc,
-                            rowValidation[4], rowValidation[5]
+                            rowValidation[2], ispresent, cc,
+                            rowValidation[5], rowValidation[6]
                         ])
                         spamwriter.writerow([rowValidation[0] ,rowValidation[1] ,rowValidation[2] ,rowValidation[3] , cc,rowValidation[4]])
 
