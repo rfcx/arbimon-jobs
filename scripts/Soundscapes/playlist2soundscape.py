@@ -182,7 +182,7 @@ try:
         )
 
     if agr_ident=='year':
-        agg_range = [int(i['date'].year) for i in recsToProcess]
+        agg_range = [int(i['date'].split('-')[0]) for i in recsToProcess]
         aggregation['range'] = [min(agg_range), max(agg_range)]
 
     peaknumbers  = indices.Indices(aggregation)
