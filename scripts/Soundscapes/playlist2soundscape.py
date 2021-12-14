@@ -181,10 +181,12 @@ try:
         'init indices calculation with aggregation: '+str(aggregation)
         )
 
+    if agr_ident=='year':
+        agg_range = [int(i['date'].year) for i in recsToProcess]
+        aggregation['range'] = [min(agg_range), max(agg_range)]
+
     peaknumbers  = indices.Indices(aggregation)
-
     hIndex = indices.Indices(aggregation)
-
     aciIndex = indices.Indices(aggregation)
 
     log.write("start parallel... ")
