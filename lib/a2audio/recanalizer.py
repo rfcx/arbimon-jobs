@@ -79,7 +79,7 @@ class Recanalizer:
         if self.rec.status == 'HasAudioData':
             # If the recording's sample rate is not modelSampleRate, resample the audio data
             print "rec.sample_rate is %s (model is %s)" % (self.rec.sample_rate, self.modelSampleRate)
-            if self.rec.sample_rate != self.modelSampleRate and self.modelSampleRate >= 44100:
+            if self.rec.sample_rate != self.modelSampleRate:
                 print " resampling rec to %s" % self.modelSampleRate
                 self.rec_resample(self.modelSampleRate)
             maxFreqInRec = float(self.rec.sample_rate)/2.0
