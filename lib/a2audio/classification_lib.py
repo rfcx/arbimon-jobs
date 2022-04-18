@@ -19,8 +19,6 @@ import sys
 
 classificationCanceled =False
 
-log_prefix = 'job_id '+str(jobId)+': '
-
 def get_classification_job_data(db,jobId):
     try:
         with contextlib.closing(db.cursor()) as cursor:
@@ -134,7 +132,7 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
     recAnalized = None
     model_data = model_specs['data']
     clfFeatsN = model_data[0].n_features_
-    log.write(log_prefix+'classify_rec try')
+    log.write('job_id '+str(jobId)+': '+'classify_rec try')
     try:
         useSsim = True
         oldModel = False
@@ -169,11 +167,11 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
                 """, [jobId])
                 db.commit()
         except Exception as e:
-            log.write(log_prefix+str(e))
+            log.write('job_id '+str(jobId)+': '+str(e))
     except:
         errorProcessing = True
-        log.write(log_prefix+'error rec analyzed {} '.format(traceback.format_exc()))
-    log.write(log_prefix+'finish')
+        log.write('job_id '+str(jobId)+': '+'error rec analyzed {} '.format(traceback.format_exc()))
+    log.write('job_id '+str(jobId)+': '+'finish')
     featvector = None
     fets = None
     if recAnalized.status == 'Processed':
@@ -182,18 +180,18 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
             fets = recAnalized.features()
         except:
             errorProcessing = True
-            log.write(log_prefix+'error getting feature vectors {} '.format(traceback.format_exc()))
+            log.write('job_id '+str(jobId)+': '+'error getting feature vectors {} '.format(traceback.format_exc()))
     else:
         errorProcessing = True
     res = None
-    log.write(log_prefix+'FEATS COMPUTED')
+    log.write('job_id '+str(jobId)+': '+'FEATS COMPUTED')
     if featvector is not None:
         try:
             clf = model_data[0]
             res = clf.predict([fets])
         except:
             errorProcessing = True
-            log.write(log_prefix+'error predicting {} '.format(traceback.format_exc()))
+            log.write('job_id '+str(jobId)+': '+'error predicting {} '.format(traceback.format_exc()))
     else:
         errorProcessing = True
     if errorProcessing:
@@ -201,7 +199,7 @@ def classify_rec(rec, model_specs, workingFolder, log, config, jobId):
         db.close()
         return None
     else:
-        log.write(log_prefix+'done processing this rec')
+        log.write('job_id '+str(jobId)+': '+'done processing this rec')
         db.close()
         return {'uri':rec['uri'],'id':rec['recording_id'],'f':featvector,'ft':fets,'r':res[0]}
 
@@ -321,7 +319,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
                     """, [jobId])
                     db.commit()
             except Exception as e:
-                log.write(log_prefix+str(e))
+                log.write('job_id '+str(jobId)+': '+str(e))
             if r and 'id' in r:
                 processed = processed + 1
                 recName = r['uri'].split('/')
@@ -338,7 +336,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
                             modelUri.replace('.mod', ''), jobId, recName
                     )
                     upload_vector(vectorUri,localFile,config,r['id'],db,jobId)
-                    log.write(log_prefix+"inserting results from {rid} for {sp} {st} into the database ({r}, maxv:{maxv})".format(
+                    log.write('job_id '+str(jobId)+': '+"inserting results from {rid} for {sp} {st} into the database ({r}, maxv:{maxv})".format(
                         rid=r['id'],
                         r=r['r'],
                         sp=species,
@@ -349,7 +347,7 @@ def processResults(res,workingFolder,config,modelUri,jobId,species,songtype,db, 
                 else:
                     insert_rec_error(db, r['id'], jobId)
     except:
-        exit_error(log_prefix+'cannot process results. {}'.format(traceback.format_exc()))
+        exit_error('job_id '+str(jobId)+': '+'cannot process results. {}'.format(traceback.format_exc()))
     return {"t":processed,"stats":{"minv": float(minVectorVal), "maxv": float(maxVectorVal)}}
 
 def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
@@ -360,45 +358,45 @@ def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
         num_cores = multiprocessing.cpu_count()
         if int(ncpu)>0:
             num_cores = int(ncpu)
-        log.write(log_prefix+'using Pattern Matching algorithm' )
+        log.write('job_id '+str(jobId)+': '+'using Pattern Matching algorithm' )
         workingFolder = create_temp_dir(jobId,log)
-        log.write(log_prefix+'created working directory.')
+        log.write('job_id '+str(jobId)+': '+'created working directory.')
         recsToClassify = get_playlist(db,playlistId,log)
-        log.write(log_prefix+'playlist generated.')
+        log.write('job_id '+str(jobId)+': '+'playlist generated.')
         cancelStatus(db,jobId,workingFolder)
         set_progress_params(db,len(recsToClassify), jobId)
-        log.write(log_prefix+'job progress set to start.')
+        log.write('job_id '+str(jobId)+': '+'job progress set to start.')
         model_specs = get_model(db, model_specs, config, log, workingFolder)
         cancelStatus(db,jobId,workingFolder)
-        log.write(log_prefix+'model was fetched.')
+        log.write('job_id '+str(jobId)+': '+'model was fetched.')
     except:
-        log.write(log_prefix+'ERROR:: {}'.format(traceback.format_exc()))
+        log.write('job_id '+str(jobId)+': '+'ERROR:: {}'.format(traceback.format_exc()))
         return False
-    log.write(log_prefix+'starting parallel for.')
+    log.write('job_id '+str(jobId)+': '+'starting parallel for.')
     db.close()
     try:
         resultsParallel = Parallel(n_jobs=num_cores)(
             delayed(classify_rec)(rec, model_specs, workingFolder, log, config, jobId) for rec in recsToClassify
         )
     except:
-        log.write(log_prefix+'ERROR:: {}'.format(traceback.format_exc()))
+        log.write('job_id '+str(jobId)+': '+'ERROR:: {}'.format(traceback.format_exc()))
         if classificationCanceled:
             log.write('job cancelled')
         return False
-    log.write(log_prefix+'done parallel execution.')
+    log.write('job_id '+str(jobId)+': '+'done parallel execution.')
     db = get_db(config)
     cancelStatus(db,jobId,workingFolder)
     try:
         jsonStats = processResults(resultsParallel, workingFolder, config, model_specs['uri'], jobId, model_specs['species'], model_specs['songtype'], db, log)
     except:
-        log.write(log_prefix+'ERROR:: {}'.format(traceback.format_exc()))
+        log.write('job_id '+str(jobId)+': '+'ERROR:: {}'.format(traceback.format_exc()))
         return False
-    log.write(log_prefix+'computed stats.')
+    log.write('job_id '+str(jobId)+': '+'computed stats.')
     shutil.rmtree(workingFolder)
-    log.write(log_prefix+'removed folder.')
+    log.write('job_id '+str(jobId)+': '+'removed folder.')
     statsJson = jsonStats['stats']
     if jsonStats['t'] < 1:
-        exit_error(log_prefix+'no recordings processed. {}'.format(traceback.format_exc()))
+        exit_error('job_id '+str(jobId)+': '+'no recordings processed. {}'.format(traceback.format_exc()))
     try:
         with contextlib.closing(db.cursor()) as cursor:
             cursor.execute("""
@@ -420,7 +418,7 @@ def run_pattern_matching(jobId, model_specs, playlistId, log, config, ncpu):
         return True
     except:
         db.close()
-        log.write(log_prefix+'ERROR:: {}'.format(traceback.format_exc()))
+        log.write('job_id '+str(jobId)+': '+'ERROR:: {}'.format(traceback.format_exc()))
         return False
 
 def run_classification(jobId):
@@ -432,19 +430,19 @@ def run_classification(jobId):
         config = configuration.data()
         bucketName = config[4]
         db = get_db(config)
-        log.write(log_prefix+'database connection succesful')
+        log.write('job_id '+str(jobId)+': '+'database connection succesful')
         (
             classifierId, projectId, userId,
             classificationName, playlistId, ncpu
         ) = get_classification_job_data(db,jobId)
-        log.write(log_prefix+'job data fetched.')
+        log.write('job_id '+str(jobId)+': '+'job data fetched.')
 
         model_specs = get_model_params(db, classifierId, log)
-        log.write(log_prefix+'model params fetched. %s' % str(model_specs))
+        log.write('job_id '+str(jobId)+': '+'model params fetched. %s' % str(model_specs))
 
         db.close()
     except:
-        log.write(log_prefix+'ERROR:: {}'.format(traceback.format_exc()))
+        log.write('job_id '+str(jobId)+': '+'ERROR:: {}'.format(traceback.format_exc()))
         return False
 
     if model_specs['model_type_id'] in [4]:
@@ -454,5 +452,5 @@ def run_classification(jobId):
         pass
         """Entry point for new model types"""
     else:
-        log.write(log_prefix+"Unkown model type")
+        log.write('job_id '+str(jobId)+': '+"Unkown model type")
         return False
