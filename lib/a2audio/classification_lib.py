@@ -441,7 +441,8 @@ def run_classification(jobId):
         log.write('model params fetched. %s' % str(model_specs))
 
         db.close()
-    except:
+    except Exception as e:
+        print(e)
         log.write('ERROR:: {}'.format(traceback.format_exc()))
         return False
 
