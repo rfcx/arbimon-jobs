@@ -18,6 +18,7 @@ class Logger:
 
         self.logON = logON
         self.also_print = False
+        self.jobId = jobId
         if self.logON:
             tempFolders = str(configuration.pathsConfig['temp_dir'])
             self.workingFolder = tempFolders+"/logs/job_"+str(jobId)
@@ -36,7 +37,6 @@ class Logger:
             if self.log_file_handle:
                 self.log_file_handle.close()
             self.log_file_handle = None
-            self.jobId = jobId
             self.logFor = logFor
 
     def write(self, message):
