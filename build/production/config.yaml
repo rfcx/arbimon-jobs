@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: arbimon-jobs-config
+  namespace: production
 data:
   DEBUG: "arbimon2:model:jobqueues"
 
