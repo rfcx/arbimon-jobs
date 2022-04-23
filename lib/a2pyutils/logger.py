@@ -18,6 +18,7 @@ class Logger:
 
         self.logON = logON
         self.also_print = False
+        self.jobId = jobId
         if self.logON:
             tempFolders = str(configuration.pathsConfig['temp_dir'])
             self.workingFolder = tempFolders+"/logs/job_"+str(jobId)
@@ -36,10 +37,10 @@ class Logger:
             if self.log_file_handle:
                 self.log_file_handle.close()
             self.log_file_handle = None
-            self.jobId = jobId
             self.logFor = logFor
 
     def write(self, message):
+        message = 'jobId '+str(self.jobId)+': '+message
         if self.logON:
             currTime = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             if self.log_file_handle:
@@ -59,6 +60,7 @@ class Logger:
         ))
 
     def write_clean(self, message):
+        message = 'jobId '+str(self.jobId)+': '+message
         if self.logON:
             if self.log_file_handle:
                 self.log_file_handle.write(message)

@@ -439,16 +439,16 @@ try:
             INSERT INTO `soundscapes`( `name`, `project_id`, `user_id`,
             `soundscape_aggregation_type_id`, `bin_size`, `uri`, `min_t`,
             `max_t`, `min_f`, `max_f`, `min_value`, `max_value`,
-            `date_created`, `playlist_id`, `threshold` ,`frequency` ,`normalized`)
+            `date_created`, `playlist_id`, `threshold` , `threshold_type` ,`frequency` ,`normalized`)
             VALUES (
                 %s, %s, %s, %s, %s, NULL, %s, %s, 0, %s, 0, %s, NOW(), %s,
-                %s, %s , %s
+                %s, %s, %s, %s
             )
         """, [
             name, pid, uid, agrrid,
             bin_size, statsMin, statsMax,
             max_hertz, scp.stats['max_count'],
-            playlist_id, threshold, frequency , normalized
+            playlist_id, threshold, threshold_type, frequency , normalized
         ])
 
         scpId = -1
