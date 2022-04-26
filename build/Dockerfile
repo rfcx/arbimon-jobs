@@ -1,5 +1,27 @@
-ARG base=887044485231.dkr.ecr.eu-west-1.amazonaws.com/arbimon-jobqueue:latest
-FROM $base
+FROM ubuntu:16.04 as base
+
+# OS dependencies
+RUN apt-get update -yq \
+    && apt-get -yq install curl gnupg ca-certificates \
+    && curl -L https://deb.nodesource.com/setup_16.x | bash \
+    && apt-get update -yq \
+    && apt-get install -yq nodejs
+RUN npm install -g grunt-cli forever
+
+# App dependencies
+WORKDIR /app/jobqueue
+COPY jobqueue/package.json ./package.json
+RUN npm install
+
+# App code
+COPY jobqueue .
+
+CMD ["node", "main.js"]
+
+
+# ---
+
+FROM base as arbimon-jobs
 
 ENV DB__TIMEZONE=Z \
     APP_PATH=/app/jobs \

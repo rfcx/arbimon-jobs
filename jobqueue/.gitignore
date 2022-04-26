@@ -1,0 +1,9 @@
+# node
+node_modules
+npm-debug.log
+
+# working copy config files
+config/config.env
+
+# deploy keys
+deploy-keys
