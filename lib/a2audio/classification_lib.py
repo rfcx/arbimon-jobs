@@ -19,7 +19,6 @@ import sys
 
 classificationCanceled =False
 
-
 def get_classification_job_data(db,jobId):
     try:
         with contextlib.closing(db.cursor()) as cursor:
