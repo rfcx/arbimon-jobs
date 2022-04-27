@@ -98,8 +98,8 @@ class Rec:
                 " ", "_") + self.seed
         if self.logs:
             self.logs.write("init completed:" + str(time.time() - start_time))
-
-        print('bucket', self.bucket, 'uri', self.uri)
+            self.logs.write('bucket', self.bucket, 'uri', self.uri)
+            
         if not test:
             start_time = time.time()
             self.process()

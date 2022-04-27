@@ -280,12 +280,6 @@ try:
                 db1.close()
                 return None
             elif stdout:
-                logofthread.write(
-                    'worker id' + str(id) + ' log: fpeaks.R: ok' +
-                    str(time.time()-start_time_rec) + " stdout: " + stdout +
-                    " stderr: " + stderr
-                )
-
                 if 'err' in stdout:
                     logofthread.write('err in stdout')
                     logofthread.write(
