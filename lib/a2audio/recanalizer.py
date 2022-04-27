@@ -99,7 +99,6 @@ class Recanalizer:
 
                     if self.db:
                         elapsed = time.time() - start_time_all
-                        print 'insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')'
                         with closing(self.db.cursor()) as cursor:
                             cursor.execute('insert into  `recanalizer_stats` (job_id,rec_id,exec_time) VALUES('+str(self.job_id)+','+str(self.rec_id)+','+str(elapsed)+')')
                             self.db.commit()

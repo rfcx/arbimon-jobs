@@ -28,7 +28,6 @@ class Model:
         self.jobId = jobid
         
     def addSample(self,present,row,uri):
-        print str(present)
         self.classes.append(str(present))
         self.uris.append(uri)
         if self.minv > row[3]:

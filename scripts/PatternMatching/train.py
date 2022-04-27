@@ -486,18 +486,14 @@ if model_type_id in [4]:
     log.write('user requested : '+" "+str(useTrainingPresent)+" "+str(useTrainingNotPresent)+" "+str( useValidationPresent)+" "+str(useValidationNotPresent ))
 
     savedModel = False
-    print 'try models'
     # """ Create and save model """
     for i in models:
-        print i,'in models'
         resultSplit = False
         try:
             resultSplit = models[i].splitData(useTrainingPresent,useTrainingNotPresent,useValidationPresent,useValidationNotPresent)
         except StandardError, e:
             exit_error(db,workingFolder,log,jobId,'error spliting data for validation. {}'.format(traceback.format_exc()))
-        if not resultSplit:
-            print 'split failed'
-            continue
+            log.write('error spliting data for validation.')
         validationsKey =  'project_'+str(project_id)+'/validations/job_'+str(jobId)+'_vals.csv'
         validationsLocalFile = modelFilesLocation+'job_'+str(jobId)+'_vals.csv'
         try:
@@ -543,7 +539,7 @@ if model_type_id in [4]:
         except StandardError, e:
             exit_error(db,workingFolder,log,jobId,'error creating pattern PNG. {}'.format(traceback.format_exc()))
         modKey = None  
-        print 'uploading png'
+        log.write('uploading png')
         try:
             conn = S3Connection(awsKeyId, awsKeySecret)
             bucket = conn.get_bucket(bucketName)
@@ -561,12 +557,11 @@ if model_type_id in [4]:
             k.set_acl('public-read')
         except StandardError, e:
             exit_error(db,workingFolder,log,jobId,'error uploading files to amazon bucket. {}'.format(traceback.format_exc()))
-        print 'saving to db'        
+        log.write('saving to db')        
         species,songtype = i.split("_")
         try:
             #save model to DB
             with closing(db.cursor()) as cursor:
-                print 'saving to db'               
                 cursor.execute('update `jobs` set `state`="processing", `progress` = `progress` + 5 where `job_id` = '+str(jobId))
                 db.commit()        
                 cursor.execute("SELECT   max(ts.`x2` -  ts.`x1`) , min(ts.`y1`) , max(ts.`y2`) "+
@@ -612,7 +607,7 @@ if model_type_id in [4]:
                 db.commit()
                 cursor.execute('update `jobs` set `state`="completed", `progress` = `progress_steps` ,  `completed` = 1 , `last_update` = now() where `job_id` = '+str(jobId))
                 db.commit()
-                print 'saved to db correctly'
+                log.write('saved to db correctly')
                 savedModel  = True
         except StandardError, e:
             exit_error(db,workingFolder,log,jobId,'error saving model into database. {}'.format(traceback.format_exc()))
