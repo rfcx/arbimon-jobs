@@ -40,7 +40,7 @@ class Logger:
             self.logFor = logFor
 
     def write(self, message):
-        # message = 'jobId '+str(self.jobId)+': '+message
+        message = 'jobId '+str(self.jobId)+': '+message
         if self.logON:
             currTime = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             if self.log_file_handle:
