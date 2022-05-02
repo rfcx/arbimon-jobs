@@ -24,6 +24,14 @@ spec:
           requests:
             memory: "0.5Gi"
             cpu: "0.25"
+            ephemeral-storage: "10Gi"
           limits:
             memory: "7.5Gi"
             cpu: "2"
+            ephemeral-storage: "10Gi"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/tmp"
+      volumes:
+        - name: ephemeral
+          emptyDir: {}
