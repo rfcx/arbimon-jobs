@@ -22,8 +22,8 @@ spec:
               name: arbimon-jobs-config
         resources:
           requests:
-            memory: "0.5Gi"
-            cpu: "0.25"
+            memory: "7.5Gi"
+            cpu: "4"
             ephemeral-storage: "10Gi"
           limits:
             memory: "7.5Gi"
