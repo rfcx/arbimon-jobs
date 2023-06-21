@@ -149,7 +149,11 @@ class Rec:
         c = boto.s3.connection.S3Connection(aws_key_id, aws_key_secret)
         b = c.get_bucket(self.bucket, validate=False)
         k = b.get_key(self.uri, validate=False)
-        k.get_contents_to_filename(self.localfilename)
+        try:
+                k.get_contents_to_filename(self.localfilename)
+        except:
+                self.logs.write('get_contents_to_filename error')
+                return False
         return True
 
     def getAudioFromLegacyUri(self, retries=6):
