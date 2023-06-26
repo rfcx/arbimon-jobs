@@ -152,7 +152,8 @@ class Rec:
         try:
                 k.get_contents_to_filename(self.localfilename)
         except:
-                self.logs.write('get_contents_to_filename error')
+                if self.logs:
+                        self.logs.write('get_contents_to_filename error')
                 return False
         return True
 
