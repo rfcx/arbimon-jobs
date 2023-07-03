@@ -1,7 +1,8 @@
 # Arbimon Jobs (Soundscape + Random Forest)
 
-See also [rfcx/arbimon-jobqueue](https://github.com/rfcx/arbimon-jobqueue).
+This repo also includes the job queue. Previously the job queue was a separate repo: [rfcx/arbimon-jobqueue](https://github.com/rfcx/arbimon-jobqueue).
 
+Specific documentation about how the python scripts work for each type of job is in [docs/](https://github.com/rfcx/arbimon-jobs/tree/develop/docs).
 
 ## How to see latest logs:
 
