@@ -211,7 +211,8 @@ class Rec:
             process = subprocess.Popen(['opusdec', self.localfilename, self.localfilename+'.wav'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, err = process.communicate()
             self.localfilename = self.localfilename+'.wav'
-            self.logs.write('decoded opus file: '+str(self.filename))
+            if self.logs:
+                self.logs.write('decoded opus file: '+str(self.filename))
 
         try:
             with contextlib.closing(Sndfile(self.localfilename)) as f:
