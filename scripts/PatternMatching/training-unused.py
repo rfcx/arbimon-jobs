@@ -188,13 +188,13 @@ if model_type_id == 1:  # Pattern Matching (modified Alvarez thesis)
     with closing(db.cursor()) as cursor:
         cursor.execute("""
             INSERT INTO `validation_set`(
-                `validation_set_id`, `project_id`, `user_id`, `name`, `uri`,
+                `validation_set_id`, `project_id`, `user_id`, `name`,
                 `params`, `job_id`
             ) VALUES (
-                NULL, %s, %s, %s, %s, %s, %s
+                NULL, %s, %s, %s, %s, %s
             )
         """, [
-            project_id, user_id, modelName+" validation", valiKey,
+            project_id, user_id, modelName+" validation",
             json.dumps({'name': modelName}),
             jobId
         ])

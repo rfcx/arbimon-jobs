@@ -36,7 +36,7 @@ class CreateValidationFileTask(a2.job.tasks.Task):
             tmpfile.close_file()
             runtime.bucket.upload_filename(key, tmpfile.filename)
             
-        self.insert_to_db(key)
+        self.insert_to_db()
         
     def get_model_name(self):
         return runtime.db.queryOne("""
@@ -49,20 +49,20 @@ class CreateValidationFileTask(a2.job.tasks.Task):
         ])['name']
 
 
-    def insert_to_db(self, valiKey):
+    def insert_to_db(self):
         modelName = self.get_model_name()
         project, user, job = self.get_project_id(), self.get_user_id(), self.get_job_id()
         with runtime.db.cursor() as cursor:
             cursor.execute("""
                 INSERT INTO `validation_set`(
                     `project_id`, `user_id`,
-                    `name`, `uri`,
+                    `name`,
                     `params`, `job_id`
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s
                 )
             """, [
-                project, user, modelName+" validation", valiKey,
+                project, user, modelName+" validation",
                 json.dumps({'name': modelName}),
                 job
             ])

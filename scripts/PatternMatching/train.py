@@ -281,14 +281,13 @@ if model_type_id in [4]:
                     `project_id`,
                     `user_id`,
                     `name`,
-                    `uri`,
                     `params`,
                     `job_id`
                 ) VALUES (
-                    NULL, %s, %s, %s, %s, %s, %s
+                    NULL, %s, %s, %s, %s, %s
                 )
             """, [
-                project_id, user_id, modelName+" validation", valiKey,
+                project_id, user_id, modelName+" validation",
                 json.dumps({'name': modelName}),
                 jobId
             ])
