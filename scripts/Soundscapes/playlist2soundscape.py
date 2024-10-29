@@ -209,6 +209,7 @@ try:
         except MySQLdb.Error as e:
             logofthread.write('worker id'+str(id)+' log: worker cannot \
                 connect \to db')
+            db1.close()
             return None
         logofthread.write('worker id'+str(id)+' log: connected to db')
         try:
